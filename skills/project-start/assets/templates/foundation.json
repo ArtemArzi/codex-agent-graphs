@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "profile": "__REQUIRED__",
+  "profile_version": 1,
+  "product_shape": ["__REQUIRED__"],
+  "stack_research": {
+    "completed": false,
+    "date": "__REQUIRED__",
+    "artifact": "__REQUIRED__",
+    "alternatives_compared": [],
+    "external_constraint": false,
+    "constraint_reason": "not-applicable"
+  },
+  "runtime": {
+    "language": "__REQUIRED__",
+    "version": "__REQUIRED__",
+    "package_manager": "__REQUIRED__"
+  },
+  "architecture": {
+    "style": "modular-monolith",
+    "modules": [],
+    "dependency_rules": [],
+    "structural_check_command": "__REQUIRED__"
+  },
+  "commands": {
+    "install": "__REQUIRED__",
+    "run": "__REQUIRED__",
+    "stop": "__REQUIRED__",
+    "seed": "__REQUIRED__",
+    "reset": "__REQUIRED__",
+    "format": "__REQUIRED__",
+    "lint": "__REQUIRED__",
+    "typecheck": "__REQUIRED__",
+    "test_fast": "__REQUIRED__",
+    "test_full": "__REQUIRED__",
+    "verify": "__REQUIRED__",
+    "smoke": "__REQUIRED__"
+  },
+  "risk_flags": {
+    "public_web": null,
+    "authentication": null,
+    "personal_or_sensitive_data": null,
+    "payments": null,
+    "file_uploads": null,
+    "user_code_execution": null,
+    "public_api_or_webhooks": null,
+    "regulated_market": null,
+    "accessibility_target": null,
+    "critical_persistence": null,
+    "published_artifacts": null,
+    "reliability_targets": null
+  },
+  "authority_document": "docs/project/AUTHORITY.md",
+  "codebase_document": "docs/project/CODEBASE.md",
+  "agent_operations_document": "docs/project/AGENT-OPERATIONS.md",
+  "quality_document": "docs/project/QUALITY.md",
+  "verification_document": "docs/project/VERIFICATION.md"
+}

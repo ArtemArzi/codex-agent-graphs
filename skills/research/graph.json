@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "graph_id": "research",
+  "graph_version": "1.1.0",
+  "entry": "intake",
+  "terminal": "complete",
+  "limits": {
+    "max_collection_cycles": 2,
+    "max_synthesis_repairs": 2,
+    "max_node_retries": 2,
+    "max_parallel_scouts": 3
+  },
+  "nodes": {
+    "intake": {"role": "root", "artifact": "intake.md", "on_success": "capability_discovery"},
+    "capability_discovery": {"role": "root", "artifact": "capabilities.json", "on_success": "plan"},
+    "plan": {"role": "research_planner", "artifact": "plan.md", "on_success": "collect"},
+    "collect": {"role": "research_scout", "artifact": "collection.json", "on_success": "evidence"},
+    "evidence": {"role": "root", "artifact": "evidence.json", "on_success": "reconcile"},
+    "reconcile": {"role": "research_synthesizer", "artifact": "reconciliation.md", "on_success": "gap_check"},
+    "gap_check": {"role": "research_planner", "artifact": "gaps.json", "on_success": "synthesize", "on_needs_more": "collect"},
+    "synthesize": {"role": "research_synthesizer", "artifact": "draft.md", "on_success": "verify"},
+    "verify": {"role": "research_verifier", "artifact": "verification.json", "on_success": "complete", "on_rejected": "synthesize"},
+    "complete": {"role": "root", "artifact": "report.md"}
+  }
+}

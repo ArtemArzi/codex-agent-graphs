@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import contextlib
+import importlib.util
+import io
+import tempfile
+import unittest
+from pathlib import Path
+
+
+MODULE_PATH = Path(__file__).parents[1] / "scripts" / "install.py"
+SPEC = importlib.util.spec_from_file_location("graph_install", MODULE_PATH)
+assert SPEC and SPEC.loader
+installer = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(installer)
+
+
+class InstallerTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.home = Path(self.temp.name) / ".codex"
+        self.home.mkdir()
+        (self.home / "config.toml").write_text("[agents]\nmax_threads = 6\n", encoding="utf-8")
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def test_install_and_verify(self) -> None:
+        result = installer.install_environment(self.home)
+        self.assertEqual(installer.verify_environment(self.home)["status"], "ok")
+        self.assertTrue((self.home / "skills" / "research" / "graph.json").is_file())
+        self.assertIn("[agents.research_verifier]", (self.home / "config.toml").read_text(encoding="utf-8"))
+        self.assertIsNotNone(result["backup"])
+
+    def test_drift_is_backed_up_and_repaired(self) -> None:
+        installer.install_environment(self.home)
+        installed = self.home / "skills" / "research" / "SKILL.md"
+        installed.write_text("local drift", encoding="utf-8")
+        self.assertEqual(installer.verify_environment(self.home)["status"], "failed")
+        result = installer.install_environment(self.home)
+        self.assertEqual(installer.verify_environment(self.home)["status"], "ok")
+        self.assertIsNotNone(result["backup"])
+        backups = list((self.home / "backups" / "agent-graphs").rglob("research/SKILL.md"))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].read_text(encoding="utf-8"), "local drift")
+
+    def test_unmanaged_agent_role_conflict_is_rejected(self) -> None:
+        config = self.home / "config.toml"
+        config.write_text("[agents.research_scout]\ndescription = 'mine'\n", encoding="utf-8")
+        with self.assertRaises(installer.InstallError):
+            installer.install_environment(self.home)
+        self.assertFalse((self.home / "skills").exists())
+
+    def test_all_environments_are_preflighted_before_first_write(self) -> None:
+        first = Path(self.temp.name) / "first"
+        second = Path(self.temp.name) / "second"
+        first.mkdir()
+        second.mkdir()
+        (first / "config.toml").write_text("[agents]\nmax_threads = 6\n", encoding="utf-8")
+        (second / "config.toml").write_text(
+            "[agents.research_scout]\ndescription = 'conflict'\n", encoding="utf-8"
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            exit_code = installer.main(
+                [
+                    "install",
+                    "--all",
+                    "--wsl-home",
+                    str(first),
+                    "--desktop-home",
+                    str(second),
+                ]
+            )
+        self.assertEqual(exit_code, 2)
+        self.assertFalse((first / "skills").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

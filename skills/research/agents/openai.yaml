@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research Graph"
+  short_description: "Autonomous evidence-backed research graph"
+  default_prompt: "Use $research to investigate this question autonomously, reconcile conflicting evidence, and deliver a verified cited report."
