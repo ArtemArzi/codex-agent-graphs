@@ -39,7 +39,8 @@ Do not create a separate plan, capability inventory, claim ledger, collection ar
 - Use one direct primary source for a narrow authoritative fact when another source adds no value.
 - Cross-check comparisons, contested facts, indirect evidence, and consequential recommendations.
 - Put citations next to material factual claims and distinguish fact, attribution, inference, contradiction, and unknowns in the report itself.
-- Stop after enough evidence exists for an honest answer.
+- Treat source counts as adaptive bounds, not quality scores. Prefer a smaller set of direct, diverse evidence over redundant coverage.
+- At each checkpoint, stop when all material sub-questions are covered and the latest batch adds little decision-relevant evidence. Continue only for a concrete coverage gap, and expose any gap that remains at the hard ceiling.
 
 ## Report
 

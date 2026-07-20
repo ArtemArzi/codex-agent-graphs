@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "research",
-  "graph_version": "2.0.0",
+  "graph_version": "2.1.0",
   "entry": "work",
   "terminal": "complete",
   "default_depth": "auto",
@@ -10,12 +10,14 @@
     "max_verification_repairs": 1,
     "fast": {
       "soft_time_minutes": 10,
-      "max_sources": 6,
+      "source_checkpoints": [4, 6, 10],
+      "max_sources": 10,
       "max_parallel_scouts": 0
     },
     "deep": {
       "soft_time_minutes": 30,
-      "max_sources": 30,
+      "source_checkpoints": [10, 20, 40],
+      "max_sources": 40,
       "max_parallel_scouts": 3
     }
   },

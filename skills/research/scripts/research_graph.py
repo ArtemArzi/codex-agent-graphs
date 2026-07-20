@@ -114,6 +114,18 @@ def graph_contract() -> dict[str, Any]:
     for profile in ("fast", "deep"):
         if profile not in graph["limits"]:
             raise GraphError(f"Research graph is missing {profile} limits")
+        limits = graph["limits"][profile]
+        checkpoints = limits.get("source_checkpoints")
+        maximum = limits.get("max_sources")
+        if (
+            not isinstance(checkpoints, list)
+            or not checkpoints
+            or any(type(value) is not int or value < 1 for value in checkpoints)
+            or checkpoints != sorted(set(checkpoints))
+        ):
+            raise GraphError(f"Research {profile} source checkpoints must be unique ascending integers")
+        if type(maximum) is not int or maximum < 1 or checkpoints[-1] != maximum:
+            raise GraphError(f"Research {profile} final source checkpoint must equal max_sources")
     return graph
 
 
@@ -355,6 +367,9 @@ def ready_node(run_dir: Path) -> dict[str, Any]:
                 "execution": "one native root-agent loop",
                 "default_mode": default_mode,
                 "budgets": graph["limits"][default_mode],
+                "adaptive_budgets": {
+                    profile: graph["limits"][profile] for profile in ("fast", "deep")
+                },
                 "allowed_outcomes": ["succeeded", "verify", "failed"],
             }
         )
@@ -496,7 +511,10 @@ def validate_work(path: Path, state: dict[str, Any], outcome: str) -> tuple[list
     limits = graph["limits"][mode]
     source_count = int(source_metrics["source_count"])
     if source_count > int(limits["max_sources"]):
-        errors.append(f"{mode} source limit exceeded; use deep mode instead of overworking the fast path")
+        if mode == "fast":
+            errors.append("fast source limit exceeded; use deep mode when the 10-source coverage check still finds a material gap")
+        else:
+            errors.append("deep source hard limit exceeded; narrow the claims and report residual gaps instead of crossing 40 sources")
     agents = work.get("agents") if isinstance(work.get("agents"), list) else []
     unknown_agents = sorted(set(agents).difference(graph["optional_agents"]))
     if unknown_agents:

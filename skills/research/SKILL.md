@@ -14,7 +14,7 @@ Use the graph as a small control layer around one native Codex research loop. Do
 - Keep normal research read-only except for ignored run state and the requested report.
 - Prefer primary and authoritative sources. Open sources; do not treat search snippets as evidence.
 - Put citations next to material factual claims and separate source claims, inference, contradiction, and unknowns.
-- Stop when enough evidence exists for an honest answer. Do not spend the available budget merely because it exists.
+- Expand sources only while coverage is incomplete. Stop when enough evidence exists for an honest answer; source checkpoints and hard limits are not quotas.
 - Do not ask the user to approve ordinary search, source selection, safe fallbacks, or internal delegation.
 
 Read [routing.md](references/routing.md) for depth and capability selection. Read [source-policy.md](references/source-policy.md) before writing `research.json`. Read [roles.md](references/roles.md) only when delegation or independent verification is justified.
@@ -36,9 +36,10 @@ Perform the complete research task natively inside one root turn:
 
 1. Understand the decision and freshness need without creating a separate intake artifact.
 2. Inspect the currently exposed skills and tools; load only likely capabilities.
-3. Search, open sources, compare evidence, and write the final report directly to the requested output path.
-4. Write one small `research.json` containing mode, reason, used capabilities, optional agents, cited sources, confidence, gaps, and verification decision.
-5. Record one durable work receipt.
+3. Search and open an initial evidence set, then test coverage before crossing each source checkpoint in `ready`. Continue only for an unanswered sub-question, weak material claim, unresolved contradiction, missing source class, or meaningful new evidence in the latest batch.
+4. Compare evidence and write the final report directly to the requested output path. Stop early when the latest batch is redundant and remaining gaps are unlikely to change the answer.
+5. Write one small `research.json` containing mode, reason, used capabilities, optional agents, cited sources, confidence, gaps, and verification decision.
+6. Record one durable work receipt.
 
 For a normal answer:
 
@@ -61,7 +62,7 @@ python3 scripts/research_graph.py retry --run "<run-directory>" --reason "<fallb
 ## Use capabilities natively
 
 - Use `exa-search` for focused neural discovery, code context, companies, or people when its MCP surface is available.
-- Use `deep-research` only after deep routing; do not import its broad 15-30-source defaults into fast mode.
+- Use `deep-research` only after deep routing; never import a broad source target into fast mode or treat the deep 40-source emergency ceiling as a goal.
 - Use official documentation skills for version-sensitive technical claims.
 - Use domain skills such as market research or literature review when the question actually belongs to that domain.
 - Fall back automatically to native web search, browser, local files, or another admitted source path when a preferred MCP is unavailable.

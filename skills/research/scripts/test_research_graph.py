@@ -114,6 +114,8 @@ class ResearchGraphTests(unittest.TestCase):
         contract = graph.graph_contract()
         self.assertEqual(contract["schema_version"], 2)
         self.assertEqual(set(contract["nodes"]), {"work", "verify", "complete"})
+        self.assertEqual(contract["limits"]["fast"]["source_checkpoints"], [4, 6, 10])
+        self.assertEqual(contract["limits"]["deep"]["source_checkpoints"], [10, 20, 40])
         self.assertEqual(contract["limits"]["fast"]["max_parallel_scouts"], 0)
 
     def test_init_is_idempotent(self) -> None:
@@ -158,6 +160,11 @@ class ResearchGraphTests(unittest.TestCase):
         self.assertEqual(ready["data"]["node"], "work")
         self.assertEqual(ready["data"]["execution"], "one native root-agent loop")
         self.assertEqual(ready["data"]["default_mode"], "fast")
+        self.assertEqual(ready["data"]["budgets"]["source_checkpoints"], [4, 6, 10])
+        self.assertEqual(
+            ready["data"]["adaptive_budgets"]["deep"]["source_checkpoints"],
+            [10, 20, 40],
+        )
         self.assertEqual(ready["data"]["budgets"]["max_parallel_scouts"], 0)
 
     def test_workspace_relative_artifact_path_is_accepted(self) -> None:
@@ -235,11 +242,30 @@ class ResearchGraphTests(unittest.TestCase):
         with self.assertRaisesRegex(graph.GraphError, "Fast mode"):
             graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
 
-    def test_fast_source_bound_requires_deep_mode(self) -> None:
-        sources = [f"https://example.com/source-{index}" for index in range(7)]
+    def test_fast_path_allows_adaptive_expansion_to_ten_sources(self) -> None:
+        sources = [f"https://example.com/source-{index}" for index in range(10)]
+        self.write_report(sources)
+        self.record_work(self.valid_work(sources=sources))
+        self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
+
+    def test_fast_source_bound_requires_deep_mode_after_ten(self) -> None:
+        sources = [f"https://example.com/source-{index}" for index in range(11)]
         self.write_report(sources)
         artifact = self.write_artifact("work", self.valid_work(sources=sources))
         with self.assertRaisesRegex(graph.GraphError, "source limit"):
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+
+    def test_deep_path_allows_emergency_expansion_to_forty_sources(self) -> None:
+        sources = [f"https://example.com/deep-source-{index}" for index in range(40)]
+        self.write_report(sources)
+        self.record_work(self.valid_work(mode="deep", sources=sources))
+        self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
+
+    def test_deep_hard_source_bound_rejects_forty_one(self) -> None:
+        sources = [f"https://example.com/deep-source-{index}" for index in range(41)]
+        self.write_report(sources)
+        artifact = self.write_artifact("work", self.valid_work(mode="deep", sources=sources))
+        with self.assertRaisesRegex(graph.GraphError, "hard limit"):
             graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
 
     def test_explicit_deep_run_cannot_record_fast_work(self) -> None:

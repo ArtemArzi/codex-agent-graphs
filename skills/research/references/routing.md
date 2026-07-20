@@ -2,7 +2,7 @@
 
 ## Default: fast
 
-Use one root agent, usually 2-4 opened sources, no internal agents, and no independent verifier. Treat the fast limits in `graph.json` as ceilings and the time value as a soft stop, not a quota to consume.
+Use one root agent, usually 4-6 opened sources, no internal agents, and no independent verifier. Expand toward 10 only when the coverage check below finds a concrete gap. Treat every source checkpoint as a decision point, the maximum as a hard ceiling, and the time value as a soft stop; none is a quota to consume.
 
 The root may use any relevant installed skill or exposed tool. Capability use does not change the graph topology.
 
@@ -18,6 +18,16 @@ The root may use any relevant installed skill or exposed tool. Capability use do
 | Repository or local-product truth | local files, tests, CLI help, MCP for the live system | report the unavailable proof path |
 
 Inspect exact MCP/tool names at runtime. Do not fail because a preferred skill, model, or connector is absent; use the next safe path and record material use in `capabilities` or a decision-relevant absence in `gaps`.
+
+## Expand by coverage, not count
+
+Keep source expansion inside the native `work` loop; do not add graph nodes or intermediate artifacts.
+
+- In fast mode, inspect coverage after roughly 4, 6, and at most 10 cited sources.
+- In deep mode, inspect coverage around 10 and 20 sources. Continue beyond 20 only for a genuinely broad or high-stakes topic; 40 is an emergency hard ceiling.
+- Stop at any checkpoint when all material sub-questions are answered, key claims have appropriate primary or independent support, contradictions are resolved or exposed, source classes are sufficiently diverse, and the latest batch adds little decision-relevant evidence.
+- Continue only for an unanswered material sub-question, weak or indirect key evidence, unresolved contradiction, missing stakeholder/source class, low confidence that affects the conclusion, or a latest batch that still changes the answer materially.
+- When the hard ceiling or soft time bound arrives first, finish with explicit residual gaps. Narrowing the claim is preferable to collecting redundant sources.
 
 ## Escalate to deep
 
@@ -35,7 +45,7 @@ Weak signals:
 
 - two or more genuinely independent research branches;
 - current comparison across several products, markets, jurisdictions, or datasets;
-- a decision-relevant gap remains after the normal fast source budget;
+- a decision-relevant gap remains after the adaptive fast path has used the evidence needed up to its 10-source ceiling;
 - low confidence in a key conclusion;
 - more than one material assumption is required.
 
@@ -62,4 +72,4 @@ Do not request independent verification merely because a report is long. A deep 
 
 ## Stop
 
-Finish with explicit residual gaps when more search is unlikely to change the decision. Never reopen work only to improve style, collect redundant sources, or exhaust a numerical budget.
+Finish with explicit residual gaps when more search is unlikely to change the decision. Never reopen work only to improve style, collect redundant sources, or exhaust a checkpoint or maximum.
