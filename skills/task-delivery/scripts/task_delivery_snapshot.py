@@ -152,7 +152,13 @@ def repo_manifest(root: Path, exclusions: Iterable[str]) -> dict[str, dict[str, 
     manifest: dict[str, dict[str, Any]] = {}
     for relative in paths:
         normalized = Path(relative).as_posix().strip("/")
-        if not normalized or _excluded(normalized, excluded):
+        parts = Path(normalized).parts
+        if (
+            not normalized
+            or _excluded(normalized, excluded)
+            or any(part in SKIP_DIRS for part in parts)
+            or Path(normalized).suffix.lower() in {".pyc", ".pyo"}
+        ):
             continue
         manifest[normalized] = _entry(logical_join(root, normalized))
     return manifest

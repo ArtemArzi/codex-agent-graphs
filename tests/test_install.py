@@ -34,6 +34,8 @@ class InstallerTests(unittest.TestCase):
         self.assertTrue((self.home / "skills" / "project-start" / "graph.json").is_file())
         self.assertIn("[agents.research_verifier]", (self.home / "config.toml").read_text(encoding="utf-8"))
         self.assertIn("[agents.project_docs_verifier]", (self.home / "config.toml").read_text(encoding="utf-8"))
+        self.assertIn("[agents.task_result_reviewer]", (self.home / "config.toml").read_text(encoding="utf-8"))
+        self.assertTrue((self.home / "skills" / "task-delivery" / "graph.json").is_file())
         self.assertIsNotNone(result["backup"])
 
     def test_drift_is_backed_up_and_repaired(self) -> None:

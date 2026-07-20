@@ -29,6 +29,11 @@ AGENT_ROLES = (
     "research_scout",
     "research_synthesizer",
     "research_verifier",
+    "task_explorer",
+    "task_worker",
+    "task_plan_reviewer",
+    "task_result_reviewer",
+    "task_risk_reviewer",
 )
 BLOCK_START = "# BEGIN codex-agent-graphs: graph agents"
 BLOCK_END = "# END codex-agent-graphs: graph agents"
@@ -93,6 +98,11 @@ def managed_block() -> str:
         "research_scout": "Optional read-only deep-research branch scout.",
         "research_synthesizer": "Optional deep-research evidence synthesizer.",
         "research_verifier": "Conditional bounded research claim verifier.",
+        "task_explorer": "Optional read-only Task Delivery codebase explorer.",
+        "task_worker": "Optional bounded Task Delivery implementation worker.",
+        "task_plan_reviewer": "Conditional Task Delivery plan reviewer.",
+        "task_result_reviewer": "Conditional Task Delivery final verifier.",
+        "task_risk_reviewer": "Critical-only Task Delivery risk reviewer.",
     }
     for role in AGENT_ROLES:
         lines.extend(

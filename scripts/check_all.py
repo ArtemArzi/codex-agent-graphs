@@ -45,6 +45,7 @@ def main() -> int:
         ROOT / "skills" / "project-start" / "scripts" / "project_graph.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_start.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_maintenance.py",
+        ROOT / "skills" / "task-delivery" / "scripts" / "task_graph.py",
     ]
     for script in scripts:
         py_compile.compile(str(script), doraise=True)
@@ -79,6 +80,23 @@ def main() -> int:
         raise RuntimeError("Project Start verifier must remain dual-compatible with active v2 and new v3 runs")
     if not (ROOT / "skills" / "project-start" / "references" / "legacy-v2-resume.md").is_file():
         raise RuntimeError("Project Start active-v2 resume instructions are missing")
+    task_graph = json.loads((ROOT / "skills" / "task-delivery" / "graph.json").read_text(encoding="utf-8"))
+    if task_graph.get("schema_version") != 2 or task_graph.get("default_mode") != "full":
+        raise RuntimeError("Task Delivery v3 must use schema 2 and full default mode")
+    if set(task_graph.get("routes", {})) != {"plan", "implement", "full"}:
+        raise RuntimeError("Task Delivery must expose plan, implement and full routes")
+    for mode in ("plan", "implement", "full"):
+        if set(task_graph["routes"][mode]["nodes"]) != {"work", "verify", "complete"}:
+            raise RuntimeError(f"Task Delivery {mode} must remain a three-node control graph")
+    if set(task_graph.get("profiles", {})) != {"light", "standard", "complex", "critical"}:
+        raise RuntimeError("Task Delivery risk profiles changed unexpectedly")
+    limits = task_graph["limits"]
+    if limits["max_agents_per_run"] > 5 or limits["max_parallel_agents"] > 2:
+        raise RuntimeError("Task Delivery agent bounds are too high")
+    for role in ("task_plan_reviewer", "task_result_reviewer", "task_risk_reviewer"):
+        prompt = (ROOT / "agents" / f"{role}.toml").read_text(encoding="utf-8")
+        if "spawn descendants" not in prompt or "commit" not in prompt:
+            raise RuntimeError(f"Task Delivery role {role} must remain leaf-only and non-committing")
     skill_validator = find_skill_validator()
     if skill_validator:
         for skill in ("project-start", "research", "task-delivery"):
@@ -89,6 +107,7 @@ def main() -> int:
     run([sys.executable, "skills/project-start/scripts/test_project_maintenance.py"])
     run([sys.executable, "-m", "unittest", "skills/project-start/scripts/test_project_graph.py", "-v"])
     run([sys.executable, "skills/task-delivery/scripts/test_task_delivery.py"])
+    run([sys.executable, "-m", "unittest", "skills/task-delivery/scripts/test_task_graph.py", "-v"])
     print("All graph-skill checks passed.")
     return 0
 

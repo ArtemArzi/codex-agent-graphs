@@ -1,0 +1,89 @@
+{
+  "schema_version": 2,
+  "graph_id": "task-delivery",
+  "graph_version": "3.0.0",
+  "default_mode": "full",
+  "limits": {
+    "max_node_retries": 1,
+    "max_verification_repairs": 1,
+    "max_agents_per_run": 5,
+    "max_parallel_agents": 2,
+    "max_parallel_explorers": 2,
+    "max_parallel_workers": 2
+  },
+  "profiles": {
+    "light": {"plan_reviewers": 0, "result_reviewers": 0},
+    "standard": {"plan_reviewers": 0, "result_reviewers": 1},
+    "complex": {"plan_reviewers": 1, "result_reviewers": 1},
+    "critical": {"plan_reviewers": 1, "result_reviewers": 2}
+  },
+  "optional_agents": [
+    "task_explorer",
+    "task_worker",
+    "task_plan_reviewer",
+    "task_result_reviewer",
+    "task_risk_reviewer"
+  ],
+  "routes": {
+    "plan": {
+      "entry": "work",
+      "terminal": "complete",
+      "nodes": {
+        "work": {
+          "role": "root",
+          "artifact": "task.json",
+          "on_success": "complete",
+          "on_verify": "verify",
+          "on_decision": "decision-required"
+        },
+        "verify": {
+          "role": "task_plan_reviewer",
+          "artifact": "verification.json",
+          "on_success": "complete",
+          "on_rejected": "work"
+        },
+        "complete": {"role": "root", "artifact": "PLAN.md"}
+      }
+    },
+    "implement": {
+      "entry": "work",
+      "terminal": "complete",
+      "nodes": {
+        "work": {
+          "role": "root",
+          "artifact": "task.json",
+          "on_success": "complete",
+          "on_verify": "verify",
+          "on_decision": "decision-required"
+        },
+        "verify": {
+          "role": "task_result_reviewer",
+          "artifact": "verification.json",
+          "on_success": "complete",
+          "on_rejected": "work"
+        },
+        "complete": {"role": "root", "artifact": "HANDOFF.md"}
+      }
+    },
+    "full": {
+      "entry": "work",
+      "terminal": "complete",
+      "nodes": {
+        "work": {
+          "role": "root",
+          "artifact": "task.json",
+          "on_success": "complete",
+          "on_verify": "verify",
+          "on_decision": "decision-required"
+        },
+        "verify": {
+          "role": "task_result_reviewer",
+          "artifact": "verification.json",
+          "on_success": "complete",
+          "on_rejected": "work"
+        },
+        "complete": {"role": "root", "artifact": "HANDOFF.md"}
+      }
+    }
+  }
+}

@@ -1,7 +1,5 @@
 interface:
   display_name: "Task Delivery"
-  short_description: "Задача от исследования до проверенной реализации"
-  default_prompt: "Используй $task-delivery; определи режим plan, implement или full из моего запроса и не расширяй задачу."
+  short_description: "Быстрый цикл от плана до проверенной реализации"
+  default_prompt: "Используй $task-delivery; выбери режим и профиль, затем доведи одну задачу до доказанного результата."
   brand_color: "#2563EB"
-policy:
-  allow_implicit_invocation: false
