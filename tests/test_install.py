@@ -31,7 +31,9 @@ class InstallerTests(unittest.TestCase):
         result = installer.install_environment(self.home)
         self.assertEqual(installer.verify_environment(self.home)["status"], "ok")
         self.assertTrue((self.home / "skills" / "research" / "graph.json").is_file())
+        self.assertTrue((self.home / "skills" / "project-start" / "graph.json").is_file())
         self.assertIn("[agents.research_verifier]", (self.home / "config.toml").read_text(encoding="utf-8"))
+        self.assertIn("[agents.project_docs_verifier]", (self.home / "config.toml").read_text(encoding="utf-8"))
         self.assertIsNotNone(result["backup"])
 
     def test_drift_is_backed_up_and_repaired(self) -> None:
@@ -52,6 +54,23 @@ class InstallerTests(unittest.TestCase):
         with self.assertRaises(installer.InstallError):
             installer.install_environment(self.home)
         self.assertFalse((self.home / "skills").exists())
+
+    def test_legacy_research_block_is_upgraded_without_duplication(self) -> None:
+        config = self.home / "config.toml"
+        config.write_text(
+            "[agents]\nmax_threads = 6\n\n"
+            "# BEGIN codex-agent-graphs: research agents\n"
+            "[agents.research_scout]\n"
+            "description = 'old managed role'\n"
+            "config_file = './agents/research_scout.toml'\n"
+            "# END codex-agent-graphs: research agents\n",
+            encoding="utf-8",
+        )
+        installer.install_environment(self.home)
+        updated = config.read_text(encoding="utf-8")
+        self.assertNotIn("research agents", updated)
+        self.assertEqual(updated.count("[agents.research_scout]"), 1)
+        self.assertIn("[agents.project_docs_auditor]", updated)
 
     def test_all_environments_are_preflighted_before_first_write(self) -> None:
         first = Path(self.temp.name) / "first"

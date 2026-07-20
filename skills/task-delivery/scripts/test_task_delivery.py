@@ -28,6 +28,41 @@ class TaskDeliveryCliTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
+    def create_project_start_state(
+        self, maintenance_status: str = "operational", phase: str = "execution"
+    ) -> Path:
+        artifacts = {
+            "business": "docs/project/PROJECT.md",
+            "decisions": "docs/project/DECISIONS.md",
+            "context": "CONTEXT.md",
+            "adr_dir": "docs/adr",
+            "foundation_manifest": ".project-start/foundation.json",
+            "foundation": "docs/project/FOUNDATION.md",
+            "codebase": "docs/project/CODEBASE.md",
+            "quality": "docs/project/QUALITY.md",
+            "authority": "docs/project/AUTHORITY.md",
+            "agent_operations": "docs/project/AGENT-OPERATIONS.md",
+            "plan": "docs/project/PLAN.md",
+            "verification": "docs/project/VERIFICATION.md",
+        }
+        path = self.root / ".project-start/state.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "phase": phase,
+                    "approvals": {},
+                    "records": {},
+                    "maintenance": {"status": maintenance_status, "history": []},
+                    "artifacts": artifacts,
+                    "history": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return path
+
     def invoke(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(SCRIPT), *args],
@@ -498,6 +533,8 @@ Implementation SHA-256: {implementation_digest}
 Criteria passed: YES
 Rollback documented: YES
 Residual risks documented: YES
+Canonical docs changed: NO
+Proposed documentation maintenance: NONE: no Project Start canonical impact in this fixture
 Completed at: 2026-07-19
 
 The requested behavior, exact changed paths, commands, independent result review, rollback procedure, capability use, hook outcome, and bounded residual risk are recorded for the next operator.
@@ -553,6 +590,69 @@ The requested behavior, exact changed paths, commands, independent result review
             expected=2,
         )
         self.assertIn("существующий", no_new_implement["summary"])
+
+    def test_pending_project_start_reopen_blocks_new_task(self) -> None:
+        state = self.root / ".project-start/state.json"
+        state.parent.mkdir()
+        state.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "maintenance": {
+                        "status": "reopen-required",
+                        "pending_reopen": {
+                            "stage": "foundation",
+                            "rationale": "A module boundary changed.",
+                        },
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = self.run_cli(
+            "bootstrap",
+            "--root",
+            str(self.root),
+            "--task-id",
+            "blocked-by-reopen",
+            "--title",
+            "Blocked",
+            "--outcome",
+            "A complete observable result",
+            "--mode",
+            "full",
+            expected=2,
+        )
+        self.assertIn("reopen foundation", result["summary"])
+
+    def test_unsettled_project_start_maintenance_blocks_new_task(self) -> None:
+        for status, details in (
+            ("maintenance-required", {"maintenance_required": {"task_id": "TD-OLD"}}),
+            ("running", {"active_run": {"run_id": "run-running"}}),
+            ("blocked", {"active_run": {"run_id": "run-blocked"}}),
+        ):
+            with self.subTest(status=status):
+                state = self.root / ".project-start/state.json"
+                state.parent.mkdir(exist_ok=True)
+                state.write_text(
+                    json.dumps({"schema_version": 2, "maintenance": {"status": status, **details}}),
+                    encoding="utf-8",
+                )
+                result = self.run_cli(
+                    "bootstrap",
+                    "--root",
+                    str(self.root),
+                    "--task-id",
+                    f"blocked-{status}",
+                    "--title",
+                    "Blocked",
+                    "--outcome",
+                    "A complete observable result",
+                    "--mode",
+                    "full",
+                    expected=2,
+                )
+                self.assertIn("заблокирована", result["summary"])
 
     def test_state_symlink_escape_is_rejected(self) -> None:
         outside = Path(self.temp.name) / "outside"
@@ -733,7 +833,9 @@ The requested behavior, exact changed paths, commands, independent result review
         self.assertIsNone(state["implementation_intent"])
 
     def test_full_authorization_is_consumed_by_any_first_implementation_transition(self) -> None:
-        self.prepare_plan_review("full")
+        self.prepare_plan_review(
+            "full", scope="src/new.py\ntests/test_new.py\ndocs/project/PROJECT.md"
+        )
         self.run_cli(
             "begin-implement",
             "--root",
@@ -939,6 +1041,147 @@ The requested behavior, exact changed paths, commands, independent result review
         )
         for event in ("verification", "code-review", "handoff"):
             self.assertEqual(state["checkpoints"][event]["implementation_repo_digest"], expected_digest)
+
+    def test_completed_task_creates_project_start_maintenance_obligation(self) -> None:
+        project_state = self.create_project_start_state()
+        self.prepare_plan_review("full")
+        self.approve_full()
+        self.write_implementation()
+        self.checkpoint()
+        self.finish()
+        project = json.loads(project_state.read_text(encoding="utf-8"))
+        self.assertEqual(project["maintenance"]["status"], "maintenance-required")
+        self.assertEqual(
+            project["maintenance"]["maintenance_required"]["task_id"], self.task_id
+        )
+        blocked = self.run_cli(
+            "bootstrap",
+            "--root",
+            str(self.root),
+            "--task-id",
+            "next-task",
+            "--title",
+            "Next task",
+            "--outcome",
+            "A second result",
+            "--mode",
+            "full",
+            expected=2,
+        )
+        self.assertIn("maintenance", blocked["summary"])
+
+    def test_completed_task_can_restore_missing_maintenance_obligation(self) -> None:
+        project_state = self.create_project_start_state()
+        self.prepare_plan_review("full")
+        self.approve_full()
+        self.write_implementation()
+        self.checkpoint()
+        self.finish()
+        project = json.loads(project_state.read_text(encoding="utf-8"))
+        project["maintenance"] = {"status": "operational", "history": []}
+        project_state.write_text(json.dumps(project), encoding="utf-8")
+        recovered = self.run_cli(
+            "complete", "--root", str(self.root), "--task-id", self.task_id, "--apply"
+        )
+        self.assertEqual(recovered["data"]["phase"], "completed")
+        project = json.loads(project_state.read_text(encoding="utf-8"))
+        self.assertEqual(project["maintenance"]["status"], "maintenance-required")
+
+    def test_project_start_phase_must_open_execution_before_task_bootstrap(self) -> None:
+        self.create_project_start_state(phase="discovery")
+        result = self.run_cli(
+            "bootstrap",
+            "--root",
+            str(self.root),
+            "--task-id",
+            "too-early",
+            "--title",
+            "Too early",
+            "--outcome",
+            "A result that must wait for project gates",
+            "--mode",
+            "full",
+            expected=2,
+        )
+        self.assertIn("execution", result["summary"])
+
+    def test_nested_agents_change_is_project_start_canonical_drift(self) -> None:
+        self.create_project_start_state()
+        agents = self.root / "services/api/AGENTS.md"
+        agents.parent.mkdir(parents=True)
+        agents.write_text("# API context\n", encoding="utf-8")
+        self.prepare_plan_review(
+            "full", scope="src/new.py\ntests/test_new.py\nservices/api/AGENTS.md"
+        )
+        self.approve_full()
+        self.write_implementation()
+        agents.write_text("# Silently changed API authority\n", encoding="utf-8")
+        self.checkpoint()
+        verification = self.record_verification()
+        implementation_digest = verification["data"]["implementation_repo_digest"]
+        self.write_code_review(implementation_digest)
+        self.record("code-review")
+        self.write(
+            "HANDOFF.md",
+            f"""
+# Handoff
+Status: READY
+Implementation SHA-256: {implementation_digest}
+Criteria passed: YES
+Rollback documented: YES
+Residual risks documented: YES
+Canonical docs changed: NO
+Proposed documentation maintenance: Update nested agent context through Project Start.
+Completed at: 2026-07-20
+""",
+        )
+        result = self.record("handoff", expected=2)
+        self.assertIn("AGENTS.md", result["summary"])
+
+    def test_project_start_canonical_doc_change_is_rejected_at_handoff(self) -> None:
+        business = self.root / "docs/project/PROJECT.md"
+        business.parent.mkdir(parents=True)
+        business.write_text("# Approved project\n", encoding="utf-8")
+        project_state = self.root / ".project-start/state.json"
+        project_state.parent.mkdir()
+        project_state.write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "phase": "execution",
+                    "maintenance": {"status": "operational", "history": []},
+                    "artifacts": {"business": "docs/project/PROJECT.md", "adr_dir": "docs/adr"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.prepare_plan_review(
+            "full", scope="src/new.py\ntests/test_new.py\ndocs/project/PROJECT.md"
+        )
+        self.approve_full()
+        self.write_implementation()
+        business.write_text("# Silently changed project meaning\n", encoding="utf-8")
+        self.checkpoint()
+        verification = self.record_verification()
+        implementation_digest = verification["data"]["implementation_repo_digest"]
+        self.write_code_review(implementation_digest)
+        self.record("code-review")
+        self.write(
+            "HANDOFF.md",
+            f"""
+# Handoff
+Status: READY
+Implementation SHA-256: {implementation_digest}
+Criteria passed: YES
+Rollback documented: YES
+Residual risks documented: YES
+Canonical docs changed: NO
+Proposed documentation maintenance: Update the affected business document through Project Start maintenance.
+Completed at: 2026-07-19
+""",
+        )
+        result = self.record("handoff", expected=2)
+        self.assertIn("канонические документы", result["summary"])
 
     def test_code_review_rejects_code_changed_after_verification(self) -> None:
         self.prepare_plan_review("full")

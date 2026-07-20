@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -247,7 +248,12 @@ def artifact_path(root: Path, state: dict[str, Any], name: str) -> Path:
 
 def state_exclusions(state: dict[str, Any]) -> list[str]:
     artifact_dir = Path(state["artifacts"]["plan"]).parent.as_posix()
-    return [artifact_dir, ".codex/task-delivery"]
+    return [
+        artifact_dir,
+        ".codex/task-delivery",
+        ".project-start/state.json",
+        ".project-start/.state.lock",
+    ]
 
 
 def current_repo_state(root: Path, state: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], str]:
@@ -440,6 +446,166 @@ def validate_result_reviewers(text: str, state: dict[str, Any], header_origin: s
     if missing:
         fail(f"Для {state['priority']} не хватает ролей обзора: {', '.join(sorted(missing))}.")
     return normalized
+
+
+def project_start_canonical_contract(root: Path) -> tuple[set[str], list[str]]:
+    state_path = root / ".project-start/state.json"
+    if not state_path.is_file():
+        return set(), []
+    try:
+        value = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        fail(f"Project Start state не читается перед handoff: {exc}")
+    artifacts = value.get("artifacts")
+    if value.get("schema_version") != 2 or not isinstance(artifacts, dict):
+        fail("Project Start state имеет неподдерживаемый контракт перед handoff.")
+    files: set[str] = set()
+    prefixes: list[str] = []
+    for key, raw in artifacts.items():
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        relative = safe_relative(raw).as_posix()
+        if key == "adr_dir":
+            prefixes.append(relative.rstrip("/") + "/")
+        else:
+            files.add(relative)
+    ignored = {".agent-graphs", ".codex", ".git", ".project-start", ".venv", "build", "dist", "generated", "node_modules", "vendor"}
+    for current, directories, names in os.walk(root, followlinks=False):
+        current_path = Path(current)
+        directories[:] = [
+            name
+            for name in directories
+            if name not in ignored and not (current_path / name).is_symlink()
+        ]
+        if "AGENTS.md" not in names:
+            continue
+        path = current_path / "AGENTS.md"
+        relative = path.relative_to(root)
+        if path.is_symlink() or not path.is_file():
+            fail(f"Project Start AGENTS.md должен быть обычным файлом: {relative.as_posix()}")
+        files.add(relative.as_posix())
+    return files, prefixes
+
+
+def reject_pending_project_reopen(root: Path) -> None:
+    state_path = root / ".project-start/state.json"
+    if not state_path.is_file():
+        return
+    try:
+        value = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        fail(f"Project Start state не читается: {exc}")
+    maintenance = value.get("maintenance") if isinstance(value.get("maintenance"), dict) else {}
+    status = maintenance.get("status")
+    pending = maintenance.get("pending_reopen") if isinstance(maintenance.get("pending_reopen"), dict) else {}
+    active = maintenance.get("active_run") if isinstance(maintenance.get("active_run"), dict) else {}
+    required = maintenance.get("maintenance_required") if isinstance(maintenance.get("maintenance_required"), dict) else {}
+    if status == "reopen-required":
+        fail(
+            f"Новая Task Delivery заблокирована: Project Start требует reopen {pending.get('stage')}: "
+            f"{pending.get('rationale')}"
+        )
+    if status == "maintenance-required":
+        fail(
+            "Новая Task Delivery заблокирована: сначала обработай maintenance receipt задачи "
+            f"{required.get('task_id')} через Project Start."
+        )
+    if status in {"running", "blocked"}:
+        fail(
+            f"Новая Task Delivery заблокирована: Project Start maintenance run {active.get('run_id')} "
+            f"имеет статус {status}."
+        )
+    if value.get("phase") not in {"execution", "complete"}:
+        fail(
+            "Task Delivery закрыт: Project Start ещё не открыл фазу execution; "
+            f"текущая фаза {value.get('phase')}."
+        )
+
+
+def load_project_start_runtime() -> Any:
+    path = Path(__file__).resolve().parents[2] / "project-start" / "scripts" / "project_start.py"
+    if not path.is_file():
+        fail(f"Не найден runtime Project Start для maintenance obligation: {path}")
+    spec = importlib.util.spec_from_file_location("task_delivery_project_start_runtime", path)
+    if spec is None or spec.loader is None:
+        fail("Не удалось загрузить runtime Project Start.")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def mark_project_start_maintenance_required(root: Path, state_path: Path, state: dict[str, Any]) -> None:
+    project_path = root / ".project-start/state.json"
+    if not project_path.is_file():
+        return
+    runtime = load_project_start_runtime()
+    try:
+        project = runtime.load_state(root)
+    except ValueError as exc:
+        fail(f"Project Start state не прошёл проверку перед maintenance obligation: {exc}")
+    if project.get("phase") not in {"execution", "complete"}:
+        fail(
+            "Maintenance obligation нельзя создать до фазы Project Start execution; "
+            f"текущая фаза {project.get('phase')}."
+        )
+    checkpoint = state.get("checkpoints", {}).get("handoff")
+    if not isinstance(checkpoint, dict):
+        fail("Завершённая задача не содержит handoff checkpoint для Project Start.")
+    obligation = {
+        "task_id": state["task_id"],
+        "handoff_path": checkpoint["path"],
+        "handoff_sha256": checkpoint["sha256"],
+        "task_state_path": state_path.relative_to(root).as_posix(),
+        "task_state_sha256": hash_file(state_path),
+        "created_at": now(),
+    }
+    maintenance = project.setdefault("maintenance", {"history": []})
+    existing = maintenance.get("maintenance_required") if isinstance(maintenance.get("maintenance_required"), dict) else None
+    if maintenance.get("status") == "maintenance-required" and isinstance(existing, dict):
+        comparable = {key: existing.get(key) for key in obligation if key != "created_at"}
+        expected = {key: value for key, value in obligation.items() if key != "created_at"}
+        if comparable == expected:
+            return
+        fail("Project Start уже содержит другой незакрытый Task Delivery handoff.")
+    if maintenance.get("status") in {"running", "blocked", "reopen-required"}:
+        fail(f"Project Start maintenance имеет незакрытый статус {maintenance.get('status')}.")
+    maintenance["status"] = "maintenance-required"
+    maintenance["maintenance_required"] = obligation
+    maintenance.pop("active_run", None)
+    project["updated_at"] = obligation["created_at"]
+    if not any(
+        isinstance(item, dict)
+        and item.get("event") == "task-maintenance-required"
+        and item.get("task_id") == state["task_id"]
+        and item.get("handoff_sha256") == checkpoint["sha256"]
+        for item in project.setdefault("history", [])
+    ):
+        project["history"].append(
+            {
+                "at": obligation["created_at"],
+                "event": "task-maintenance-required",
+                "phase": project.get("phase"),
+                "task_id": state["task_id"],
+                "handoff_path": checkpoint["path"],
+                "handoff_sha256": checkpoint["sha256"],
+            }
+        )
+    try:
+        runtime.save_project_state(root, project)
+    except ValueError as exc:
+        fail(f"Не удалось зафиксировать maintenance obligation: {exc}")
+
+
+def canonical_doc_changes(root: Path, state: dict[str, Any]) -> list[str]:
+    files, prefixes = project_start_canonical_contract(root)
+    if not files and not prefixes:
+        return []
+    baseline = implementation_baseline(root, state)
+    current = implementation_repo_state(root, state)[0]
+    changed = changed_paths(baseline, current)
+    return sorted(
+        path for path in changed if path in files or any(path.startswith(prefix) for prefix in prefixes)
+    )
 
 
 def validate_canonical_attestation(
@@ -647,6 +813,18 @@ def validate_evidence(root: Path, state: dict[str, Any], event: str, path: Path)
         current_digest = implementation_repo_state(root, state)[1]
         if field(text, "Implementation SHA-256") != current_digest:
             fail("HANDOFF.md не связан с текущей реализацией.")
+        if (root / ".project-start/state.json").is_file():
+            if field(text, "Canonical docs changed") != "NO":
+                fail("Project Start handoff требует поле Canonical docs changed: NO.")
+            proposal = field(text, "Proposed documentation maintenance") or ""
+            if len(proposal) < 8 or proposal == "PENDING":
+                fail("Project Start handoff требует содержательное Proposed documentation maintenance.")
+            changed_docs = canonical_doc_changes(root, state)
+            if changed_docs:
+                fail(
+                    "Task Delivery не должен менять канонические документы Project Start до maintenance: "
+                    + ", ".join(changed_docs[:20])
+                )
         details["implementation_repo_digest"] = current_digest
     return details
 
@@ -673,6 +851,7 @@ def cmd_inventory(args: argparse.Namespace) -> None:
 
 def cmd_bootstrap(args: argparse.Namespace) -> None:
     root = root_path(args.root)
+    reject_pending_project_reopen(root)
     task_id = validate_task_id(args.task_id)
     if args.mode not in {"plan", "full"}:
         fail("bootstrap поддерживает plan/full; implement открывает существующий план.")
@@ -701,7 +880,12 @@ def cmd_bootstrap(args: argparse.Namespace) -> None:
             for old, new in substitutions.items():
                 content = content.replace(old, new)
             rendered[name] = content
-        exclusions = [(artifact_root / task_id).as_posix(), ".codex/task-delivery"]
+        exclusions = [
+            (artifact_root / task_id).as_posix(),
+            ".codex/task-delivery",
+            ".project-start/state.json",
+            ".project-start/.state.lock",
+        ]
         baseline = repo_manifest(root, exclusions)
         artifact_dir.parent.mkdir(parents=True, exist_ok=True)
         target_machine.parent.mkdir(parents=True, exist_ok=True)
@@ -806,6 +990,7 @@ def cmd_record(args: argparse.Namespace) -> None:
 
 def cmd_begin_implement(args: argparse.Namespace) -> None:
     root = root_path(args.root)
+    reject_pending_project_reopen(root)
     with mutation_guard(root, args.task_id, args.apply):
         state_path, state = load_state(root, args.task_id)
         if state.get("phase") not in {"awaiting_approval", "ready_to_implement"} or not gate_fresh(root, state, "plan-review"):
@@ -824,6 +1009,7 @@ def cmd_begin_implement(args: argparse.Namespace) -> None:
 
 def cmd_approve(args: argparse.Namespace) -> None:
     root = root_path(args.root)
+    reject_pending_project_reopen(root)
     with mutation_guard(root, args.task_id, args.apply):
         state_path, state = load_state(root, args.task_id)
         if state.get("phase") not in {"awaiting_approval", "ready_to_implement"} or not gate_fresh(root, state, "plan-review"):
@@ -915,7 +1101,30 @@ def cmd_recover_lock(args: argparse.Namespace) -> None:
 def cmd_complete(args: argparse.Namespace) -> None:
     root = root_path(args.root)
     with mutation_guard(root, args.task_id, args.apply):
+        reject_pending_project_reopen(root)
         state_path, state = load_state(root, args.task_id)
+        if state.get("phase") == "completed":
+            missing = [
+                event
+                for event in ("verification", "code-review", "handoff")
+                if not gate_fresh(root, state, event)
+            ]
+            if not approval_valid(root, state) or missing:
+                fail(
+                    "Завершённая задача изменилась; maintenance obligation нельзя восстановить по несвежему снимку: "
+                    + ", ".join(missing or ["plan approval"])
+                )
+            if args.apply:
+                mark_project_start_maintenance_required(root, state_path, state)
+            emit(
+                "ok" if args.apply else "preview",
+                "Задача уже завершена; Project Start maintenance obligation проверен."
+                if args.apply
+                else "Задача уже завершена; будет проверен Project Start maintenance obligation.",
+                phase="completed",
+                completed_at=state.get("completed_at"),
+            )
+            return
         if not approval_valid(root, state):
             fail("Одобрение плана отсутствует или устарело.")
         missing = [event for event in ("verification", "code-review", "handoff") if not gate_fresh(root, state, event)]
@@ -927,7 +1136,13 @@ def cmd_complete(args: argparse.Namespace) -> None:
         state["phase"] = "completed"
         state["completed_at"] = now()
         save_state(state_path, state)
-        emit("ok", "Задача завершена; состояние привязано к текущему снимку репозитория.", phase="completed", completed_at=state["completed_at"])
+        mark_project_start_maintenance_required(root, state_path, state)
+        emit(
+            "ok",
+            "Задача завершена; Project Start получил обязательную maintenance receipt до следующей задачи.",
+            phase="completed",
+            completed_at=state["completed_at"],
+        )
 
 
 def status_data(root: Path, state: dict[str, Any]) -> dict[str, Any]:

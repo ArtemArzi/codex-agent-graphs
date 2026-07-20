@@ -42,6 +42,8 @@ def main() -> int:
         ROOT / "scripts" / "install.py",
         ROOT / "scripts" / "check_all.py",
         ROOT / "skills" / "research" / "scripts" / "research_graph.py",
+        ROOT / "skills" / "project-start" / "scripts" / "project_start.py",
+        ROOT / "skills" / "project-start" / "scripts" / "project_maintenance.py",
     ]
     for script in scripts:
         py_compile.compile(str(script), doraise=True)
@@ -61,6 +63,24 @@ def main() -> int:
         "complete",
     }:
         raise RuntimeError("Research graph node contract changed unexpectedly")
+    project_graph = json.loads((ROOT / "skills" / "project-start" / "graph.json").read_text(encoding="utf-8"))
+    if set(project_graph["routes"]) != {"bootstrap", "maintenance"}:
+        raise RuntimeError("Project Start must expose exactly bootstrap and maintenance routes")
+    if project_graph["routes"]["bootstrap"]["phases"] != [
+        "discovery", "foundation", "planning", "tickets", "execution", "complete"
+    ]:
+        raise RuntimeError("Project Start bootstrap phases changed unexpectedly")
+    if set(project_graph["routes"]["maintenance"]["nodes"]) != {
+        "maintenance-intake",
+        "capability-discovery",
+        "drift-audit",
+        "impact-classification",
+        "documentation-update",
+        "documentation-verify",
+        "reopen-required",
+        "maintenance-complete",
+    }:
+        raise RuntimeError("Project Start maintenance node contract changed unexpectedly")
     skill_validator = find_skill_validator()
     if skill_validator:
         for skill in ("project-start", "research", "task-delivery"):
@@ -68,6 +88,7 @@ def main() -> int:
     run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"])
     run([sys.executable, "-m", "unittest", "skills/research/scripts/test_research_graph.py", "-v"])
     run([sys.executable, "skills/project-start/scripts/test_project_start.py"])
+    run([sys.executable, "skills/project-start/scripts/test_project_maintenance.py"])
     run([sys.executable, "skills/task-delivery/scripts/test_task_delivery.py"])
     print("All graph-skill checks passed.")
     return 0

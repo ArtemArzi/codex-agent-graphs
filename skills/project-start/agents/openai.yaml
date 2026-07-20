@@ -1,6 +1,6 @@
 interface:
   display_name: "Project Start"
-  short_description: "Подготовить проект от замысла до репозитория"
-  default_prompt: "Используй $project-start, чтобы провести проект от бизнес-логики через исследование стека и основание до плана и управляемой реализации."
+  short_description: "Создать проект и поддерживать его документы"
+  default_prompt: "Используй $project-start, чтобы провести проект от бизнес-логики через основание и план до реализации, а затем автоматически поддерживать каноническую документацию по change receipts."
 policy:
   allow_implicit_invocation: true

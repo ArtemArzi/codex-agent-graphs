@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -11,43 +12,49 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
 TEMPLATE_DIR = SKILL_DIR / "assets" / "templates"
+GRAPH_PATH = SKILL_DIR / "graph.json"
 STATE_REL = Path(".project-start/state.json")
+STATE_LOCK_REL = Path(".project-start/.state.lock")
 REQUIRED_MARKER = "PROJECT-START:REQUIRED"
 REQUIRED_VALUE = "__REQUIRED__"
-EXPECTED_SKILLS = (
-    "grilling",
-    "domain-modeling",
-    "grill-with-docs",
-    "codebase-design",
-    "setup-matt-pocock-skills",
-    "to-spec",
-    "to-tickets",
-    "wayfinder",
-    "research",
-    "prototype",
-)
+
+
+def load_graph_contract() -> dict[str, Any]:
+    try:
+        graph = json.loads(GRAPH_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Некорректный контракт графа Project Start: {exc}") from exc
+    routes = graph.get("routes")
+    registry = graph.get("capability_registry")
+    if graph.get("graph_id") != "project-start" or not isinstance(routes, dict):
+        raise RuntimeError("graph.json не содержит граф project-start и его routes.")
+    if not isinstance(routes.get("bootstrap"), dict) or not isinstance(routes.get("maintenance"), dict):
+        raise RuntimeError("graph.json обязан содержать bootstrap и maintenance routes.")
+    if not isinstance(registry, dict) or not isinstance(registry.get("skills"), list):
+        raise RuntimeError("graph.json не содержит capability_registry.skills.")
+    return graph
+
+
+GRAPH = load_graph_contract()
+BOOTSTRAP_GRAPH = GRAPH["routes"]["bootstrap"]
+EXPECTED_SKILLS = tuple(GRAPH["capability_registry"]["skills"])
 GATE_TO_PHASE = {
     "business": "foundation",
     "foundation": "planning",
     "plan": "tickets",
 }
-PHASE_ORDER = ("discovery", "foundation", "planning", "tickets", "execution", "complete")
-FOUNDATION_EVENTS = (
-    "foundation-research",
-    "foundation-stack",
-    "foundation-codebase",
-    "foundation-quality",
-    "foundation-ready",
-)
-TICKET_EVENTS = ("tickets-approved", "tickets-published")
-COMPLETION_EVENTS = ("implementation-evidence", "user-acceptance")
+PHASE_ORDER = tuple(BOOTSTRAP_GRAPH["phases"])
+FOUNDATION_EVENTS = tuple(BOOTSTRAP_GRAPH["events"]["foundation"])
+TICKET_EVENTS = tuple(BOOTSTRAP_GRAPH["events"]["tickets"])
+COMPLETION_EVENTS = tuple(BOOTSTRAP_GRAPH["events"]["completion"])
 RECORD_EVENTS = FOUNDATION_EVENTS + TICKET_EVENTS + COMPLETION_EVENTS
 GATE_ARTIFACT_KEYS = {
     "business": ("business", "decisions", "context"),
@@ -248,6 +255,77 @@ def write_json_atomic(root: Path, path: Path, value: dict[str, Any]) -> None:
     )
 
 
+def _pid_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+@contextlib.contextmanager
+def project_state_lock(
+    root: Path, *, wait_seconds: float = 5.0, stale_seconds: int = 120
+) -> Iterator[None]:
+    """Serialize Project Start state writers and recover only demonstrably stale locks."""
+    lock = safe_repo_path(root, STATE_LOCK_REL, expected="file")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        try:
+            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            break
+        except FileExistsError:
+            try:
+                raw = lock.read_text(encoding="utf-8")
+                match = re.search(r"pid=(\d+)", raw)
+                pid = int(match.group(1)) if match else -1
+                age = time.time() - lock.stat().st_mtime
+            except (FileNotFoundError, OSError, ValueError):
+                continue
+            if age > stale_seconds and not _pid_is_alive(pid):
+                lock.unlink(missing_ok=True)
+                continue
+            if time.monotonic() >= deadline:
+                raise ValueError(f"Project Start state занят другим процессом: {root}")
+            time.sleep(0.05)
+    try:
+        os.write(descriptor, f"pid={os.getpid()} at={now()}\n".encode("utf-8"))
+        os.close(descriptor)
+        yield
+    finally:
+        lock.unlink(missing_ok=True)
+
+
+def save_project_state(
+    root: Path,
+    state: dict[str, Any],
+    *,
+    expected_sha256: str | None = None,
+    require_absent: bool = False,
+) -> str:
+    """CAS-write the shared state under the same lock used by maintenance."""
+    path = safe_repo_path(root, STATE_REL, expected="file")
+    loaded_sha256 = state.get("_loaded_state_sha256")
+    expected = expected_sha256 if expected_sha256 is not None else loaded_sha256
+    payload = dict(state)
+    payload.pop("_loaded_state_sha256", None)
+    with project_state_lock(root):
+        current = sha256_file(root, STATE_REL) if path.is_file() else None
+        if require_absent and current is not None:
+            raise ValueError("Project Start state появился после preview; повтори команду на свежем состоянии.")
+        if expected is not None and current != expected:
+            raise ValueError("Project Start state изменился конкурентно; перечитай состояние и повтори шаг.")
+        write_json_atomic(root, path, payload)
+        digest = sha256_file(root, STATE_REL)
+    state["_loaded_state_sha256"] = digest
+    return digest
+
+
 def copy_template(root: Path, template_name: str, destination_rel: str) -> tuple[str, str]:
     destination = safe_repo_path(root, destination_rel, expected="file")
     if destination.exists():
@@ -281,11 +359,14 @@ def new_state(docs_dir: str, business_doc: str | None, decisions_doc: str | None
     stamp = now()
     return {
         "schema_version": 2,
+        "graph_version": GRAPH["graph_version"],
+        "graph_sha256": hashlib.sha256(GRAPH_PATH.read_bytes()).hexdigest(),
         "phase": "discovery",
         "created_at": stamp,
         "updated_at": stamp,
         "approvals": {"business": None, "foundation": None, "plan": None},
         "records": {},
+        "maintenance": {"status": "not-ready", "history": []},
         "artifacts": default_artifacts(docs_dir, business_doc, decisions_doc),
         "history": [{"at": stamp, "event": "initialized", "phase": "discovery"}],
     }
@@ -336,7 +417,8 @@ def validate_artifact_paths(root: Path, state: dict[str, Any]) -> None:
 
 
 def load_state(root: Path) -> dict[str, Any]:
-    state = load_json(safe_repo_path(root, STATE_REL, expected="file"))
+    path = safe_repo_path(root, STATE_REL, expected="file")
+    state = load_json(path)
     if state.get("schema_version") != 2:
         raise ValueError("Неподдерживаемая версия .project-start/state.json")
     if state.get("phase") not in PHASE_ORDER:
@@ -344,7 +426,32 @@ def load_state(root: Path) -> dict[str, Any]:
     if not isinstance(state.get("approvals"), dict) or not isinstance(state.get("records"), dict):
         raise ValueError("Некорректная структура approvals/records в state.")
     validate_artifact_paths(root, state)
+    state["_loaded_state_sha256"] = sha256_file(root, STATE_REL)
     return state
+
+
+def maintenance_blocking_reason(state: dict[str, Any]) -> str | None:
+    maintenance = state.get("maintenance") if isinstance(state.get("maintenance"), dict) else {}
+    status = maintenance.get("status")
+    if status not in {"maintenance-required", "running", "blocked", "reopen-required"}:
+        return None
+    active = maintenance.get("active_run") if isinstance(maintenance.get("active_run"), dict) else {}
+    pending = maintenance.get("pending_reopen") if isinstance(maintenance.get("pending_reopen"), dict) else {}
+    run_id = active.get("run_id") or pending.get("run_id") or "unknown"
+    if status == "reopen-required":
+        return (
+            f"Документация требует reopen {pending.get('stage')}: {pending.get('rationale')} "
+            f"(maintenance run {run_id})."
+        )
+    if status == "blocked":
+        return f"Документационный maintenance run {run_id} заблокирован; сначала выполни retry/разбор причины."
+    if status == "maintenance-required":
+        required = maintenance.get("maintenance_required") if isinstance(maintenance.get("maintenance_required"), dict) else {}
+        return (
+            "Документация ожидает обработку Task Delivery handoff "
+            f"задачи {required.get('task_id')}; сначала запусти maintenance route."
+        )
+    return f"Документационный maintenance run {run_id} ещё выполняется; дождись PASS или явного reopen."
 
 
 def cmd_dependencies(args: argparse.Namespace) -> int:
@@ -588,7 +695,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
             manifest["verification_document"] = state["artifacts"]["verification"]
             write_json_atomic(root, manifest_path, manifest)
         if not state_path.exists():
-            write_json_atomic(root, state_path, state)
+            save_project_state(root, state, require_absent=True)
             changed.append(STATE_REL.as_posix())
     except (OSError, ValueError) as exc:
         return emit(
@@ -1293,6 +1400,9 @@ def cmd_status(args: argparse.Namespace) -> int:
         )
     phase = state.get("phase", "unknown")
     integrity = state_integrity_issues(root, state)
+    maintenance = state.get("maintenance") if isinstance(state.get("maintenance"), dict) else {}
+    pending_reopen = maintenance.get("pending_reopen") if maintenance.get("status") == "reopen-required" else None
+    maintenance_blocked = maintenance_blocking_reason(state)
     next_by_phase = {
         "discovery": "Завершить и одобрить бизнес-логику.",
         "foundation": "Исследовать стек, подготовить архитектуру и качество.",
@@ -1302,16 +1412,26 @@ def cmd_status(args: argparse.Namespace) -> int:
         "complete": "Выбрать следующую цель или сопровождать результат.",
     }
     return emit(
-        "warning" if integrity else "success",
-        (f"Текущий этап: {phase}." if not integrity else f"Этап {phase} нельзя безопасно продолжать: {len(integrity)} нарушений целостности."),
+        "warning" if integrity or maintenance_blocked else "success",
+        (
+            maintenance_blocked
+            if maintenance_blocked
+            else (f"Текущий этап: {phase}." if not integrity else f"Этап {phase} нельзя безопасно продолжать: {len(integrity)} нарушений целостности.")
+        ),
         next_actions=(
-            ["Показать расхождения и выполнить явный reopen подходящего этапа; не продолжать по устаревшему состоянию."]
+            [
+                f"Выполнить preview reopen --stage {pending_reopen.get('stage')}, затем применить после проверки причины."
+            ]
+            if isinstance(pending_reopen, dict)
+            else ["Завершить или восстановить указанный maintenance run; не открывать новую Task Delivery."]
+            if maintenance_blocked
+            else ["Показать расхождения и выполнить явный reopen подходящего этапа; не продолжать по устаревшему состоянию."]
             if integrity
             else [next_by_phase.get(phase, "Проверить корректность состояния.")]
         ),
         artifacts=[str(root / item) for item in state.get("artifacts", {}).values() if (root / item).exists()],
         data={
-            "state": state,
+            "state": {key: value for key, value in state.items() if key != "_loaded_state_sha256"},
             "planned_artifacts": [item for item in state.get("artifacts", {}).values() if not (root / item).exists()],
             "integrity_issues": integrity,
         },
@@ -1382,7 +1502,11 @@ def cmd_migrate(args: argparse.Namespace) -> int:
         )
     if not backup_preexisting:
         write_json_atomic(root, backup, old)
-    write_json_atomic(root, state_path, migrated)
+    save_project_state(
+        root,
+        migrated,
+        expected_sha256=sha256_file(root, STATE_REL),
+    )
     return emit(
         "success",
         "Состояние мигрировано в v2; старая версия сохранена, проект безопасно открыт на discovery.",
@@ -1396,6 +1520,9 @@ def cmd_record(args: argparse.Namespace) -> int:
     try:
         root = root_path(args.root)
         state = load_state(root)
+        blocked = maintenance_blocking_reason(state)
+        if blocked:
+            raise ValueError(blocked)
         if not args.note.strip():
             raise ValueError("Фиксация подэтапа требует непустую заметку.")
         if args.event in FOUNDATION_EVENTS:
@@ -1497,7 +1624,7 @@ def cmd_record(args: argparse.Namespace) -> int:
         state["phase"] = "execution"
     state["updated_at"] = stamp
     state.setdefault("history", []).append({"at": stamp, "event": f"recorded:{args.event}", "phase": state["phase"], "evidence": evidence_rel, "sha256": digest, "note": args.note})
-    write_json_atomic(root, safe_repo_path(root, STATE_REL, expected="file"), state)
+    save_project_state(root, state)
     return emit(
         "success",
         f"Событие {args.event} зафиксировано" + ("; открыта фаза execution." if args.event == "tickets-published" else "."),
@@ -1515,6 +1642,18 @@ def cmd_reopen(args: argparse.Namespace) -> int:
             raise ValueError("Пересмотр требует непустую причину.")
         if PHASE_ORDER.index(state["phase"]) < PHASE_ORDER.index(args.stage):
             raise ValueError(f"Нельзя открыть будущую фазу {args.stage} из {state['phase']}.")
+        maintenance = state.get("maintenance") if isinstance(state.get("maintenance"), dict) else {}
+        pending = maintenance.get("pending_reopen") if isinstance(maintenance.get("pending_reopen"), dict) else None
+        if maintenance.get("status") in {"maintenance-required", "running", "blocked"}:
+            raise ValueError(maintenance_blocking_reason(state) or "Maintenance route не завершён.")
+        if maintenance.get("status") == "reopen-required" and isinstance(pending, dict):
+            required_stage = pending.get("stage")
+            if required_stage not in {"discovery", "foundation", "planning"}:
+                raise ValueError("pending_reopen содержит некорректную стадию.")
+            if PHASE_ORDER.index(args.stage) > PHASE_ORDER.index(required_stage):
+                raise ValueError(
+                    f"Семантический audit требует reopen {required_stage}; стадия {args.stage} слишком поздняя."
+                )
         if args.stage in ("foundation", "planning"):
             prior_gate = "business" if args.stage == "foundation" else "foundation"
             stale = approval_issues(root, state, prior_gate)
@@ -1545,9 +1684,14 @@ def cmd_reopen(args: argparse.Namespace) -> int:
             state["records"].pop(event, None)
     stamp = now()
     state["phase"] = args.stage
+    maintenance = state.setdefault("maintenance", {"history": []})
+    maintenance["status"] = "not-ready"
+    maintenance.pop("pending_reopen", None)
+    maintenance.pop("active_run", None)
+    maintenance.pop("maintenance_required", None)
     state["updated_at"] = stamp
     state.setdefault("history", []).append({"at": stamp, "event": f"reopened:{args.stage}", "phase": args.stage, "note": args.note})
-    write_json_atomic(root, safe_repo_path(root, STATE_REL, expected="file"), state)
+    save_project_state(root, state)
     return emit(
         "success",
         f"Этап {args.stage} открыт заново; зависимые одобрения и записи сброшены, файлы сохранены.",
@@ -1595,7 +1739,7 @@ def cmd_approve(args: argparse.Namespace) -> int:
     state["phase"] = target
     state["updated_at"] = stamp
     state.setdefault("history", []).append({"at": stamp, "event": f"approved:{args.gate}", "phase": target, "note": args.note})
-    write_json_atomic(root, safe_repo_path(root, STATE_REL, expected="file"), state)
+    save_project_state(root, state)
     return emit(
         "success",
         f"Рубеж {args.gate} одобрен; этап изменён на {target}.",
@@ -1609,6 +1753,9 @@ def cmd_complete(args: argparse.Namespace) -> int:
     try:
         root = root_path(args.root)
         state = load_state(root)
+        blocked = maintenance_blocking_reason(state)
+        if blocked:
+            raise ValueError(blocked)
         issues = validate_stage(root, state, "execution")
         blocking = [item for item in issues if item["severity"] == "error"]
         if blocking:
@@ -1633,6 +1780,9 @@ def cmd_complete(args: argparse.Namespace) -> int:
         )
     stamp = now()
     state["phase"] = "complete"
+    maintenance = state.setdefault("maintenance", {"history": []})
+    maintenance["status"] = "operational"
+    maintenance.pop("pending_reopen", None)
     state["updated_at"] = stamp
     state.setdefault("history", []).append(
         {
@@ -1643,11 +1793,11 @@ def cmd_complete(args: argparse.Namespace) -> int:
             "evidence": {event: state["records"][event] for event in COMPLETION_EVENTS},
         }
     )
-    write_json_atomic(root, safe_repo_path(root, STATE_REL, expected="file"), state)
+    save_project_state(root, state)
     return emit(
         "success",
-        "Первая цель project-start отмечена завершённой.",
-        next_actions=["Выбрать следующую цель, сопровождение или периодическую проверку долговечности."],
+        "Первая цель project-start завершена; граф перешёл в operational state поддержки документации.",
+        next_actions=["Запускать project_maintenance.py после handoff задачи, изменения репозитория или по периодической проверке."],
         artifacts=[str(root / STATE_REL), str(root / state["artifacts"]["verification"])],
         data={"note": args.note, "records": {event: state["records"][event] for event in COMPLETION_EVENTS}},
     )

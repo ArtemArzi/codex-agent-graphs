@@ -46,7 +46,7 @@ description: >-
    python3 scripts/task_delivery.py status --root <repo> --task-id <id>
    ```
 
-4. Если есть состояние `project-start`, выполни его `status`. Работай этим навыком только на этапе реализации; иначе вернись к допустимому рубежу `project-start`.
+4. Если есть состояние `project-start`, выполни его `status`. Работай этим навыком только в Project Start `execution|complete`; `maintenance-required`, `running`, `blocked` и `reopen-required` закрывают новую задачу и её завершение. Иначе вернись к допустимому рубежу `project-start`.
 5. Если у репозитория уже есть GSD, собственный трекер или каталог задач, используй его как источник состояния. Локальные артефакты `task-delivery` являются доказательствами конкретной задачи, а не новым планом всего проекта.
 6. Если состояния задачи нет, сначала покажи предварительный просмотр, затем создай новые файлы. Выбери существующий каталог задач; при его отсутствии используй `docs/tasks`:
 
@@ -141,13 +141,22 @@ python3 scripts/task_delivery.py approve-plan --root <repo> --task-id <id> --sou
 3. Зафиксируй команды, коды завершения, проверку новых тестов, результаты хуков и остаточные риски в `VERIFICATION.md`.
 4. Проведи независимый обзор изменений. Проверка плана и проверка результата — две разные области и два отдельных запуска; обычно они идут последовательно, по одному активному проверяющему. По умолчанию для результата достаточно одного целостного проверяющего. Добавляй проверяющих отдельных блоков только для действительно независимых поверхностей риска; они не проверяют друг друга.
 5. Исправь `Critical` и `High`, повтори затронутые проверки и один раз попроси тех же проверяющих подтвердить исправление. Не создавай цепочку «обзор обзора».
-6. Обнови только затронутую документацию и `HANDOFF.md`. Не переписывай историю проекта.
+6. Если `.project-start/state.json` отсутствует, обнови только затронутую документацию и `HANDOFF.md`. Если Project Start активен, не меняй перечисленные в нём канонические документы, ADR и любые корневые/вложенные `AGENTS.md`: зафиксируй предлагаемые дельты и источники в `HANDOFF.md` (`Canonical docs changed: NO`, `Proposed documentation maintenance: ...`). Их применит отдельный maintenance-route. Не переписывай историю проекта.
+7. Если репозиторий ведётся через `project-start`, считай проверенный `HANDOFF.md` change receipt, а не разрешением менять канонические договоры. `complete --apply` автоматически записывает в Project Start статус `maintenance-required` с точными SHA-256 handoff и Task Delivery state. Следующую задачу не открывай, пока document-maintenance не даст PASS или точный `reopen-required`.
 
 ```bash
 python3 scripts/task_delivery.py record --root <repo> --task-id <id> --event verification --evidence <VERIFICATION.md> --apply
 python3 scripts/task_delivery.py record --root <repo> --task-id <id> --event code-review --evidence <CODE-REVIEW.md> --apply
 python3 scripts/task_delivery.py record --root <repo> --task-id <id> --event handoff --evidence <HANDOFF.md> --apply
 python3 scripts/task_delivery.py complete --root <repo> --task-id <id> --apply
+```
+
+Для проекта с `.project-start/state.json` следующий автоматический шаг:
+
+```bash
+python3 <project-start-skill>/scripts/project_maintenance.py init \
+  --root <repo> --reason "Task <id> completed" \
+  --trigger task-delivery --change-receipt <HANDOFF.md>
 ```
 
 Заверши кратко: что изменено, чем доказано, какие MCP и навыки реально использованы, что сделали хуки, что осталось рискованным и какой следующий шаг разрешён.

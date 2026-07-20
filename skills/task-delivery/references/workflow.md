@@ -12,6 +12,7 @@
 6. история разговора и краткие пересказы.
 
 `task-delivery` не создаёт новый жизненный цикл проекта. Если `project-start` ещё не открыл реализацию, верни управление туда. Если задача ведётся во внешнем трекере, сохрани в локальном плане ссылку и точный снимок требований, но не объявляй локальный файл главным.
+Runtime проверяет это машинно: при наличии `.project-start/state.json` новая задача и её завершение допустимы только в Project Start `execution|complete` и при закрытом maintenance status.
 
 ## Режимы и состояния
 
@@ -41,9 +42,13 @@ capabilities
 -> code-review
 -> handoff
 -> complete
+-> project-start maintenance (если .project-start/state.json существует)
 ```
 
 Повторная запись раннего доказательства сбрасывает зависимые поздние записи и одобрение. Изменение файла после фиксации делает его запись устаревшей. `status` сообщает расхождение SHA-256; он ничего не исправляет автоматически.
+
+Проверенный `HANDOFF.md` является входной квитанцией для document-maintenance route, но не семантическим одобрением. `complete --apply` долговечно привязывает к Project Start обязательство `maintenance-required`; повторный `complete --apply` безопасно восстанавливает эту запись после промежуточного сбоя. Незакрытые `maintenance-required`, `running`, `blocked` и `reopen-required` запрещают следующую задачу. `task-delivery` не пересчитывает project-start approvals и не решает, является ли дрейф factual или semantic.
+Если Project Start активен, Task Delivery обязан оставить его канонические документы, ADR и все применимые `AGENTS.md` неизменными, записать `Canonical docs changed: NO` и описать предлагаемые изменения в `Proposed documentation maintenance`. Скрипт handoff сверяет это с фактическим снимком репозитория.
 
 ## Создание задачи
 

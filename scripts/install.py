@@ -22,15 +22,20 @@ SKILLS_ROOT = REPO_ROOT / "skills"
 AGENTS_ROOT = REPO_ROOT / "agents"
 SKILLS = ("project-start", "research", "task-delivery")
 AGENT_ROLES = (
+    "project_docs_auditor",
+    "project_docs_curator",
+    "project_docs_verifier",
     "research_planner",
     "research_scout",
     "research_synthesizer",
     "research_verifier",
 )
-BLOCK_START = "# BEGIN codex-agent-graphs: research agents"
-BLOCK_END = "# END codex-agent-graphs: research agents"
+BLOCK_START = "# BEGIN codex-agent-graphs: graph agents"
+BLOCK_END = "# END codex-agent-graphs: graph agents"
+LEGACY_BLOCK_START = "# BEGIN codex-agent-graphs: research agents"
+LEGACY_BLOCK_END = "# END codex-agent-graphs: research agents"
 MANAGED_RE = re.compile(
-    rf"(?ms)^\s*{re.escape(BLOCK_START)}\n.*?^\s*{re.escape(BLOCK_END)}\n?"
+    rf"(?ms)^\s*(?:{re.escape(BLOCK_START)}|{re.escape(LEGACY_BLOCK_START)})\n.*?^\s*(?:{re.escape(BLOCK_END)}|{re.escape(LEGACY_BLOCK_END)})\n?"
 )
 EXCLUDED_NAMES = {"__pycache__", ".pytest_cache", ".DS_Store"}
 
@@ -81,6 +86,9 @@ def file_status(source: Path, target: Path) -> str:
 def managed_block() -> str:
     lines = [BLOCK_START]
     descriptions = {
+        "project_docs_auditor": "Read-only Project Start documentation drift auditor.",
+        "project_docs_curator": "Bounded factual documentation updater for Project Start.",
+        "project_docs_verifier": "Independent Project Start documentation verifier.",
         "research_planner": "Research graph planner and gap analyst.",
         "research_scout": "Read-only branch-specific research scout.",
         "research_synthesizer": "Research evidence reconciler and synthesizer.",
