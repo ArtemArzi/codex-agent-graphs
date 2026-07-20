@@ -1,6 +1,6 @@
 interface:
   display_name: "Project Start"
-  short_description: "Создать проект и поддерживать его документы"
-  default_prompt: "Используй $project-start, чтобы провести проект от бизнес-логики через основание и план до реализации, а затем автоматически поддерживать каноническую документацию по change receipts."
+  short_description: "Fast project foundation and living docs"
+  default_prompt: "Use $project-start to prepare this repository and keep its canonical documentation current with minimal ceremony."
 policy:
   allow_implicit_invocation: true

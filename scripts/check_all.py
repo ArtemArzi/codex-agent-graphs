@@ -42,6 +42,7 @@ def main() -> int:
         ROOT / "scripts" / "install.py",
         ROOT / "scripts" / "check_all.py",
         ROOT / "skills" / "research" / "scripts" / "research_graph.py",
+        ROOT / "skills" / "project-start" / "scripts" / "project_graph.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_start.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_maintenance.py",
     ]
@@ -50,37 +51,34 @@ def main() -> int:
     for config in sorted((ROOT / "agents").glob("*.toml")):
         tomllib.loads(config.read_text(encoding="utf-8"))
     graph = json.loads((ROOT / "skills" / "research" / "graph.json").read_text(encoding="utf-8"))
-    if set(graph["nodes"]) != {
-        "intake",
-        "capability_discovery",
-        "plan",
-        "collect",
-        "evidence",
-        "reconcile",
-        "gap_check",
-        "synthesize",
-        "verify",
-        "complete",
-    }:
+    if graph.get("schema_version") != 2 or set(graph["nodes"]) != {"work", "verify", "complete"}:
         raise RuntimeError("Research graph node contract changed unexpectedly")
+    if graph.get("default_depth") != "auto" or graph["limits"]["fast"]["max_parallel_scouts"] != 0:
+        raise RuntimeError("Research fast path must remain native and single-agent by default")
     project_graph = json.loads((ROOT / "skills" / "project-start" / "graph.json").read_text(encoding="utf-8"))
     if set(project_graph["routes"]) != {"bootstrap", "maintenance"}:
         raise RuntimeError("Project Start must expose exactly bootstrap and maintenance routes")
-    if project_graph["routes"]["bootstrap"]["phases"] != [
+    if project_graph.get("schema_version") != 2 or project_graph.get("default_mode") != "auto":
+        raise RuntimeError("Project Start v3 must use schema 2 and auto mode")
+    if project_graph["legacy_v2_bootstrap"]["phases"] != [
         "discovery", "foundation", "planning", "tickets", "execution", "complete"
     ]:
-        raise RuntimeError("Project Start bootstrap phases changed unexpectedly")
-    if set(project_graph["routes"]["maintenance"]["nodes"]) != {
-        "maintenance-intake",
-        "capability-discovery",
-        "drift-audit",
-        "impact-classification",
-        "documentation-update",
-        "documentation-verify",
-        "reopen-required",
-        "maintenance-complete",
-    }:
-        raise RuntimeError("Project Start maintenance node contract changed unexpectedly")
+        raise RuntimeError("Project Start compatibility phases changed unexpectedly")
+    if set(project_graph["legacy_v2_bootstrap"]["events"]) != {"foundation", "tickets", "completion"}:
+        raise RuntimeError("Project Start compatibility events changed unexpectedly")
+    for mode in ("bootstrap", "maintenance"):
+        route = project_graph["routes"][mode]
+        if route.get("entry") != "work" or route.get("terminal") != "complete":
+            raise RuntimeError(f"Project Start {mode} entry/terminal changed unexpectedly")
+        if set(route["nodes"]) != {"work", "verify", "complete"}:
+            raise RuntimeError(f"Project Start {mode} must remain a three-node control graph")
+    if project_graph["limits"]["maintenance"]["max_parallel_explorers"] > 2:
+        raise RuntimeError("Project Start maintenance explorer bound is too high")
+    verifier_prompt = (ROOT / "agents" / "project_docs_verifier.toml").read_text(encoding="utf-8")
+    if "schema_version 1" not in verifier_prompt or "schema_version 3" not in verifier_prompt:
+        raise RuntimeError("Project Start verifier must remain dual-compatible with active v2 and new v3 runs")
+    if not (ROOT / "skills" / "project-start" / "references" / "legacy-v2-resume.md").is_file():
+        raise RuntimeError("Project Start active-v2 resume instructions are missing")
     skill_validator = find_skill_validator()
     if skill_validator:
         for skill in ("project-start", "research", "task-delivery"):
@@ -89,6 +87,7 @@ def main() -> int:
     run([sys.executable, "-m", "unittest", "skills/research/scripts/test_research_graph.py", "-v"])
     run([sys.executable, "skills/project-start/scripts/test_project_start.py"])
     run([sys.executable, "skills/project-start/scripts/test_project_maintenance.py"])
+    run([sys.executable, "-m", "unittest", "skills/project-start/scripts/test_project_graph.py", "-v"])
     run([sys.executable, "skills/task-delivery/scripts/test_task_delivery.py"])
     print("All graph-skill checks passed.")
     return 0

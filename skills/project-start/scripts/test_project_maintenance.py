@@ -83,6 +83,7 @@ class ProjectMaintenanceTests(unittest.TestCase):
             "Keep canonical docs aligned with the repository",
             "repository-change",
             skills_root=str(Path(__file__).parents[3] / "skills"),
+            allow_new=True,
         )
         self.run_dir = Path(payload["data"]["run_dir"])
 
@@ -195,6 +196,7 @@ class ProjectMaintenanceTests(unittest.TestCase):
             "Keep canonical docs aligned with the repository",
             "repository-change",
             skills_root=str(Path(__file__).parents[3] / "skills"),
+            allow_new=True,
         )
         self.assertEqual(second["data"]["run_dir"], str(self.run_dir))
         self.assertEqual((self.root / ".agent-graphs/.gitignore").read_text(encoding="utf-8"), "*\n")
@@ -217,11 +219,11 @@ class ProjectMaintenanceTests(unittest.TestCase):
         source.parent.mkdir()
         source.write_text("VERSION = 1\n", encoding="utf-8")
         changed = maintenance.initialize(
-            str(self.root), "Keep canonical docs aligned with the repository", "repository-change"
+            str(self.root), "Keep canonical docs aligned with the repository", "repository-change", allow_new=True
         )
         self.assertNotEqual(changed["data"]["run_dir"], str(self.run_dir))
         with self.assertRaises(maintenance.MaintenanceError):
-            maintenance.initialize(str(self.root), "Periodic audit", "scheduled", cycle="2026-W29-a")
+            maintenance.initialize(str(self.root), "Periodic audit", "scheduled", cycle="2026-W29-a", allow_new=True)
 
     def test_repository_fingerprint_hashes_internal_symlink_without_following_it(self) -> None:
         target = self.root / "src/target.txt"
@@ -363,7 +365,7 @@ class ProjectMaintenanceTests(unittest.TestCase):
         self.assertEqual(too_late.returncode, 2)
         self.assertIn("слишком поздняя", too_late.stdout)
         with self.assertRaises(maintenance.MaintenanceError):
-            maintenance.initialize(str(self.root), "Try to overwrite pending semantic run", "manual")
+            maintenance.initialize(str(self.root), "Try to overwrite pending semantic run", "manual", allow_new=True)
         reopened = subprocess.run(
             [
                 "python3",
@@ -441,7 +443,7 @@ class ProjectMaintenanceTests(unittest.TestCase):
         maintenance.complete(self.run_dir)
         project = maintenance.load_json(self.root / ".project-start/state.json")
         self.assertIn(relative, project["maintenance"]["agent_instruction_docs"])
-        next_run = maintenance.initialize(str(self.root), "Audit the new module context", "repository-change")
+        next_run = maintenance.initialize(str(self.root), "Audit the new module context", "repository-change", allow_new=True)
         next_state = maintenance.load_state(Path(next_run["data"]["run_dir"]))
         self.assertIn(relative, next_state["baseline_docs"])
 
@@ -617,7 +619,7 @@ class ProjectMaintenanceTests(unittest.TestCase):
         maintenance.complete(self.run_dir)
         deleted = self.artifacts["business"]
         (self.root / deleted).unlink()
-        payload = maintenance.initialize(str(self.root), "Canonical document was deleted", "repository-change")
+        payload = maintenance.initialize(str(self.root), "Canonical document was deleted", "repository-change", allow_new=True)
         self.run_dir = Path(payload["data"]["run_dir"])
         self.assertEqual(maintenance.load_state(self.run_dir)["baseline_docs"][deleted], "missing")
         self.advance_to_classification(deleted)
@@ -652,7 +654,7 @@ class ProjectMaintenanceTests(unittest.TestCase):
         agents = self.root / "private/service/AGENTS.md"
         agents.parent.mkdir(parents=True)
         agents.write_text("# Private service context\n", encoding="utf-8")
-        payload = maintenance.initialize(str(self.root), "Audit ignored local instructions", "repository-change")
+        payload = maintenance.initialize(str(self.root), "Audit ignored local instructions", "repository-change", allow_new=True)
         state = maintenance.load_state(Path(payload["data"]["run_dir"]))
         self.assertIn("private/service/AGENTS.md", state["baseline_docs"])
 
@@ -745,7 +747,7 @@ class ProjectMaintenanceTests(unittest.TestCase):
         maintenance.complete(self.run_dir)
         receipt = self.task_delivery_receipt()
         payload = maintenance.initialize(
-            str(self.root), "Task finished", "task-delivery", str(receipt)
+            str(self.root), "Task finished", "task-delivery", str(receipt), allow_new=True
         )
         run_dir = Path(payload["data"]["run_dir"])
         receipt.write_text("tampered", encoding="utf-8")
@@ -770,14 +772,14 @@ class ProjectMaintenanceTests(unittest.TestCase):
 
     def test_task_delivery_trigger_requires_a_completed_bound_receipt(self) -> None:
         with self.assertRaises(maintenance.MaintenanceError):
-            maintenance.initialize(str(self.root), "Task finished", "task-delivery")
+            maintenance.initialize(str(self.root), "Task finished", "task-delivery", allow_new=True)
         handoff = self.task_delivery_receipt("TD-002")
         task_state = self.root / ".codex/task-delivery/TD-002/state.json"
         state = maintenance.load_json(task_state)
         state["phase"] = "ready_to_complete"
         maintenance.write_json_atomic(task_state, state)
         with self.assertRaises(maintenance.MaintenanceError):
-            maintenance.initialize(str(self.root), "Task finished", "task-delivery", str(handoff))
+            maintenance.initialize(str(self.root), "Task finished", "task-delivery", str(handoff), allow_new=True)
 
     def test_task_delivery_obligation_moves_required_to_running_to_operational(self) -> None:
         self.advance_to_classification()
@@ -807,7 +809,7 @@ class ProjectMaintenanceTests(unittest.TestCase):
         }
         maintenance.write_json_atomic(self.root / ".project-start/state.json", project)
         payload = maintenance.initialize(
-            str(self.root), "Task TD-OBLIGATION completed", "task-delivery", str(handoff)
+            str(self.root), "Task TD-OBLIGATION completed", "task-delivery", str(handoff), allow_new=True
         )
         self.run_dir = Path(payload["data"]["run_dir"])
         project = maintenance.load_json(self.root / ".project-start/state.json")

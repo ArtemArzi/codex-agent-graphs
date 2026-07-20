@@ -1,25 +1,11 @@
-# Research report
+# Answer
 
-## Answer
+<!-- Give the direct answer first. -->
 
-<!-- Direct, decision-useful answer. -->
+## Evidence
 
-## Scope and method
-
-<!-- Question, assumptions, freshness cutoff, branches, and source strategy. -->
-
-## Findings
-
-<!-- Material claims with adjacent citations. -->
-
-## Contradictions
-
-<!-- Resolved and unresolved conflicts. -->
-
-## Implications
-
-<!-- Recommendation or decision impact when requested. -->
+<!-- Include only decision-relevant findings with adjacent citations. Omit this heading for a very short answer when citations remain clear. -->
 
 ## Confidence and gaps
 
-<!-- Confidence by conclusion, assumptions, and residual unknowns. -->
+<!-- State material assumptions, confidence, and unknowns. -->

@@ -29,36 +29,104 @@ class ResearchGraphTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def write_artifact(self, node: str, value: object | None = None) -> Path:
+    def write_artifact(self, node: str, value: object) -> Path:
         contract = graph.graph_contract()
         path = self.run_dir / contract["nodes"][node]["artifact"]
         if isinstance(value, (dict, list)):
             path.write_text(json.dumps(value), encoding="utf-8")
         else:
-            path.write_text(str(value or f"artifact for {node}"), encoding="utf-8")
+            path.write_text(str(value), encoding="utf-8")
         return path
 
-    def record(self, node: str, outcome: str = "succeeded", value: object | None = None) -> None:
-        path = self.write_artifact(node, value)
-        graph.record_node(self.run_dir, node, str(path), outcome)
+    def write_report(self, sources: list[str] | None = None) -> Path:
+        sources = sources or ["https://example.com/source"]
+        citations = []
+        for index, source in enumerate(sources, start=1):
+            citations.append(f"[Source {index}]({source})")
+        report = self.workspace / "report.md"
+        report.write_text(
+            "# Answer\n\n"
+            + "A direct evidence-backed conclusion with enough decision context. " * 4
+            + " ".join(citations)
+            + "\n\n## Confidence and gaps\n\nHigh confidence; no decision-relevant gaps.",
+            encoding="utf-8",
+        )
+        return report
 
-    def advance_to_gap(self) -> None:
-        self.record("intake")
-        self.record("capability_discovery", value={"tools": ["web"]})
-        self.record("plan")
-        self.record("collect", value={"branches": []})
-        self.record("evidence", value=valid_evidence())
-        self.record("reconcile")
+    def valid_work(
+        self,
+        *,
+        mode: str = "fast",
+        reason: str | None = None,
+        capabilities: list[str] | None = None,
+        agents: list[str] | None = None,
+        sources: list[str] | None = None,
+        verification: str = "self",
+        confidence: str = "high",
+        gaps: list[str] | None = None,
+    ) -> dict[str, object]:
+        return {
+            "schema_version": 2,
+            "mode": mode,
+            "reason": reason or ("default narrow research" if mode == "fast" else "multiple branches"),
+            "capabilities": capabilities or ["research", "native-web"],
+            "agents": agents or [],
+            "sources": sources or ["https://example.com/source"],
+            "verification": verification,
+            "confidence": confidence,
+            "gaps": gaps or [],
+        }
+
+    def record_work(self, value: dict[str, object] | None = None, outcome: str = "succeeded") -> None:
+        work = value or self.valid_work()
+        path = self.write_artifact("work", work)
+        graph.record_node(self.run_dir, "work", str(path), outcome)
 
     def advance_to_verify(self) -> None:
-        self.advance_to_gap()
-        self.record("gap_check", "succeeded", {"gaps": []})
-        self.record("synthesize", value="draft with sources")
+        self.write_report()
+        self.record_work(
+            self.valid_work(
+                mode="deep",
+                reason="high-stakes decision",
+                verification="independent",
+            ),
+            "verify",
+        )
+
+    def valid_verification(self, verdict: str = "pass") -> dict[str, object]:
+        payload: dict[str, object] = {
+            "verdict": verdict,
+            "report_sha256": graph.sha256_file(self.workspace / "report.md"),
+            "checked_claims": 1,
+            "residual_risks": [],
+        }
+        if verdict == "reject":
+            payload["repair_list"] = ["Narrow the unsupported claim"]
+            payload["residual_risks"] = ["unsupported claim"]
+        return payload
+
+    def record_verification(self, verdict: str = "pass") -> None:
+        outcome = "succeeded" if verdict == "pass" else "rejected"
+        artifact = self.write_artifact("verify", self.valid_verification(verdict))
+        graph.record_node(self.run_dir, "verify", str(artifact), outcome)
+
+    def test_graph_contract_is_three_durable_states(self) -> None:
+        contract = graph.graph_contract()
+        self.assertEqual(contract["schema_version"], 2)
+        self.assertEqual(set(contract["nodes"]), {"work", "verify", "complete"})
+        self.assertEqual(contract["limits"]["fast"]["max_parallel_scouts"], 0)
 
     def test_init_is_idempotent(self) -> None:
         second = graph.initialize("What is supported?", str(self.workspace), "report.md")
         self.assertEqual(second["data"]["run_dir"], str(self.run_dir))
         self.assertIn("resumed", second["summary"])
+
+    def test_explicit_deep_run_gets_separate_state(self) -> None:
+        deep = graph.initialize("What is supported?", str(self.workspace), "report.md", "deep")
+        self.assertNotEqual(deep["data"]["run_dir"], str(self.run_dir))
+        deep_state = graph.load_state(Path(deep["data"]["run_dir"]))
+        self.assertEqual(deep_state["requested_depth"], "deep")
+        self.assertEqual(deep_state["mode"], "deep")
 
     def test_concurrent_init_converges_on_one_state(self) -> None:
         concurrent_workspace = Path(self.temp.name) / "concurrent"
@@ -72,8 +140,8 @@ class ResearchGraphTests(unittest.TestCase):
         run_dirs = {str(item["data"]["run_dir"]) for item in results}
         self.assertEqual(len(run_dirs), 1)
         state = graph.load_state(Path(run_dirs.pop()))
-        self.assertEqual(state["current"], "intake")
-        self.assertEqual(state["nodes"]["intake"]["attempts"], 0)
+        self.assertEqual(state["current"], "work")
+        self.assertEqual(state["nodes"]["work"]["attempts"], 0)
 
     def test_init_keeps_target_git_status_clean(self) -> None:
         repository = Path(self.temp.name) / "git-workspace"
@@ -85,233 +153,240 @@ class ResearchGraphTests(unittest.TestCase):
         )
         self.assertEqual(status.stdout, "")
 
+    def test_ready_describes_one_native_fast_loop(self) -> None:
+        ready = graph.ready_node(self.run_dir)
+        self.assertEqual(ready["data"]["node"], "work")
+        self.assertEqual(ready["data"]["execution"], "one native root-agent loop")
+        self.assertEqual(ready["data"]["default_mode"], "fast")
+        self.assertEqual(ready["data"]["budgets"]["max_parallel_scouts"], 0)
+
     def test_workspace_relative_artifact_path_is_accepted(self) -> None:
-        artifact = self.write_artifact("intake")
-        workspace_relative = artifact.relative_to(self.workspace)
-        graph.record_node(self.run_dir, "intake", str(workspace_relative), "succeeded")
-        self.assertEqual(graph.load_state(self.run_dir)["current"], "capability_discovery")
+        self.write_report()
+        artifact = self.write_artifact("work", self.valid_work())
+        relative = artifact.relative_to(self.workspace)
+        graph.record_node(self.run_dir, "work", str(relative), "succeeded")
+        self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
 
     def test_rejects_output_escape(self) -> None:
         with self.assertRaises(graph.GraphError):
             graph.initialize("escape", str(self.workspace), "../outside.md")
 
     def test_rejects_out_of_order_transition(self) -> None:
-        artifact = self.write_artifact("plan")
+        artifact = self.write_artifact("verify", {"verdict": "pass"})
         with self.assertRaises(graph.GraphError):
-            graph.record_node(self.run_dir, "plan", str(artifact), "succeeded")
+            graph.record_node(self.run_dir, "verify", str(artifact), "succeeded")
 
     def test_rejects_invalid_json_artifact(self) -> None:
-        self.record("intake")
-        artifact = self.write_artifact("capability_discovery", "not-json")
+        self.write_report()
+        artifact = self.write_artifact("work", "not-json")
         with self.assertRaises(graph.GraphError):
-            graph.record_node(self.run_dir, "capability_discovery", str(artifact), "succeeded")
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
 
     def test_rejects_receipt_symlink_escape(self) -> None:
         outside = self.workspace / "outside-receipts"
         outside.mkdir()
         (self.run_dir / "receipts").symlink_to(outside, target_is_directory=True)
-        artifact = self.write_artifact("intake")
+        self.write_report()
+        artifact = self.write_artifact("work", self.valid_work())
         with self.assertRaises(graph.GraphError):
-            graph.record_node(self.run_dir, "intake", str(artifact), "succeeded")
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
 
     def test_failed_node_can_retry_with_bound(self) -> None:
-        failed = self.write_artifact("intake", "source unavailable")
-        graph.record_node(self.run_dir, "intake", str(failed), "failed")
+        failed = self.write_artifact("work", {"error": "source unavailable"})
+        graph.record_node(self.run_dir, "work", str(failed), "failed")
         self.assertEqual(graph.load_state(self.run_dir)["status"], "blocked")
-        graph.retry_node(self.run_dir, "use the local source fallback")
+        graph.retry_node(self.run_dir, "use the native web fallback")
         self.assertEqual(graph.load_state(self.run_dir)["status"], "running")
-        self.record("intake")
 
     def test_retry_bound_is_enforced(self) -> None:
         for retry in range(2):
-            failed = self.write_artifact("intake", f"failure {retry}")
-            graph.record_node(self.run_dir, "intake", str(failed), "failed")
+            failed = self.write_artifact("work", {"error": f"failure {retry}"})
+            graph.record_node(self.run_dir, "work", str(failed), "failed")
             graph.retry_node(self.run_dir, f"fallback {retry}")
-        failed = self.write_artifact("intake", "failure final")
-        graph.record_node(self.run_dir, "intake", str(failed), "failed")
+        failed = self.write_artifact("work", {"error": "failure final"})
+        graph.record_node(self.run_dir, "work", str(failed), "failed")
         with self.assertRaises(graph.GraphError):
             graph.retry_node(self.run_dir, "too many")
 
-    def test_gap_loop_is_bounded(self) -> None:
-        self.advance_to_gap()
-        self.record("gap_check", "needs-more", {"gaps": ["one"]})
-        self.assertEqual(graph.load_state(self.run_dir)["current"], "collect")
-        self.record("collect", value={"branches": []})
-        self.record("evidence", value=valid_evidence())
-        self.record("reconcile")
-        self.record("gap_check", "needs-more", {"gaps": ["residual"]})
+    def test_fast_path_completes_without_verifier(self) -> None:
+        self.write_report()
+        self.record_work()
         state = graph.load_state(self.run_dir)
-        self.assertEqual(state["current"], "synthesize")
-        self.assertEqual(state["collection_retries"], 1)
-        self.record("synthesize", value="draft after second collection")
-        self.record(
-            "verify",
-            value={"verdict": "pass", "checked_claims": 1, "residual_risks": ["residual gap"]},
-        )
-        (self.workspace / "report.md").write_text(
-            "# Answer\n\n" + "Bounded research conclusion with context. " * 8
-            + "[Primary source](https://example.com/source).\n\n"
-            + "## Confidence and gaps\n\nMedium confidence; one residual gap.",
-            encoding="utf-8",
-        )
-        self.assertEqual(graph.check_report(self.run_dir)["status"], "ok")
-
-    def test_verification_repair_is_bounded(self) -> None:
-        self.advance_to_verify()
-        for repair in range(2):
-            self.record(
-                "verify",
-                "rejected",
-                {
-                    "verdict": "reject",
-                    "checked_claims": 1,
-                    "residual_risks": ["unsupported"],
-                    "repair_list": ["remove unsupported claim"],
-                },
-            )
-            self.assertEqual(graph.load_state(self.run_dir)["current"], "synthesize")
-            self.record("synthesize", value=f"repair {repair}")
-        self.record(
-            "verify",
-            "rejected",
-            {
-                "verdict": "reject",
-                "checked_claims": 1,
-                "residual_risks": ["unsupported"],
-                "repair_list": ["remove unsupported claim"],
-            },
-        )
-        self.assertEqual(graph.load_state(self.run_dir)["status"], "blocked")
-
-    def test_verifier_schema_is_checked_before_transition(self) -> None:
-        self.advance_to_verify()
-        invalid_values = [
-            {"verdict": "pass", "checked_claims": [], "residual_risks": []},
-            {"verdict": "pass", "checked_claims": True, "residual_risks": []},
-        ]
-        for invalid_value in invalid_values:
-            invalid = self.write_artifact("verify", invalid_value)
-            with self.assertRaises(graph.GraphError):
-                graph.record_node(self.run_dir, "verify", str(invalid), "succeeded")
-            state = graph.load_state(self.run_dir)
-            self.assertEqual(state["current"], "verify")
-            self.assertEqual(state["nodes"]["verify"]["status"], "ready")
-            self.assertEqual(state["nodes"]["verify"]["receipts"], [])
-
-    def test_rejected_verifier_requires_exact_verdict_before_transition(self) -> None:
-        self.advance_to_verify()
-        invalid = self.write_artifact(
-            "verify",
-            {
-                "verdict": "bogus",
-                "checked_claims": 1,
-                "residual_risks": ["unsupported"],
-                "repair_list": ["remove unsupported claim"],
-            },
-        )
-        with self.assertRaises(graph.GraphError):
-            graph.record_node(self.run_dir, "verify", str(invalid), "rejected")
-        state = graph.load_state(self.run_dir)
-        self.assertEqual(state["current"], "verify")
-        self.assertEqual(state["nodes"]["verify"]["status"], "ready")
-        self.assertEqual(state["nodes"]["verify"]["receipts"], [])
-
-    def test_verifier_accepts_claim_check_array(self) -> None:
-        self.advance_to_verify()
-        self.record(
-            "verify",
-            value={
-                "verdict": "pass",
-                "checked_claims": [{"claim_id": "C-001", "status": "supported"}],
-                "residual_risks": [],
-            },
-        )
-        self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
-
-    def test_happy_path_completes_and_detects_tamper(self) -> None:
-        self.advance_to_verify()
-        self.record(
-            "verify",
-            value={"verdict": "pass", "checked_claims": 1, "residual_risks": []},
-        )
-        report = self.workspace / "report.md"
-        report.write_text(
-            "# Answer\n\n" + "A supported conclusion with context. " * 8
-            + "[Primary source](https://example.com/source).\n\n"
-            + "## Confidence and gaps\n\nHigh confidence; no material residual gaps.",
-            encoding="utf-8",
-        )
+        self.assertEqual(state["current"], "complete")
+        self.assertFalse(state["verification_required"])
+        self.assertEqual(state["nodes"]["verify"]["attempts"], 0)
         checked = graph.check_report(self.run_dir)
         self.assertEqual(checked["status"], "ok", checked)
+        self.assertEqual(checked["data"]["mode"], "fast")
+        self.assertFalse(checked["data"]["verification_required"])
         completed = graph.complete_run(self.run_dir)
         self.assertEqual(completed["status"], "ok")
-        self.assertIn("already completed", graph.complete_run(self.run_dir)["summary"])
-        self.assertEqual(graph.check_report(self.run_dir)["status"], "ok")
         self.assertEqual(graph.load_state(self.run_dir)["status"], "completed")
-        evidence = self.run_dir / "evidence.json"
-        evidence.write_text('{"items": []}', encoding="utf-8")
-        self.assertTrue(graph.validate_receipt_hashes(graph.load_state(self.run_dir)))
+        rechecked = graph.check_report(self.run_dir)
+        self.assertEqual(rechecked["status"], "ok")
+        self.assertEqual(rechecked["next_actions"], [])
+        self.assertIn("Completed", rechecked["summary"])
 
-    def test_report_citation_must_match_evidence_ledger(self) -> None:
-        self.advance_to_verify()
-        self.record(
-            "verify",
-            value={"verdict": "pass", "checked_claims": 1, "residual_risks": []},
+    def test_fast_path_rejects_internal_agents(self) -> None:
+        self.write_report()
+        artifact = self.write_artifact(
+            "work", self.valid_work(agents=["research_scout"])
         )
-        (self.workspace / "report.md").write_text(
-            "# Answer\n\n" + "Unsupported but sufficiently long conclusion. " * 8
-            + "[Unrelated](https://unrelated.example/source).\n\n"
-            + "## Confidence and gaps\n\nClaimed high confidence.",
+        with self.assertRaisesRegex(graph.GraphError, "Fast mode"):
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+
+    def test_fast_source_bound_requires_deep_mode(self) -> None:
+        sources = [f"https://example.com/source-{index}" for index in range(7)]
+        self.write_report(sources)
+        artifact = self.write_artifact("work", self.valid_work(sources=sources))
+        with self.assertRaisesRegex(graph.GraphError, "source limit"):
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+
+    def test_explicit_deep_run_cannot_record_fast_work(self) -> None:
+        deep = graph.initialize("Deep question", str(self.workspace), "deep-report.md", "deep")
+        self.run_dir = Path(deep["data"]["run_dir"])
+        (self.workspace / "deep-report.md").write_text(
+            "# Answer\n\n" + "Deep evidence-backed answer. " * 8
+            + "[Source](https://example.com/source).",
             encoding="utf-8",
         )
+        artifact = self.write_artifact("work", self.valid_work())
+        with self.assertRaisesRegex(graph.GraphError, "explicitly deep"):
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+
+    def test_deep_work_allows_three_scouts(self) -> None:
+        self.write_report()
+        work = self.valid_work(
+            mode="deep",
+            agents=["research_scout", "research_scout", "research_scout"],
+        )
+        self.record_work(work)
+        state = graph.load_state(self.run_dir)
+        self.assertEqual(state["mode"], "deep")
+        self.assertEqual(state["agents_used"].count("research_scout"), 3)
+        self.assertEqual(state["current"], "complete")
+
+    def test_deep_work_rejects_four_scouts(self) -> None:
+        self.write_report()
+        work = self.valid_work(mode="deep", agents=["research_scout"] * 4)
+        artifact = self.write_artifact("work", work)
+        with self.assertRaisesRegex(graph.GraphError, "scout limit"):
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+
+    def test_verify_outcome_requires_deep_independent_work(self) -> None:
+        self.write_report()
+        artifact = self.write_artifact("work", self.valid_work(verification="independent"))
+        with self.assertRaisesRegex(graph.GraphError, "requires deep mode"):
+            graph.record_node(self.run_dir, "work", str(artifact), "verify")
+
+    def test_independent_work_must_use_verify_outcome(self) -> None:
+        self.write_report()
+        artifact = self.write_artifact(
+            "work", self.valid_work(mode="deep", verification="independent")
+        )
+        with self.assertRaisesRegex(graph.GraphError, "Record outcome verify"):
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+
+    def test_verifier_report_hash_is_enforced(self) -> None:
+        self.advance_to_verify()
+        payload = self.valid_verification()
+        payload["report_sha256"] = "0" * 64
+        artifact = self.write_artifact("verify", payload)
+        with self.assertRaisesRegex(graph.GraphError, "report_sha256"):
+            graph.record_node(self.run_dir, "verify", str(artifact), "succeeded")
+
+    def test_verification_path_completes(self) -> None:
+        self.advance_to_verify()
+        self.record_verification()
+        state = graph.load_state(self.run_dir)
+        self.assertEqual(state["current"], "complete")
+        self.assertTrue(state["verification_required"])
+        checked = graph.check_report(self.run_dir)
+        self.assertEqual(checked["status"], "ok", checked)
+        self.assertTrue(checked["data"]["verification_required"])
+
+    def test_one_delta_repair_is_bounded(self) -> None:
+        self.advance_to_verify()
+        self.record_verification("reject")
+        state = graph.load_state(self.run_dir)
+        self.assertEqual(state["current"], "work")
+        self.assertEqual(state["verification_repairs"], 1)
+        self.write_report()
+        self.record_work(
+            self.valid_work(
+                mode="deep",
+                reason="delta repair",
+                verification="independent",
+            ),
+            "verify",
+        )
+        self.record_verification("reject")
+        self.assertEqual(graph.load_state(self.run_dir)["status"], "blocked")
+
+    def test_verifier_reject_requires_nonempty_repair_list(self) -> None:
+        self.advance_to_verify()
+        payload = self.valid_verification("reject")
+        payload["repair_list"] = []
+        artifact = self.write_artifact("verify", payload)
+        with self.assertRaisesRegex(graph.GraphError, "non-empty repair_list"):
+            graph.record_node(self.run_dir, "verify", str(artifact), "rejected")
+
+    def test_report_and_declared_sources_must_match(self) -> None:
+        self.write_report(["https://unrelated.example/source"])
+        self.record_work(self.valid_work())
         checked = graph.check_report(self.run_dir)
         self.assertEqual(checked["status"], "failed")
-        self.assertTrue(any("evidence ledger" in issue for issue in checked["next_actions"]))
+        self.assertTrue(any("declared" in issue or "report citation" in issue for issue in checked["next_actions"]))
 
-    def test_parenthesized_commonmark_url_matches_ledger(self) -> None:
-        evidence = valid_evidence()
-        evidence["items"][0]["source_url"] = "https://example.com/Foo_(bar)"
-        self.record("intake")
-        self.record("capability_discovery", value={"tools": ["web"]})
-        self.record("plan")
-        self.record("collect", value={"branches": []})
-        self.record("evidence", value=evidence)
-        self.record("reconcile")
-        self.record("gap_check", "succeeded", {"gaps": []})
-        self.record("synthesize", value="draft with parenthesized source")
-        self.record(
-            "verify",
-            value={"verdict": "pass", "checked_claims": 1, "residual_risks": []},
+    def test_report_can_include_non_evidence_links(self) -> None:
+        self.write_report(
+            ["https://example.com/source", "https://extra.example/source"]
         )
-        (self.workspace / "report.md").write_text(
-            "# Answer\n\n" + "Supported conclusion with sufficient context. " * 8
-            + "[Source](https://example.com/Foo_(bar)).\n\n"
-            + "## Confidence and gaps\n\nHigh confidence; no material residual gaps.",
-            encoding="utf-8",
+        self.record_work(self.valid_work())
+        checked = graph.check_report(self.run_dir)
+        self.assertEqual(checked["status"], "ok")
+
+    def test_local_source_is_supported(self) -> None:
+        local = self.workspace / "truth.md"
+        local.write_text("local project truth", encoding="utf-8")
+        self.write_report([str(local)])
+        self.record_work(
+            self.valid_work(
+                capabilities=["research", "local-files"],
+                sources=[str(local)],
+            )
         )
         self.assertEqual(graph.check_report(self.run_dir)["status"], "ok")
 
+    def test_parenthesized_commonmark_url_matches_sources(self) -> None:
+        source = "https://example.com/Foo_(bar)"
+        self.write_report([source])
+        self.record_work(self.valid_work(sources=[source]))
+        self.assertEqual(graph.check_report(self.run_dir)["status"], "ok")
 
-def valid_evidence() -> dict[str, object]:
-    return {
-        "items": [
-            {
-                "claim_id": "C-001",
-                "claim": "Supported claim",
-                "stance": "supports",
-                "source_url": "https://example.com/source",
-                "source_title": "Primary source",
-                "publisher": "Example",
-                "published_at": "2026-07-01",
-                "accessed_at": "2026-07-19",
-                "source_class": "primary",
-                "paraphrase": "The source supports the claim.",
-                "confidence": "high",
-                "branch": "official",
-                "notes": "",
-            }
-        ]
-    }
+    def test_report_tamper_after_work_is_detected(self) -> None:
+        report = self.write_report()
+        self.record_work()
+        report.write_text(report.read_text(encoding="utf-8") + "\nchanged", encoding="utf-8")
+        checked = graph.check_report(self.run_dir)
+        self.assertEqual(checked["status"], "failed")
+        self.assertTrue(any("differs" in issue for issue in checked["next_actions"]))
+
+    def test_completed_report_tamper_is_detected(self) -> None:
+        report = self.write_report()
+        self.record_work()
+        graph.complete_run(self.run_dir)
+        report.write_text(report.read_text(encoding="utf-8") + "\nchanged", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "integrity"):
+            graph.complete_run(self.run_dir)
+
+    def test_v1_state_has_actionable_restart_message(self) -> None:
+        state_path = self.run_dir / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["schema_version"] = 1
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "retired Research v1"):
+            graph.load_state(self.run_dir)
 
 
 if __name__ == "__main__":

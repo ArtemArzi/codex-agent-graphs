@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic runtime for the Project Start documentation-maintenance route."""
+"""Legacy v2 runtime kept only for already active Project Start maintenance runs."""
 
 from __future__ import annotations
 
@@ -26,7 +26,9 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 import project_start as project_start_runtime  # noqa: E402
 
-GRAPH_PATH = SKILL_DIR / "graph.json"
+GRAPH_PATH = SKILL_DIR / "assets" / "legacy-graph-v2.json"
+LEGACY_GRAPH_SHA256 = "b30d1ef1fe6c7871f127cd02ab4bfde87f6806e53c4b195b64789730e0b87dd6"
+BUNDLED_LEGACY_GRAPH_SHA256 = "24007098f6ccd59a9dabf84b3ca06314214b7931193042eb95aba128379f10d1"
 PROJECT_STATE_REL = Path(".project-start/state.json")
 RUNTIME_REL = Path(".agent-graphs/project-start-maintenance")
 STATE_NAME = "state.json"
@@ -155,6 +157,8 @@ def repository_entry(path: Path, root: Path) -> Path:
 
 
 def graph_contract() -> dict[str, Any]:
+    if sha256_file(GRAPH_PATH) != BUNDLED_LEGACY_GRAPH_SHA256:
+        raise MaintenanceError("Bundled legacy graph v2 изменился; безопасное возобновление запрещено.")
     graph = load_json(GRAPH_PATH)
     if graph.get("graph_id") != "project-start":
         raise MaintenanceError("graph.json принадлежит другому графу.")
@@ -598,6 +602,8 @@ def initialize(
     receipt_value: str | None = None,
     skills_root: str | None = None,
     cycle: str | None = None,
+    *,
+    allow_new: bool = False,
 ) -> dict[str, Any]:
     if not reason.strip():
         raise MaintenanceError("Причина запуска не может быть пустой.")
@@ -649,6 +655,10 @@ def initialize(
             or obligation.get("task_state_sha256") != receipt.get("task_state_sha256")
         ):
             raise MaintenanceError("Change receipt не совпадает с обязательным Task Delivery handoff.")
+    if not allow_new:
+        raise MaintenanceError(
+            "Legacy v2 runner работает только для уже активного run; новый запуск выполняй через project_graph.py."
+        )
     graph = graph_contract()
     route = graph["routes"]["maintenance"]
     docs = canonical_docs(root, project)
@@ -702,7 +712,9 @@ def initialize(
             "schema_version": 1,
             "graph_id": graph["graph_id"],
             "graph_version": graph["graph_version"],
-            "graph_sha256": sha256_file(GRAPH_PATH),
+            # Keep the historical digest so an active v2 run remains resumable
+            # after graph.json becomes the v3 model-first contract.
+            "graph_sha256": LEGACY_GRAPH_SHA256,
             "run_id": run_id,
             "root": str(root),
             "project_phase": project["phase"],
@@ -755,7 +767,7 @@ def load_state(run_dir: Path) -> dict[str, Any]:
         raise MaintenanceError("Run принадлежит другому графу.")
     if state.get("graph_version") != graph["graph_version"]:
         raise MaintenanceError("Версия graph.json изменилась после старта run.")
-    if state.get("graph_sha256") != sha256_file(GRAPH_PATH):
+    if state.get("graph_sha256") not in {LEGACY_GRAPH_SHA256, sha256_file(GRAPH_PATH)}:
         raise MaintenanceError("Контракт graph.json изменился после старта run.")
     receipt = state.get("change_receipt")
     if receipt:

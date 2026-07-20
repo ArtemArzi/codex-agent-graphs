@@ -1,95 +1,88 @@
 ---
 name: research
-description: Run an autonomous, evidence-backed agent graph for questions that require source discovery, current external research, comparison, contradiction handling, or a cited decision-ready report. Use when the user asks to research, investigate, compare sources, verify current facts, survey a field, or produce a rigorous answer without step-by-step supervision.
+description: Run fast, adaptive, evidence-backed research with native Codex tools, installed skills, MCP/apps, and optional multi-agent depth. Use when the user asks to research, investigate, compare, verify current facts, survey a field, or produce a cited decision-ready answer; start with one native agent and automatically deepen only for real complexity or risk.
 ---
 
-# Research Graph
+# Research
 
-Run research as a bounded graph, not an open-ended agent loop. The root agent owns the run. Internal agents are leaf workers with non-overlapping assignments.
+Use the graph as a small control layer around one native Codex research loop. Do not turn planning, searching, evidence capture, reconciliation, or drafting into separate graph nodes.
 
-## Operating contract
+## Core contract
 
-- Do not ask the user to approve normal research steps. Make reversible assumptions, record them, and continue.
-- Keep research read-only except for local run state and the requested report.
-- Discover relevant skills, MCP servers, apps, web search, local files, and official documentation before planning. Inspect only capabilities likely to matter.
-- Prefer primary and authoritative sources. For technical claims, use official docs or original papers. For current claims, verify freshness live.
-- Separate confirmed facts, source claims, contradictions, inference, and unknowns.
-- Never fabricate a citation. Put citations next to the claims they support.
-- If a preferred capability is unavailable, use the next safe source path automatically. Stop only when no safe path can meet the evidence threshold.
+- Start with the root agent in `fast` mode unless the user explicitly requests deep work or a strong escalation signal is already present.
+- Read only the installed skills relevant to the question. Treat Exa, Deep Research, market research, literature review, documentation lookup, browser search, MCP, apps, and local files as optional capabilities, not mandatory stages.
+- Keep normal research read-only except for ignored run state and the requested report.
+- Prefer primary and authoritative sources. Open sources; do not treat search snippets as evidence.
+- Put citations next to material factual claims and separate source claims, inference, contradiction, and unknowns.
+- Stop when enough evidence exists for an honest answer. Do not spend the available budget merely because it exists.
+- Do not ask the user to approve ordinary search, source selection, safe fallbacks, or internal delegation.
 
-Read [source-policy.md](references/source-policy.md) for evidence rules and [roles.md](references/roles.md) before dispatching internal agents.
+Read [routing.md](references/routing.md) for depth and capability selection. Read [source-policy.md](references/source-policy.md) before writing `research.json`. Read [roles.md](references/roles.md) only when delegation or independent verification is justified.
 
 ## Start or resume
 
-Use the bundled runner from this skill directory:
-
 ```bash
 python3 scripts/research_graph.py init --question "<question>" --workspace "<workspace>" --output "<report.md>"
-python3 scripts/research_graph.py status --run "<run-directory>"
 python3 scripts/research_graph.py ready --run "<run-directory>"
 ```
 
-`init` is idempotent for the same question, workspace, and output. The run lives under `<workspace>/.agent-graphs/research-runs/` and can be resumed by either CLI or Desktop without writing to the protected `.codex/` directory.
+Use `--depth deep` only when the user explicitly asks for deep, exhaustive, due-diligence, or independent work. Otherwise keep the default `--depth auto` and let evidence trigger escalation.
 
-## Execute ready nodes
+The runner stores ignored, resumable state under `<workspace>/.agent-graphs/research-runs/`. `ready` returns the current durable node and the applicable source, scout, and soft-time bounds.
 
-Always ask the runner for the ready node. Complete it, save its artifact inside the run directory, then record the receipt:
+## Execute `work`
+
+Perform the complete research task natively inside one root turn:
+
+1. Understand the decision and freshness need without creating a separate intake artifact.
+2. Inspect the currently exposed skills and tools; load only likely capabilities.
+3. Search, open sources, compare evidence, and write the final report directly to the requested output path.
+4. Write one small `research.json` containing mode, reason, used capabilities, optional agents, cited sources, confidence, gaps, and verification decision.
+5. Record one durable work receipt.
+
+For a normal answer:
 
 ```bash
-python3 scripts/research_graph.py record --run "<run-directory>" --node "<node>" --artifact "<artifact>" --outcome succeeded
+python3 scripts/research_graph.py record --run "<run-directory>" --node work --artifact "<research.json>" --outcome succeeded
 ```
 
-Allowed branch outcomes:
+For an answer that needs independent semantic verification:
 
-- `gap_check`: `succeeded` or `needs-more`.
-- `verify`: `succeeded` or `rejected`.
-- Other nodes: `succeeded` or `failed`.
+```bash
+python3 scripts/research_graph.py record --run "<run-directory>" --node work --artifact "<research.json>" --outcome verify
+```
 
-The runner bounds additional collection and synthesis repair cycles. Never bypass a transition or edit `state.json` by hand.
-
-If a node fails because a source or capability is unavailable, choose a safe fallback and reopen it without asking the user:
+Use `failed` only when no safe source or capability path can meet the minimum evidence contract. Reopen a failed node with a concrete fallback:
 
 ```bash
 python3 scripts/research_graph.py retry --run "<run-directory>" --reason "<fallback and correction>"
 ```
 
-Retries are bounded by the graph contract. A verifier rejection uses its separate synthesis-repair bound and cannot be reopened through `retry`.
+## Use capabilities natively
 
-## Graph nodes
+- Use `exa-search` for focused neural discovery, code context, companies, or people when its MCP surface is available.
+- Use `deep-research` only after deep routing; do not import its broad 15-30-source defaults into fast mode.
+- Use official documentation skills for version-sensitive technical claims.
+- Use domain skills such as market research or literature review when the question actually belongs to that domain.
+- Fall back automatically to native web search, browser, local files, or another admitted source path when a preferred MCP is unavailable.
 
-1. `intake`: normalize the question, scope, assumptions, audience, output, and freshness needs.
-2. `capability_discovery`: inventory only relevant local sources, skills, MCP/apps, web, and official-doc paths; record fallbacks.
-3. `plan`: use `research_planner` when available. Produce 1-3 non-overlapping branches, source targets, and stop conditions.
-4. `collect`: dispatch up to three `research_scout` agents in parallel when useful. Use one agent for a narrow question. Do not duplicate branches.
-5. `evidence`: merge findings into the evidence ledger. Deduplicate sources and preserve source-to-claim links.
-6. `reconcile`: use `research_synthesizer` for material conflicts; otherwise reconcile in the root.
-7. `gap_check`: test the ledger against the plan. Return `needs-more` only for a concrete decision-relevant gap.
-8. `synthesize`: create the report from the ledger, preferably with `research_synthesizer` for complex work.
-9. `verify`: independently audit with `research_verifier`. On `rejected`, record a repair list; the graph returns to synthesis within its bound.
-10. `complete`: run the mechanical report check and deliver the report plus residual limitations.
+## Use multiple agents only on evidence
 
-If custom graph agents are not installed in the current session, route planner/scout work to `researcher`, synthesis to the strongest available model, and verification to `reviewer`. If multi-agent tools are unavailable, execute the same nodes serially in the root; preserve all gates.
+Keep zero internal agents in fast mode. In deep mode, dispatch at most three `research_scout` agents for genuinely independent branches. Use the planner only when decomposition itself is unstable, and the synthesizer only for material conflicts or evidence too large for the root to reconcile cleanly.
 
-## Agent dispatch contract
+Keep every internal agent leaf-only, read-only, bounded to one branch, and responsible for a compact evidence packet. Integrate each result once. Never create one agent per source.
 
-Every internal agent receives:
+## Verify conditionally
 
-- exact branch objective and exclusions;
-- must-read local paths or source classes;
-- freshness cutoff and evidence standard;
-- artifact schema from `references/source-policy.md`;
-- instruction to remain leaf-only and read-only;
-- explicit completion and failure criteria.
+Use `research_verifier` only for the signals in [routing.md](references/routing.md). Give it the report, compact ledger, exact claims to check, and a strict instruction not to expand the research.
 
-The root waits for all dispatched branches, integrates each result once, and closes completed agents when supported.
+On rejection, repair only the listed claims and run one delta verification. The graph permits one repair by default; a second full audit is intentionally unavailable.
 
-## Completion gate
-
-Before final delivery:
+## Complete
 
 ```bash
 python3 scripts/research_graph.py check-report --run "<run-directory>"
 python3 scripts/research_graph.py complete --run "<run-directory>"
 ```
 
-Completion requires a successful verifier receipt, a readable report, a non-empty evidence ledger, valid artifact hashes, claim-adjacent citations for material factual claims, and explicit residual gaps. A low-confidence but honest result may complete; an unsupported confident result may not.
+The deterministic gate checks receipt and report hashes, the small control artifact, source-to-report citation identity, mode/agent bounds, and conditional verifier completion. It does not inspect reasoning or repeat semantic research.

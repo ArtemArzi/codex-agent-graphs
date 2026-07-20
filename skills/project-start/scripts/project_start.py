@@ -45,16 +45,17 @@ def load_graph_contract() -> dict[str, Any]:
 
 GRAPH = load_graph_contract()
 BOOTSTRAP_GRAPH = GRAPH["routes"]["bootstrap"]
+LEGACY_BOOTSTRAP = GRAPH["legacy_v2_bootstrap"]
 EXPECTED_SKILLS = tuple(GRAPH["capability_registry"]["skills"])
 GATE_TO_PHASE = {
     "business": "foundation",
     "foundation": "planning",
     "plan": "tickets",
 }
-PHASE_ORDER = tuple(BOOTSTRAP_GRAPH["phases"])
-FOUNDATION_EVENTS = tuple(BOOTSTRAP_GRAPH["events"]["foundation"])
-TICKET_EVENTS = tuple(BOOTSTRAP_GRAPH["events"]["tickets"])
-COMPLETION_EVENTS = tuple(BOOTSTRAP_GRAPH["events"]["completion"])
+PHASE_ORDER = tuple(LEGACY_BOOTSTRAP["phases"])
+FOUNDATION_EVENTS = tuple(LEGACY_BOOTSTRAP["events"]["foundation"])
+TICKET_EVENTS = tuple(LEGACY_BOOTSTRAP["events"]["tickets"])
+COMPLETION_EVENTS = tuple(LEGACY_BOOTSTRAP["events"]["completion"])
 RECORD_EVENTS = FOUNDATION_EVENTS + TICKET_EVENTS + COMPLETION_EVENTS
 GATE_ARTIFACT_KEYS = {
     "business": ("business", "decisions", "context"),
@@ -433,8 +434,15 @@ def load_state(root: Path) -> dict[str, Any]:
 def maintenance_blocking_reason(state: dict[str, Any]) -> str | None:
     maintenance = state.get("maintenance") if isinstance(state.get("maintenance"), dict) else {}
     status = maintenance.get("status")
-    if status not in {"maintenance-required", "running", "blocked", "reopen-required"}:
+    legacy_state = not isinstance(state.get("graph_v3"), dict)
+    if status == "operational" or (
+        status == "not-ready"
+        and (legacy_state or state.get("phase") not in {"execution", "complete"})
+    ):
         return None
+    known = {"maintenance-required", "running", "blocked", "reopen-required", "restart-required"}
+    if status not in known:
+        return f"Неизвестный maintenance status {status!r}; Project Start блокирует продолжение fail-closed."
     active = maintenance.get("active_run") if isinstance(maintenance.get("active_run"), dict) else {}
     pending = maintenance.get("pending_reopen") if isinstance(maintenance.get("pending_reopen"), dict) else {}
     run_id = active.get("run_id") or pending.get("run_id") or "unknown"
@@ -451,7 +459,65 @@ def maintenance_blocking_reason(state: dict[str, Any]) -> str | None:
             "Документация ожидает обработку Task Delivery handoff "
             f"задачи {required.get('task_id')}; сначала запусти maintenance route."
         )
+    if status == "restart-required":
+        restart = maintenance.get("pending_restart") if isinstance(maintenance.get("pending_restart"), dict) else {}
+        return (
+            "Документационный maintenance требует свежий Project Start run после прерывания "
+            f"{restart.get('run_id')}: {restart.get('reason')}."
+        )
     return f"Документационный maintenance run {run_id} ещё выполняется; дождись PASS или явного reopen."
+
+
+def v3_integrity_issues(root: Path, state: dict[str, Any]) -> list[dict[str, str]]:
+    graph_v3 = state.get("graph_v3") if isinstance(state.get("graph_v3"), dict) else {}
+    issues: list[dict[str, str]] = []
+    canonical = graph_v3.get("canonical_docs")
+    hashes = graph_v3.get("canonical_doc_hashes")
+    if graph_v3.get("status") != "operational" or not isinstance(canonical, list) or not canonical:
+        return [{"severity": "error", "artifact": STATE_REL.as_posix(), "message": "graph_v3 operational ledger повреждён."}]
+    if not isinstance(hashes, dict) or set(hashes) != set(canonical):
+        issues.append({"severity": "error", "artifact": STATE_REL.as_posix(), "message": "graph_v3 canonical hashes не совпадают с canonical_docs."})
+        return issues
+    try:
+        current = {relative: sha256_file(root, relative) for relative in canonical}
+    except ValueError as exc:
+        issues.append({"severity": "error", "artifact": STATE_REL.as_posix(), "message": str(exc)})
+        return issues
+    current_digest = hashlib.sha256(
+        json.dumps(current, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    if current != hashes or current_digest != graph_v3.get("docs_sha256"):
+        issues.append({"severity": "error", "artifact": STATE_REL.as_posix(), "message": "Канонические документы дрейфовали после последнего v3 completion."})
+    agent_hashes = graph_v3.get("agent_instruction_doc_hashes")
+    discovered_agents: set[str] = set()
+    for current_dir, directories, names in os.walk(root, followlinks=False):
+        current_path = Path(current_dir)
+        directories[:] = [
+            name
+            for name in directories
+            if name not in {
+                ".agent-graphs", ".codex", ".git", ".mypy_cache", ".project-start",
+                ".pytest_cache", ".ruff_cache", ".venv", "__pycache__", "build",
+                "coverage", "dist", "generated", "node_modules", "vendor",
+            }
+            and not (current_path / name).is_symlink()
+        ]
+        if "AGENTS.md" in names:
+            path = current_path / "AGENTS.md"
+            if path.is_file() and not path.is_symlink():
+                discovered_agents.add(path.relative_to(root).as_posix())
+    if not isinstance(agent_hashes, dict) or set(agent_hashes) != discovered_agents:
+        issues.append({"severity": "error", "artifact": STATE_REL.as_posix(), "message": "Набор AGENTS.md дрейфовал после последнего v3 completion."})
+    elif any(sha256_file(root, relative) != digest for relative, digest in agent_hashes.items()):
+        issues.append({"severity": "error", "artifact": STATE_REL.as_posix(), "message": "Содержимое AGENTS.md дрейфовало после последнего v3 completion."})
+    if state.get("graph_version") != GRAPH.get("graph_version") or state.get("graph_sha256") != hashlib.sha256(GRAPH_PATH.read_bytes()).hexdigest():
+        issues.append({"severity": "error", "artifact": STATE_REL.as_posix(), "message": "Shared state связан с другой версией Project Start graph."})
+    return issues
+
+
+def reject_legacy_mutation_of_v3(state: dict[str, Any]) -> None:
+    if isinstance(state.get("graph_v3"), dict) and state["graph_v3"].get("status") == "operational":
+        raise ValueError("Состоянием владеет Project Start v3; используй project_graph.py, а не legacy-команду.")
 
 
 def cmd_dependencies(args: argparse.Namespace) -> int:
@@ -642,6 +708,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
         state_path = safe_repo_path(root, STATE_REL, expected="file")
         if state_path.exists():
             state = load_state(root)
+            reject_legacy_mutation_of_v3(state)
         else:
             docs_dir = rel(root, safe_repo_path(root, args.docs_dir, expected="dir"))
             business_doc = rel(root, safe_repo_path(root, args.business_doc, expected="file")) if args.business_doc else None
@@ -1399,9 +1466,11 @@ def cmd_status(args: argparse.Namespace) -> int:
             next_actions=actions,
         )
     phase = state.get("phase", "unknown")
-    integrity = state_integrity_issues(root, state)
+    graph_v3_owned = isinstance(state.get("graph_v3"), dict) and state["graph_v3"].get("status") == "operational"
+    integrity = v3_integrity_issues(root, state) if graph_v3_owned else state_integrity_issues(root, state)
     maintenance = state.get("maintenance") if isinstance(state.get("maintenance"), dict) else {}
     pending_reopen = maintenance.get("pending_reopen") if maintenance.get("status") == "reopen-required" else None
+    active_run = maintenance.get("active_run") if isinstance(maintenance.get("active_run"), dict) else {}
     maintenance_blocked = maintenance_blocking_reason(state)
     next_by_phase = {
         "discovery": "Завершить и одобрить бизнес-логику.",
@@ -1420,7 +1489,9 @@ def cmd_status(args: argparse.Namespace) -> int:
         ),
         next_actions=(
             [
-                f"Выполнить preview reopen --stage {pending_reopen.get('stage')}, затем применить после проверки причины."
+                f"python3 {Path(__file__).with_name('project_graph.py')} decide --run {active_run.get('run_dir')} --answer <точный-ответ>"
+                if graph_v3_owned
+                else f"Выполнить preview reopen --stage {pending_reopen.get('stage')}, затем применить после проверки причины."
             ]
             if isinstance(pending_reopen, dict)
             else ["Завершить или восстановить указанный maintenance run; не открывать новую Task Delivery."]
@@ -1520,6 +1591,7 @@ def cmd_record(args: argparse.Namespace) -> int:
     try:
         root = root_path(args.root)
         state = load_state(root)
+        reject_legacy_mutation_of_v3(state)
         blocked = maintenance_blocking_reason(state)
         if blocked:
             raise ValueError(blocked)
@@ -1638,6 +1710,7 @@ def cmd_reopen(args: argparse.Namespace) -> int:
     try:
         root = root_path(args.root)
         state = load_state(root)
+        reject_legacy_mutation_of_v3(state)
         if not args.note.strip():
             raise ValueError("Пересмотр требует непустую причину.")
         if PHASE_ORDER.index(state["phase"]) < PHASE_ORDER.index(args.stage):
@@ -1705,6 +1778,7 @@ def cmd_approve(args: argparse.Namespace) -> int:
     try:
         root = root_path(args.root)
         state = load_state(root)
+        reject_legacy_mutation_of_v3(state)
         stage_for_gate = {"business": "discovery", "foundation": "foundation", "plan": "planning"}[args.gate]
         if state.get("phase") != stage_for_gate:
             raise ValueError(f"Рубеж {args.gate} допустим только из фазы {stage_for_gate}; сейчас {state.get('phase')}. Для пересмотра используй reopen.")
@@ -1753,6 +1827,7 @@ def cmd_complete(args: argparse.Namespace) -> int:
     try:
         root = root_path(args.root)
         state = load_state(root)
+        reject_legacy_mutation_of_v3(state)
         blocked = maintenance_blocking_reason(state)
         if blocked:
             raise ValueError(blocked)

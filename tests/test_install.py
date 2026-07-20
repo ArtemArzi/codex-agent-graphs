@@ -95,6 +95,18 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(exit_code, 2)
         self.assertFalse((first / "skills").exists())
 
+    def test_symlinked_config_is_rejected_without_replacing_link(self) -> None:
+        config = self.home / "config.toml"
+        config.unlink()
+        shared = Path(self.temp.name) / "shared-config.toml"
+        shared.write_text("[agents]\nmax_threads = 6\n", encoding="utf-8")
+        config.symlink_to(shared)
+        with self.assertRaisesRegex(installer.InstallError, "Symlinked config"):
+            installer.install_environment(self.home)
+        self.assertTrue(config.is_symlink())
+        self.assertEqual("[agents]\nmax_threads = 6\n", shared.read_text(encoding="utf-8"))
+        self.assertFalse((self.home / "skills").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

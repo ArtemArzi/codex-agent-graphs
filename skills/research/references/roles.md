@@ -1,14 +1,14 @@
-# Internal roles
+# Optional internal roles
 
-These roles are implementation details of the Research graph, not user-facing skills.
+The root agent owns `work`. Internal roles are callable capabilities inside deep work, not mandatory graph nodes.
 
-| Role | Preferred profile | Job | Fallback |
+| Role | Preferred profile | Use only when | Fallback |
 |---|---|---|---|
-| Planner | `research_planner` / GPT-5.6 Terra high | decomposition, evidence standard, gap analysis | `researcher` |
-| Scout | `research_scout` / GPT-5.6 Terra high | branch-specific discovery and evidence capture | `researcher` |
-| Synthesizer | `research_synthesizer` / GPT-5.6 Sol high | contradiction resolution and draft | root strongest model |
-| Verifier | `research_verifier` / GPT-5.6 Sol max | independent claim and citation audit | `reviewer` |
+| Planner | `research_planner` / GPT-5.6 Terra high | decomposition itself is unstable | root |
+| Scout | `research_scout` / GPT-5.6 Terra high | an independent branch benefits from parallel search | root or parallel tool calls |
+| Synthesizer | `research_synthesizer` / GPT-5.6 Sol high | conflicts or evidence volume exceed a clean root synthesis | root strongest model |
+| Verifier | `research_verifier` / GPT-5.6 Sol max | routing requires independent semantic verification | reviewer |
 
-Use model profiles as preferences, not as a reason to fail a run. If a named model is unavailable, choose the strongest available model suited to that role while preserving independent verification.
+Use zero internal agents in fast mode. In deep mode, use at most three scouts and at most one planner or synthesizer when its job cannot be performed cheaply in the root. Every internal agent remains leaf-only, read-only, and bounded to the supplied objective and sources.
 
-One narrow question should normally use one scout. Use two or three only when branches are genuinely independent and parallel work reduces elapsed time. Never create a scout per source.
+The verifier must not restart research. Give it the exact report, compact ledger, report SHA-256, escalation reasons, and material claims. On repair, reuse the same verifier for a delta check of the repair list.

@@ -1,7 +1,20 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "graph_id": "project-start",
-  "graph_version": "2.0.0",
+  "graph_version": "3.1.0",
+  "default_mode": "auto",
+  "limits": {
+    "max_node_retries": 1,
+    "max_verification_repairs": 1,
+    "bootstrap": {
+      "soft_time_minutes": 30,
+      "max_parallel_explorers": 2
+    },
+    "maintenance": {
+      "soft_time_minutes": 5,
+      "max_parallel_explorers": 2
+    }
+  },
   "capability_registry": {
     "skills": [
       "grilling",
@@ -19,153 +32,60 @@
     "default_backend": "native-codex",
     "optional_backends": ["sandcastle"]
   },
+  "optional_agents": ["explorer"],
+  "legacy_v2_bootstrap": {
+    "phases": ["discovery", "foundation", "planning", "tickets", "execution", "complete"],
+    "events": {
+      "foundation": [
+        "foundation-research",
+        "foundation-stack",
+        "foundation-codebase",
+        "foundation-quality",
+        "foundation-ready"
+      ],
+      "tickets": ["tickets-approved", "tickets-published"],
+      "completion": ["implementation-evidence", "user-acceptance"]
+    }
+  },
   "routes": {
     "bootstrap": {
-      "entry": "inspect",
+      "entry": "work",
       "terminal": "complete",
-      "phases": ["discovery", "foundation", "planning", "tickets", "execution", "complete"],
-      "events": {
-        "foundation": [
-          "foundation-research",
-          "foundation-stack",
-          "foundation-codebase",
-          "foundation-quality",
-          "foundation-ready"
-        ],
-        "tickets": ["tickets-approved", "tickets-published"],
-        "completion": ["implementation-evidence", "user-acceptance"]
-      },
       "nodes": {
-        "inspect": {
+        "work": {
           "role": "root",
-          "skills": [],
-          "on_success": "discovery"
+          "artifact": "project.json",
+          "on_success": "complete",
+          "on_verify": "verify",
+          "on_decision": "decision-required"
         },
-        "discovery": {
-          "role": "root",
-          "skills": ["grilling", "domain-modeling", "grill-with-docs", "wayfinder", "prototype"],
-          "human_gate": "business",
-          "on_success": "foundation-research"
+        "verify": {
+          "role": "project_docs_verifier",
+          "artifact": "verification.json",
+          "on_success": "complete",
+          "on_rejected": "work"
         },
-        "foundation-research": {
-          "role": "research",
-          "skills": ["research"],
-          "on_success": "foundation-stack"
-        },
-        "foundation-stack": {
-          "role": "root",
-          "skills": [],
-          "on_success": "foundation-codebase"
-        },
-        "foundation-codebase": {
-          "role": "root",
-          "skills": ["codebase-design"],
-          "on_success": "foundation-quality"
-        },
-        "foundation-quality": {
-          "role": "root",
-          "skills": [],
-          "on_success": "foundation-ready"
-        },
-        "foundation-ready": {
-          "role": "reviewer",
-          "skills": [],
-          "human_gate": "foundation",
-          "on_success": "planning"
-        },
-        "planning": {
-          "role": "root",
-          "skills": ["setup-matt-pocock-skills", "to-spec"],
-          "human_gate": "plan",
-          "on_success": "tickets"
-        },
-        "tickets": {
-          "role": "root",
-          "skills": ["to-tickets"],
-          "on_success": "execution"
-        },
-        "execution": {
-          "role": "task-delivery",
-          "skills": ["task-delivery"],
-          "on_success": "complete"
-        },
-        "complete": {
-          "role": "root",
-          "skills": [],
-          "on_maintenance": "maintenance-intake"
-        }
+        "complete": {"role": "root", "artifact": ".project-start/state.json"}
       }
     },
     "maintenance": {
-      "entry": "maintenance-intake",
-      "terminal": "maintenance-complete",
-      "limits": {
-        "max_update_repairs": 2,
-        "max_node_retries": 2
-      },
+      "entry": "work",
+      "terminal": "complete",
       "nodes": {
-        "maintenance-intake": {
+        "work": {
           "role": "root",
-          "skills": [],
-          "artifact": "intake.json",
-          "on_success": "capability-discovery"
+          "artifact": "project.json",
+          "on_success": "complete",
+          "on_verify": "verify",
+          "on_decision": "decision-required"
         },
-        "capability-discovery": {
-          "role": "root",
-          "skills": [
-            "grilling",
-            "domain-modeling",
-            "grill-with-docs",
-            "codebase-design",
-            "setup-matt-pocock-skills",
-            "to-spec",
-            "to-tickets",
-            "wayfinder",
-            "research",
-            "prototype",
-            "task-delivery"
-          ],
-          "artifact": "capabilities.json",
-          "on_success": "drift-audit"
-        },
-        "drift-audit": {
-          "role": "project_docs_auditor",
-          "skills": ["research"],
-          "artifact": "drift.json",
-          "on_success": "impact-classification"
-        },
-        "impact-classification": {
-          "role": "root",
-          "skills": ["domain-modeling", "codebase-design"],
-          "artifact": "classification.json",
-          "on_no_change": "documentation-verify",
-          "on_factual": "documentation-update",
-          "on_semantic": "reopen-required"
-        },
-        "documentation-update": {
-          "role": "project_docs_curator",
-          "skills": ["domain-modeling", "codebase-design", "research"],
-          "artifact": "update.json",
-          "on_success": "documentation-verify"
-        },
-        "documentation-verify": {
+        "verify": {
           "role": "project_docs_verifier",
-          "skills": [],
           "artifact": "verification.json",
-          "on_success": "maintenance-complete",
-          "on_rejected_factual": "documentation-update",
-          "on_rejected_no_change": "drift-audit"
+          "on_success": "complete",
+          "on_rejected": "work"
         },
-        "reopen-required": {
-          "role": "root",
-          "skills": ["grilling", "domain-modeling", "codebase-design", "to-spec", "to-tickets"],
-          "artifact": "classification.json"
-        },
-        "maintenance-complete": {
-          "role": "root",
-          "skills": [],
-          "artifact": "maintenance-report.json"
-        }
+        "complete": {"role": "root", "artifact": ".project-start/state.json"}
       }
     }
   }

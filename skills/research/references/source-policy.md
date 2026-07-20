@@ -1,60 +1,61 @@
-# Evidence and source policy
+# Minimal control receipt
 
-## Evidence ledger
+The model owns research reasoning. The runner records only enough information to resume, bound optional fan-out, and prove which report and sources completed.
 
-Store `evidence.json` as an object with an `items` array. Each item contains:
+## `research.json`
+
+Write this small artifact after the report is complete:
 
 ```json
 {
-  "claim_id": "C-001",
-  "claim": "Concise factual proposition",
-  "stance": "supports",
-  "source_url": "https://example.com/original",
-  "source_title": "Source title",
-  "publisher": "Publisher or author",
-  "published_at": "2026-01-10 or unknown",
-  "accessed_at": "2026-07-19",
-  "source_class": "primary",
-  "paraphrase": "What the source establishes",
+  "schema_version": 2,
+  "mode": "fast",
+  "reason": "default narrow research",
+  "capabilities": ["exa-search", "native-web"],
+  "agents": [],
+  "sources": [
+    "https://example.com/first-party-source"
+  ],
+  "verification": "self",
   "confidence": "high",
-  "branch": "market",
-  "notes": "Limits, contradiction, or inference boundary"
+  "gaps": []
 }
 ```
 
-Allowed `stance`: `supports`, `contradicts`, `context`. Allowed `source_class`: `primary`, `authoritative-secondary`, `secondary`, `community`. Allowed confidence: `high`, `medium`, `low`.
+Use only these required fields. Allowed modes are `fast` and `deep`; verification is `self` or `independent`; confidence is `high`, `medium`, or `low`.
 
-## Source ordering
+- `reason`: one short explanation for the chosen depth.
+- `capabilities`: installed skills, MCP/apps, native tools, or local-source paths materially used.
+- `agents`: optional internal role names; keep empty in fast mode.
+- `sources`: only sources actually cited in the report. Use HTTP(S) URLs or absolute readable local-file paths.
+- `gaps`: only decision-relevant unknowns, not generic caveats.
 
-1. Original specifications, official documentation, first-party data, laws, standards, filings, and original papers.
-2. Reputable analysis that links to primary evidence.
-3. Independent reporting for context and cross-checking.
-4. Community discussion only for discovery, operational experience, or explicitly attributed opinion.
+Do not create a separate plan, capability inventory, claim ledger, collection artifact, reconciliation artifact, or draft receipt.
 
-For version-sensitive claims, record the version or date. For current facts, verify live during the run. A search-result snippet is not evidence; open the source.
+## Source behavior
 
-## Contradictions
+- Prefer primary and authoritative sources.
+- Open web sources; snippets are discovery only.
+- Use one direct primary source for a narrow authoritative fact when another source adds no value.
+- Cross-check comparisons, contested facts, indirect evidence, and consequential recommendations.
+- Put citations next to material factual claims and distinguish fact, attribution, inference, contradiction, and unknowns in the report itself.
+- Stop after enough evidence exists for an honest answer.
 
-Do not collapse disagreements into a false average. Record both claims, compare authority, recency, directness, methodology, and independence, then state whether the conflict is resolved, provisionally resolved, or unresolved.
+## Report
 
-## Verification artifact
+Write the answer directly to the requested output. Give the direct conclusion first, cite material facts, and state confidence or gaps only when they matter. Do not force a long methodology section onto a simple question.
 
-Store `verification.json` as an object with:
+## `verification.json`
 
-- `verdict`: `pass` for an accepted report or `reject` for a report requiring repair;
-- `checked_claims`: either a positive integer count or a non-empty array of claim-level checks;
-- `residual_risks`: an array, empty only when no material risk remains;
-- `repair_list`: required as an array when the verdict is `reject`.
+When independent verification is required, write:
 
-Finish the file completely before recording the `verify` node. Do not edit a recorded verifier artifact; correct it while the node is still ready, or use the graph's bounded rejection branch.
+```json
+{
+  "verdict": "pass",
+  "report_sha256": "<sha256 of the exact report checked>",
+  "checked_claims": 3,
+  "residual_risks": []
+}
+```
 
-## Report contract
-
-The report must include:
-
-- direct answer or executive summary;
-- method and scope;
-- findings with claim-adjacent links;
-- contradictions and how they were handled;
-- implications or recommendation when requested;
-- assumptions, confidence, and residual gaps.
+Use verdict `reject` with a non-empty `repair_list` when repair is required. Verify only material claims and the stated depth reason. Do not broaden the research.

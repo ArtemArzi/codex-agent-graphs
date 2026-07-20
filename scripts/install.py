@@ -86,13 +86,13 @@ def file_status(source: Path, target: Path) -> str:
 def managed_block() -> str:
     lines = [BLOCK_START]
     descriptions = {
-        "project_docs_auditor": "Read-only Project Start documentation drift auditor.",
-        "project_docs_curator": "Bounded factual documentation updater for Project Start.",
-        "project_docs_verifier": "Independent Project Start documentation verifier.",
-        "research_planner": "Research graph planner and gap analyst.",
-        "research_scout": "Read-only branch-specific research scout.",
-        "research_synthesizer": "Research evidence reconciler and synthesizer.",
-        "research_verifier": "Independent research claim and citation verifier.",
+        "project_docs_auditor": "Legacy v2 Project Start drift auditor.",
+        "project_docs_curator": "Legacy v2 Project Start factual updater.",
+        "project_docs_verifier": "Conditional Project Start v3 documentation verifier.",
+        "research_planner": "Optional deep-research decomposition helper.",
+        "research_scout": "Optional read-only deep-research branch scout.",
+        "research_synthesizer": "Optional deep-research evidence synthesizer.",
+        "research_verifier": "Conditional bounded research claim verifier.",
     }
     for role in AGENT_ROLES:
         lines.extend(
@@ -122,6 +122,8 @@ def config_with_block(original: str) -> str:
 
 def config_status(codex_home: Path) -> str:
     config = codex_home / "config.toml"
+    if config.is_symlink():
+        raise InstallError(f"Symlinked config.toml is not managed automatically: {config}")
     original = config.read_text(encoding="utf-8") if config.exists() else ""
     return "in-sync" if original == config_with_block(original) else ("missing" if not config.exists() else "drift")
 
@@ -206,6 +208,8 @@ def preflight_environment(codex_home: Path) -> tuple[str, str]:
         except tomllib.TOMLDecodeError as exc:
             raise InstallError(f"Invalid agent TOML {source}: {exc}") from exc
     config = codex_home / "config.toml"
+    if config.is_symlink():
+        raise InstallError(f"Symlinked config.toml is not managed automatically: {config}")
     original = config.read_text(encoding="utf-8") if config.exists() else ""
     candidate = config_with_block(original)
     return original, candidate

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic state and integrity layer for the Research agent graph."""
+"""Deterministic control, budget, and integrity layer for native Research work."""
 
 from __future__ import annotations
 
@@ -23,6 +23,8 @@ SKILL_DIR = Path(__file__).resolve().parent.parent
 GRAPH_PATH = SKILL_DIR / "graph.json"
 STATE_NAME = "state.json"
 LOCK_NAME = ".state.lock"
+WORK_ARTIFACT = "research.json"
+VERIFICATION_ARTIFACT = "verification.json"
 
 
 class GraphError(RuntimeError):
@@ -86,13 +88,32 @@ def ensure_within(path: Path, root: Path, label: str) -> Path:
 
 def graph_contract() -> dict[str, Any]:
     graph = load_json(GRAPH_PATH)
-    required = {"graph_id", "graph_version", "entry", "terminal", "limits", "nodes"}
+    required = {
+        "schema_version",
+        "graph_id",
+        "graph_version",
+        "entry",
+        "terminal",
+        "default_depth",
+        "limits",
+        "optional_agents",
+        "nodes",
+    }
     missing = required.difference(graph)
     if missing:
         raise GraphError(f"Graph contract is missing keys: {sorted(missing)}")
+    if graph["schema_version"] != 2:
+        raise GraphError("Research graph contract must use schema version 2")
+    if graph["default_depth"] != "auto":
+        raise GraphError("Research graph must default to auto depth")
     nodes = graph["nodes"]
-    if not isinstance(nodes, dict) or graph["entry"] not in nodes or graph["terminal"] not in nodes:
-        raise GraphError("Graph entry or terminal node is invalid")
+    if set(nodes) != {"work", "verify", "complete"}:
+        raise GraphError("Research graph must expose only work, verify, and complete")
+    if graph["entry"] != "work" or graph["terminal"] != "complete":
+        raise GraphError("Research graph entry or terminal node is invalid")
+    for profile in ("fast", "deep"):
+        if profile not in graph["limits"]:
+            raise GraphError(f"Research graph is missing {profile} limits")
     return graph
 
 
@@ -113,9 +134,21 @@ def result(
     }
 
 
-def fingerprint(question: str, workspace: Path, output: Path) -> str:
+def fingerprint(
+    question: str,
+    workspace: Path,
+    output: Path,
+    graph_version: str,
+    requested_depth: str,
+) -> str:
     canonical = json.dumps(
-        {"question": question.strip(), "workspace": str(workspace), "output": str(output)},
+        {
+            "question": question.strip(),
+            "workspace": str(workspace),
+            "output": str(output),
+            "graph_version": graph_version,
+            "requested_depth": requested_depth,
+        },
         ensure_ascii=False,
         sort_keys=True,
     )
@@ -124,8 +157,7 @@ def fingerprint(question: str, workspace: Path, output: Path) -> str:
 
 def run_path(value: str | Path) -> Path:
     path = Path(value).expanduser().resolve()
-    state_path = path / STATE_NAME
-    if not path.is_dir() or not state_path.is_file():
+    if not path.is_dir() or not (path / STATE_NAME).is_file():
         raise GraphError(f"Not a research run directory: {path}")
     return path
 
@@ -160,7 +192,12 @@ def state_lock(
 
 
 def initial_state(
-    graph: dict[str, Any], question: str, workspace: Path, output: Path, run_id: str
+    graph: dict[str, Any],
+    question: str,
+    workspace: Path,
+    output: Path,
+    run_id: str,
+    requested_depth: str,
 ) -> dict[str, Any]:
     nodes = {
         name: {"status": "pending", "attempts": 0, "receipts": []}
@@ -169,7 +206,7 @@ def initial_state(
     nodes[graph["entry"]]["status"] = "ready"
     now = utc_now()
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "graph_id": graph["graph_id"],
         "graph_version": graph["graph_version"],
         "graph_sha256": sha256_file(GRAPH_PATH),
@@ -177,10 +214,14 @@ def initial_state(
         "question": question.strip(),
         "workspace": str(workspace),
         "output": str(output),
+        "requested_depth": requested_depth,
+        "mode": "deep" if requested_depth == "deep" else "fast",
         "status": "running",
         "current": graph["entry"],
-        "collection_retries": 0,
-        "synthesis_repairs": 0,
+        "verification_required": False,
+        "verification_repairs": 0,
+        "capabilities_used": [],
+        "agents_used": [],
         "node_retries": {name: 0 for name in graph["nodes"]},
         "created_at": now,
         "updated_at": now,
@@ -189,9 +230,16 @@ def initial_state(
     }
 
 
-def initialize(question: str, workspace_value: str, output_value: str) -> dict[str, Any]:
+def initialize(
+    question: str,
+    workspace_value: str,
+    output_value: str,
+    requested_depth: str = "auto",
+) -> dict[str, Any]:
     if not question.strip():
         raise GraphError("Question must not be empty")
+    if requested_depth not in {"auto", "deep"}:
+        raise GraphError("Depth must be auto or deep")
     workspace = Path(workspace_value).expanduser().resolve()
     if not workspace.is_dir():
         raise GraphError(f"Workspace does not exist: {workspace}")
@@ -199,7 +247,7 @@ def initialize(question: str, workspace_value: str, output_value: str) -> dict[s
     output = raw_output.resolve() if raw_output.is_absolute() else (workspace / raw_output).resolve()
     ensure_within(output, workspace, "Output")
     graph = graph_contract()
-    run_id = fingerprint(question, workspace, output)
+    run_id = fingerprint(question, workspace, output, graph["graph_version"], requested_depth)
     runtime_root = ensure_within(workspace / ".agent-graphs", workspace, "Runtime root")
     runtime_root.mkdir(parents=True, exist_ok=True)
     runtime_ignore = ensure_within(runtime_root / ".gitignore", runtime_root, "Runtime ignore file")
@@ -215,32 +263,41 @@ def initialize(question: str, workspace_value: str, output_value: str) -> dict[s
     state_path = run_dir / STATE_NAME
     with state_lock(run_dir):
         if state_path.exists():
-            state = load_json(state_path)
-            expected = (question.strip(), str(workspace), str(output))
-            actual = (state.get("question"), state.get("workspace"), state.get("output"))
+            state = load_state(run_dir)
+            expected = (question.strip(), str(workspace), str(output), requested_depth)
+            actual = (
+                state.get("question"),
+                state.get("workspace"),
+                state.get("output"),
+                state.get("requested_depth"),
+            )
             if actual != expected:
                 raise GraphError(f"Run fingerprint collision at {run_dir}")
             return result(
                 "ok",
                 "Existing research run resumed",
-                next_actions=[f"Inspect ready node with: ready --run {run_dir}"],
+                next_actions=[f"Inspect control state with: ready --run {run_dir}"],
                 artifacts=[str(state_path)],
                 data={"run_dir": str(run_dir), "current": state["current"]},
             )
-        state = initial_state(graph, question, workspace, output, run_id)
+        state = initial_state(graph, question, workspace, output, run_id, requested_depth)
         write_json_atomic(state_path, state)
     return result(
         "ok",
-        "Research run initialized",
-        next_actions=[f"Execute node: {graph['entry']}"],
+        "Native research run initialized",
+        next_actions=["Execute one native work loop"],
         artifacts=[str(state_path)],
-        data={"run_dir": str(run_dir), "current": graph["entry"]},
+        data={"run_dir": str(run_dir), "current": graph["entry"], "mode": state["mode"]},
     )
 
 
 def load_state(run_dir: Path) -> dict[str, Any]:
     state = load_json(run_dir / STATE_NAME)
     graph = graph_contract()
+    if state.get("schema_version") != 2:
+        raise GraphError(
+            "This run uses the retired Research v1 state. Keep its artifacts as evidence and start a new v2 run."
+        )
     if state.get("graph_id") != graph["graph_id"]:
         raise GraphError("Run belongs to another graph")
     if state.get("graph_version") != graph["graph_version"]:
@@ -263,8 +320,12 @@ def state_summary(run_dir: Path) -> dict[str, Any]:
             "run_id": state["run_id"],
             "status": state["status"],
             "current": state["current"],
-            "collection_retries": state["collection_retries"],
-            "synthesis_repairs": state["synthesis_repairs"],
+            "requested_depth": state["requested_depth"],
+            "mode": state["mode"],
+            "verification_required": state["verification_required"],
+            "verification_repairs": state["verification_repairs"],
+            "capabilities_used": state["capabilities_used"],
+            "agents_used": state["agents_used"],
             "output": state["output"],
         },
     )
@@ -281,17 +342,36 @@ def ready_node(run_dir: Path) -> dict[str, Any]:
         raise GraphError(f"Current node {node_name} is not ready")
     node = graph["nodes"][node_name]
     artifact = Path(state["output"]) if node_name == graph["terminal"] else run_dir / node["artifact"]
+    data: dict[str, Any] = {
+        "node": node_name,
+        "role": node["role"],
+        "expected_artifact": str(artifact),
+        "attempt": node_state["attempts"] + 1,
+    }
+    if node_name == "work":
+        default_mode = "deep" if state["requested_depth"] == "deep" else "fast"
+        data.update(
+            {
+                "execution": "one native root-agent loop",
+                "default_mode": default_mode,
+                "budgets": graph["limits"][default_mode],
+                "allowed_outcomes": ["succeeded", "verify", "failed"],
+            }
+        )
+        next_actions = [
+            "Use relevant skills/tools natively, write the report and research.json, then record work once"
+        ]
+    elif node_name == "verify":
+        data["allowed_outcomes"] = ["succeeded", "rejected", "failed"]
+        next_actions = ["Run one bounded independent claim check; do not expand research"]
+    else:
+        next_actions = [f"Run check-report, then complete the run for {artifact}"]
     return result(
         "ok",
         f"Node {node_name} is ready",
-        next_actions=[f"Run role {node['role']} and create {artifact}"],
+        next_actions=next_actions,
         artifacts=[str(artifact)],
-        data={
-            "node": node_name,
-            "role": node["role"],
-            "expected_artifact": str(artifact),
-            "attempt": node_state["attempts"] + 1,
-        },
+        data=data,
     )
 
 
@@ -312,14 +392,144 @@ def resolve_artifact(run_dir: Path, workspace: Path, value: str, expected_name: 
 
 
 def allowed_outcomes(node_name: str) -> set[str]:
-    if node_name == "gap_check":
-        return {"succeeded", "needs-more", "failed"}
+    if node_name == "work":
+        return {"succeeded", "verify", "failed"}
     if node_name == "verify":
         return {"succeeded", "rejected", "failed"}
-    return {"succeeded", "failed"}
+    return {"failed"}
 
 
-def validate_verification(path: Path, outcome: str) -> list[str]:
+def validate_string_list(value: Any, label: str) -> list[str]:
+    if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
+        return [f"{label} must be an array of non-empty strings"]
+    return []
+
+
+def normalize_url(value: str) -> str:
+    return urldefrag(value.strip())[0].rstrip("/")
+
+
+def validate_sources(value: Any) -> tuple[list[str], dict[str, Any]]:
+    errors = validate_string_list(value, "sources")
+    if errors:
+        return errors, {"source_count": 0, "web_sources": set(), "local_sources": set()}
+    if not value:
+        return ["sources must contain at least one cited source"], {
+            "source_count": 0,
+            "web_sources": set(),
+            "local_sources": set(),
+        }
+    web_sources: set[str] = set()
+    local_sources: set[str] = set()
+    for index, source_value in enumerate(value):
+        source = source_value.strip()
+        if re.fullmatch(r"https?://\S+", source):
+            web_sources.add(normalize_url(source))
+            continue
+        path = Path(source).expanduser()
+        if not path.is_absolute() or path.is_symlink() or not path.is_file():
+            errors.append(f"Source {index} is neither an HTTP(S) URL nor a readable absolute file")
+        else:
+            local_sources.add(str(path.resolve()))
+    if len(web_sources) + len(local_sources) != len(value):
+        errors.append("sources must not contain duplicates")
+    return errors, {
+        "source_count": len(value),
+        "web_sources": web_sources,
+        "local_sources": local_sources,
+    }
+
+
+def validate_report_file(state: dict[str, Any]) -> tuple[list[str], str, str]:
+    output = Path(state["output"])
+    errors: list[str] = []
+    try:
+        ensure_within(output, Path(state["workspace"]), "Output")
+    except GraphError as exc:
+        errors.append(str(exc))
+    if output.is_symlink() or not output.is_file():
+        errors.append(f"Report is missing or not a regular file: {output}")
+        return errors, "", ""
+    text = output.read_text(encoding="utf-8")
+    if len(text.strip()) < 120:
+        errors.append("Report is too short to satisfy the research contract")
+    return errors, text, sha256_file(output)
+
+
+def validate_work(path: Path, state: dict[str, Any], outcome: str) -> tuple[list[str], dict[str, Any]]:
+    work = load_json(path)
+    errors: list[str] = []
+    required = {
+        "schema_version",
+        "mode",
+        "reason",
+        "capabilities",
+        "agents",
+        "sources",
+        "verification",
+        "confidence",
+        "gaps",
+    }
+    missing = required.difference(work)
+    if missing:
+        errors.append(f"research.json missing {sorted(missing)}")
+    if work.get("schema_version") != 2:
+        errors.append("research.json must use schema_version 2")
+    for label in ("capabilities", "agents", "gaps"):
+        errors.extend(validate_string_list(work.get(label), label))
+    if not isinstance(work.get("reason"), str) or not work["reason"].strip():
+        errors.append("reason must be a non-empty string")
+    mode = work.get("mode")
+    if mode not in {"fast", "deep"}:
+        errors.append("mode must be fast or deep")
+        mode = "fast"
+    if state["requested_depth"] == "deep" and mode != "deep":
+        errors.append("An explicitly deep run cannot record fast work")
+    if work.get("confidence") not in {"high", "medium", "low"}:
+        errors.append("confidence must be high, medium, or low")
+    verification = work.get("verification")
+    if verification not in {"self", "independent"}:
+        errors.append("verification must be self or independent")
+    source_errors, source_metrics = validate_sources(work.get("sources"))
+    errors.extend(source_errors)
+    graph = graph_contract()
+    limits = graph["limits"][mode]
+    source_count = int(source_metrics["source_count"])
+    if source_count > int(limits["max_sources"]):
+        errors.append(f"{mode} source limit exceeded; use deep mode instead of overworking the fast path")
+    agents = work.get("agents") if isinstance(work.get("agents"), list) else []
+    unknown_agents = sorted(set(agents).difference(graph["optional_agents"]))
+    if unknown_agents:
+        errors.append(f"Unknown optional research agents: {unknown_agents}")
+    scout_count = agents.count("research_scout")
+    if scout_count > int(limits["max_parallel_scouts"]):
+        errors.append(f"{mode} scout limit exceeded")
+    for single_role in ("research_planner", "research_synthesizer"):
+        if agents.count(single_role) > 1:
+            errors.append(f"Use at most one {single_role}")
+    if mode == "fast" and agents:
+        errors.append("Fast mode must remain native and use no internal agents")
+    if outcome == "verify":
+        if mode != "deep":
+            errors.append("Independent verification requires deep mode")
+        if verification != "independent":
+            errors.append("verify outcome requires verification independent")
+    elif outcome == "succeeded" and verification == "independent":
+        errors.append("Record outcome verify when verification is independent")
+    report_errors, report_text, report_hash = validate_report_file(state)
+    errors.extend(report_errors)
+    return errors, {
+        "work": work,
+        "mode": mode,
+        "source_count": source_count,
+        "web_sources": source_metrics["web_sources"],
+        "local_sources": source_metrics["local_sources"],
+        "report_text": report_text,
+        "report_sha256": report_hash,
+    }
+
+
+def validate_verification(path: Path, outcome: str, report_hash: str) -> list[str]:
     verification = load_json(path)
     errors: list[str] = []
     verdict = str(verification.get("verdict", "")).lower()
@@ -327,6 +537,8 @@ def validate_verification(path: Path, outcome: str) -> list[str]:
         errors.append("Successful verification artifact must contain verdict pass")
     if outcome == "rejected" and verdict != "reject":
         errors.append("Rejected verification artifact must contain verdict reject")
+    if verification.get("report_sha256") != report_hash:
+        errors.append("Verification report_sha256 does not match the current report")
     checked_claims = verification.get("checked_claims")
     if type(checked_claims) is int:
         has_checked_claims = checked_claims >= 1
@@ -336,14 +548,52 @@ def validate_verification(path: Path, outcome: str) -> list[str]:
         errors.append("Verification artifact must record checked_claims as a positive count or non-empty array")
     if not isinstance(verification.get("residual_risks"), list):
         errors.append("Verification artifact must contain residual_risks array")
-    if outcome == "rejected" and not isinstance(verification.get("repair_list"), list):
-        errors.append("Rejected verification artifact must contain repair_list array")
+    repairs = verification.get("repair_list")
+    if outcome == "rejected" and (not isinstance(repairs, list) or not repairs):
+        errors.append("Rejected verification artifact must contain a non-empty repair_list")
     return errors
+
+
+def validate_failure(path: Path) -> list[str]:
+    artifact = load_json(path)
+    if not isinstance(artifact.get("error"), str) or not artifact["error"].strip():
+        return ["Failed node artifact must contain a non-empty error string"]
+    return []
 
 
 def reset_nodes(state: dict[str, Any], names: list[str]) -> None:
     for name in names:
         state["nodes"][name]["status"] = "pending"
+
+
+def snapshot_artifact(
+    run_dir: Path, node_name: str, node_state: dict[str, Any], artifact: Path, outcome: str
+) -> dict[str, Any]:
+    node_state["attempts"] += 1
+    artifact_hash = sha256_file(artifact)
+    receipt_dir = ensure_within(run_dir / "receipts", run_dir, "Receipt directory")
+    if receipt_dir.exists() and (receipt_dir.is_symlink() or not receipt_dir.is_dir()):
+        raise GraphError(f"Receipt path is not a regular directory: {receipt_dir}")
+    receipt_dir.mkdir(exist_ok=True)
+    snapshot = receipt_dir / (
+        f"{node_name}-{node_state['attempts']:02d}-{artifact_hash[:12]}{artifact.suffix}"
+    )
+    if snapshot.exists():
+        if sha256_file(snapshot) != artifact_hash:
+            raise GraphError(f"Receipt snapshot collision: {snapshot}")
+    else:
+        shutil.copy2(artifact, snapshot)
+    if sha256_file(snapshot) != artifact_hash:
+        snapshot.unlink(missing_ok=True)
+        raise GraphError(f"Receipt snapshot failed verification: {snapshot}")
+    return {
+        "attempt": node_state["attempts"],
+        "artifact": str(snapshot),
+        "source_artifact": str(artifact),
+        "artifact_sha256": artifact_hash,
+        "outcome": outcome,
+        "recorded_at": utc_now(),
+    }
 
 
 def record_node(run_dir: Path, node_name: str, artifact_value: str, outcome: str) -> dict[str, Any]:
@@ -360,41 +610,31 @@ def record_node(run_dir: Path, node_name: str, artifact_value: str, outcome: str
             raise GraphError(f"Outcome {outcome} is not allowed for {node_name}")
         expected_name = graph["nodes"][node_name]["artifact"]
         artifact = resolve_artifact(run_dir, Path(state["workspace"]), artifact_value, expected_name)
-        if artifact.suffix == ".json":
-            load_json(artifact)
-        if node_name == "verify" and outcome in {"succeeded", "rejected"}:
-            verification_errors = validate_verification(artifact, outcome)
-            if verification_errors:
-                raise GraphError("; ".join(verification_errors))
+        details: dict[str, Any] = {}
+        if outcome == "failed":
+            errors = validate_failure(artifact)
+        elif node_name == "work":
+            errors, details = validate_work(artifact, state, outcome)
+        else:
+            report_errors, _report_text, report_hash = validate_report_file(state)
+            errors = report_errors + validate_verification(artifact, outcome, report_hash)
+            details["report_sha256"] = report_hash
+        if errors:
+            raise GraphError("; ".join(errors))
+
         now = utc_now()
         node_state = state["nodes"][node_name]
-        node_state["attempts"] += 1
-        artifact_hash = sha256_file(artifact)
-        receipt_dir = ensure_within(run_dir / "receipts", run_dir, "Receipt directory")
-        if receipt_dir.exists() and (receipt_dir.is_symlink() or not receipt_dir.is_dir()):
-            raise GraphError(f"Receipt path is not a regular directory: {receipt_dir}")
-        receipt_dir.mkdir(exist_ok=True)
-        snapshot = receipt_dir / (
-            f"{node_name}-{node_state['attempts']:02d}-{artifact_hash[:12]}{artifact.suffix}"
-        )
-        if snapshot.exists():
-            if sha256_file(snapshot) != artifact_hash:
-                raise GraphError(f"Receipt snapshot collision: {snapshot}")
-        else:
-            shutil.copy2(artifact, snapshot)
-        if sha256_file(snapshot) != artifact_hash:
-            snapshot.unlink(missing_ok=True)
-            raise GraphError(f"Receipt snapshot failed verification: {snapshot}")
-        receipt = {
-            "attempt": node_state["attempts"],
-            "artifact": str(snapshot),
-            "source_artifact": str(artifact),
-            "artifact_sha256": artifact_hash,
-            "outcome": outcome,
-            "recorded_at": now,
-        }
+        receipt = snapshot_artifact(run_dir, node_name, node_state, artifact, outcome)
+        receipt["recorded_at"] = now
+        if node_name == "work" and outcome != "failed":
+            receipt["report_sha256"] = details["report_sha256"]
+            receipt["mode"] = details["mode"]
+        elif node_name == "verify" and outcome != "failed":
+            receipt["report_sha256"] = details["report_sha256"]
         node_state["receipts"].append(receipt)
-        state["events"].append({"at": now, "event": "node_recorded", "node": node_name, "outcome": outcome})
+        state["events"].append(
+            {"at": now, "event": "node_recorded", "node": node_name, "outcome": outcome}
+        )
 
         if outcome == "failed":
             node_state["status"] = "failed"
@@ -403,33 +643,44 @@ def record_node(run_dir: Path, node_name: str, artifact_value: str, outcome: str
             write_json_atomic(run_dir / STATE_NAME, state)
             return result(
                 "blocked",
-                f"Node {node_name} failed; run stopped without bypassing the gate",
+                f"Node {node_name} failed; run stopped without bypassing the control gate",
                 artifacts=[str(artifact), str(run_dir / STATE_NAME)],
                 data={"run_dir": str(run_dir), "node": node_name},
             )
 
         node_state["status"] = "succeeded" if outcome == "succeeded" else outcome
         node = graph["nodes"][node_name]
-        if node_name == "gap_check" and outcome == "needs-more":
-            max_retries = int(graph["limits"]["max_collection_cycles"]) - 1
-            if state["collection_retries"] < max_retries:
-                state["collection_retries"] += 1
-                reset_nodes(state, ["collect", "evidence", "reconcile", "gap_check"])
-                next_node = node["on_needs_more"]
+        if node_name == "work":
+            work = details["work"]
+            state["mode"] = details["mode"]
+            state["capabilities_used"] = work["capabilities"]
+            state["agents_used"] = work["agents"]
+            if outcome == "verify":
+                state["verification_required"] = True
+                next_node = node["on_verify"]
                 state["events"].append(
-                    {"at": now, "event": "collection_retry", "retry": state["collection_retries"]}
+                    {
+                        "at": now,
+                        "event": "verification_requested",
+                        "reason": work["reason"],
+                    }
                 )
             else:
+                state["verification_required"] = False
                 next_node = node["on_success"]
-                state["events"].append({"at": now, "event": "collection_bound_reached"})
-        elif node_name == "verify" and outcome == "rejected":
-            max_repairs = int(graph["limits"]["max_synthesis_repairs"])
-            if state["synthesis_repairs"] < max_repairs:
-                state["synthesis_repairs"] += 1
-                reset_nodes(state, ["synthesize", "verify"])
+        elif outcome == "rejected":
+            max_repairs = int(graph["limits"]["max_verification_repairs"])
+            if state["verification_repairs"] < max_repairs:
+                state["verification_repairs"] += 1
+                reset_nodes(state, ["work", "verify"])
                 next_node = node["on_rejected"]
+                state["mode"] = "deep"
                 state["events"].append(
-                    {"at": now, "event": "synthesis_repair", "repair": state["synthesis_repairs"]}
+                    {
+                        "at": now,
+                        "event": "verification_repair",
+                        "repair": state["verification_repairs"],
+                    }
                 )
             else:
                 state["status"] = "blocked"
@@ -438,7 +689,7 @@ def record_node(run_dir: Path, node_name: str, artifact_value: str, outcome: str
                 write_json_atomic(run_dir / STATE_NAME, state)
                 return result(
                     "blocked",
-                    "Verifier still rejects the report after the bounded repair attempts",
+                    "Verifier still rejects the material claims after one bounded delta repair",
                     artifacts=[str(artifact), str(run_dir / STATE_NAME)],
                     data={"run_dir": str(run_dir), "node": node_name},
                 )
@@ -455,7 +706,7 @@ def record_node(run_dir: Path, node_name: str, artifact_value: str, outcome: str
             f"Recorded {node_name}; {next_node} is ready",
             next_actions=[f"Execute node: {next_node}"],
             artifacts=[str(artifact), str(run_dir / STATE_NAME)],
-            data={"run_dir": str(run_dir), "current": next_node},
+            data={"run_dir": str(run_dir), "current": next_node, "mode": state["mode"]},
         )
 
 
@@ -520,10 +771,6 @@ def validate_receipt_hashes(state: dict[str, Any]) -> list[str]:
     return errors
 
 
-def normalize_url(value: str) -> str:
-    return urldefrag(value.strip())[0].rstrip("/")
-
-
 def markdown_http_urls(text: str) -> set[str]:
     """Extract CommonMark-style HTTP destinations, including balanced parentheses."""
     urls: set[str] = set()
@@ -559,57 +806,9 @@ def markdown_http_urls(text: str) -> set[str]:
     return urls
 
 
-def validate_evidence(path: Path) -> tuple[list[str], int, set[str]]:
-    errors: list[str] = []
-    evidence = load_json(path)
-    items = evidence.get("items")
-    if not isinstance(items, list) or not items:
-        return ["Evidence ledger must contain a non-empty items array"], 0, set()
-    required = {
-        "claim_id",
-        "claim",
-        "stance",
-        "source_url",
-        "source_title",
-        "publisher",
-        "published_at",
-        "accessed_at",
-        "source_class",
-        "paraphrase",
-        "confidence",
-        "branch",
-        "notes",
-    }
-    claim_ids: set[str] = set()
-    urls: set[str] = set()
-    allowed_stances = {"supports", "contradicts", "context"}
-    allowed_source_classes = {"primary", "authoritative-secondary", "secondary", "community"}
-    allowed_confidence = {"high", "medium", "low"}
-    for index, item in enumerate(items):
-        if not isinstance(item, dict):
-            errors.append(f"Evidence item {index} is not an object")
-            continue
-        missing = required.difference(item)
-        if missing:
-            errors.append(f"Evidence item {index} missing {sorted(missing)}")
-        claim_id = str(item.get("claim_id", ""))
-        if not claim_id.strip() or not str(item.get("claim", "")).strip():
-            errors.append(f"Evidence item {index} has an empty claim_id or claim")
-        if claim_id in claim_ids:
-            errors.append(f"Duplicate claim_id: {claim_id}")
-        claim_ids.add(claim_id)
-        url = str(item.get("source_url", ""))
-        if not re.fullmatch(r"https?://\S+", url):
-            errors.append(f"Evidence item {index} has invalid source_url")
-        else:
-            urls.add(normalize_url(url))
-        if item.get("stance") not in allowed_stances:
-            errors.append(f"Evidence item {index} has invalid stance")
-        if item.get("source_class") not in allowed_source_classes:
-            errors.append(f"Evidence item {index} has invalid source_class")
-        if item.get("confidence") not in allowed_confidence:
-            errors.append(f"Evidence item {index} has invalid confidence")
-    return errors, len(items), urls
+def latest_receipt(state: dict[str, Any], node_name: str) -> dict[str, Any] | None:
+    receipts = state["nodes"][node_name]["receipts"]
+    return receipts[-1] if receipts else None
 
 
 def report_checks(run_dir: Path) -> tuple[list[str], dict[str, Any]]:
@@ -617,49 +816,62 @@ def report_checks(run_dir: Path) -> tuple[list[str], dict[str, Any]]:
     errors = validate_receipt_hashes(state)
     if state["current"] != "complete" or state["status"] not in {"running", "completed"}:
         errors.append("Run has not reached the complete gate")
+    report_errors, report_text, report_hash = validate_report_file(state)
+    errors.extend(report_errors)
 
-    output = Path(state["output"])
-    workspace = Path(state["workspace"])
-    try:
-        ensure_within(output, workspace, "Output")
-    except GraphError as exc:
-        errors.append(str(exc))
-    if output.is_symlink() or not output.is_file():
-        errors.append(f"Report is missing or not a regular file: {output}")
-        report_text = ""
+    work_receipt = latest_receipt(state, "work")
+    work_metrics = {
+        "mode": state["mode"],
+        "source_count": 0,
+        "web_sources": set(),
+        "local_sources": set(),
+    }
+    if work_receipt is None:
+        errors.append("Run has no durable work receipt")
     else:
-        report_text = output.read_text(encoding="utf-8")
-        if len(report_text.strip()) < 200:
-            errors.append("Report is too short to satisfy the research contract")
+        work_path = run_dir / WORK_ARTIFACT
+        try:
+            work_errors, work_metrics = validate_work(work_path, state, work_receipt["outcome"])
+            errors.extend(work_errors)
+        except GraphError as exc:
+            errors.append(str(exc))
+        if work_receipt.get("report_sha256") != report_hash:
+            errors.append("Current report differs from the report recorded by work")
 
-    evidence_path = run_dir / "evidence.json"
-    try:
-        evidence_errors, evidence_items, evidence_urls = validate_evidence(evidence_path)
-        errors.extend(evidence_errors)
-    except GraphError as exc:
-        errors.append(str(exc))
-        evidence_items, evidence_urls = 0, set()
-
-    verification_path = run_dir / "verification.json"
-    try:
-        errors.extend(validate_verification(verification_path, "succeeded"))
-    except GraphError as exc:
-        errors.append(str(exc))
-
+    web_sources = work_metrics.get("web_sources", set())
+    local_sources = work_metrics.get("local_sources", set())
     markdown_urls = markdown_http_urls(report_text)
-    markdown_links = len(markdown_urls)
-    if markdown_links < 1:
-        errors.append("Report has no claim-adjacent Markdown citations")
-    ledger_citations = markdown_urls.intersection(evidence_urls)
-    required_ledger_citations = min(len(evidence_urls), 2)
-    if evidence_items and len(ledger_citations) < required_ledger_citations:
-        errors.append("Report citations do not match enough sources in the evidence ledger")
+    declared_citations = markdown_urls.intersection(web_sources)
+    if declared_citations != web_sources:
+        errors.append("Every declared web source must appear as a report citation")
+    local_citations = {source for source in local_sources if source in report_text}
+    if local_citations != local_sources:
+        errors.append("Every declared local source must be referenced in the report")
+
+    if state["verification_required"]:
+        verification_receipt = latest_receipt(state, "verify")
+        if verification_receipt is None or verification_receipt["outcome"] != "succeeded":
+            errors.append("Independent verification was requested but did not pass")
+        else:
+            try:
+                errors.extend(
+                    validate_verification(run_dir / VERIFICATION_ARTIFACT, "succeeded", report_hash)
+                )
+            except GraphError as exc:
+                errors.append(str(exc))
+            if verification_receipt.get("report_sha256") != report_hash:
+                errors.append("Verifier checked a different report hash")
+
     return errors, {
-        "report": str(output),
-        "evidence_items": evidence_items,
-        "unique_sources": len(evidence_urls),
-        "markdown_links": markdown_links,
-        "ledger_citations": len(ledger_citations),
+        "report": state["output"],
+        "mode": work_metrics.get("mode", state["mode"]),
+        "sources": work_metrics.get("source_count", 0),
+        "unique_web_sources": len(web_sources),
+        "unique_local_sources": len(local_sources),
+        "markdown_links": len(markdown_urls),
+        "declared_citations": len(declared_citations),
+        "verification_required": state["verification_required"],
+        "verification_repairs": state["verification_repairs"],
     }
 
 
@@ -673,9 +885,17 @@ def check_report(run_dir: Path) -> dict[str, Any]:
             artifacts=[metrics["report"], str(run_dir / STATE_NAME)],
             data=metrics,
         )
+    state = load_state(run_dir)
+    if state["status"] == "completed":
+        return result(
+            "ok",
+            "Completed research report passed the lightweight integrity gate",
+            artifacts=[metrics["report"], str(run_dir / STATE_NAME)],
+            data=metrics,
+        )
     return result(
         "ok",
-        "Report passed the mechanical completion gate",
+        "Report passed the lightweight deterministic completion gate",
         next_actions=[f"Finalize with: complete --run {run_dir}"],
         artifacts=[metrics["report"], str(run_dir / STATE_NAME)],
         data=metrics,
@@ -689,12 +909,11 @@ def complete_run(run_dir: Path) -> dict[str, Any]:
             integrity_errors = validate_receipt_hashes(existing)
             if integrity_errors:
                 raise GraphError("Completed run failed integrity check: " + "; ".join(integrity_errors))
-            report = Path(existing["output"])
             return result(
                 "ok",
                 "Research graph was already completed",
-                artifacts=[str(report), str(run_dir / STATE_NAME)],
-                data={"run_id": existing["run_id"]},
+                artifacts=[existing["output"], str(run_dir / STATE_NAME)],
+                data={"run_id": existing["run_id"], "mode": existing["mode"]},
             )
         errors, metrics = report_checks(run_dir)
         if errors:
@@ -704,12 +923,14 @@ def complete_run(run_dir: Path) -> dict[str, Any]:
         now = utc_now()
         report = Path(state["output"])
         terminal = graph["terminal"]
-        state["nodes"][terminal]["status"] = "succeeded"
-        state["nodes"][terminal]["attempts"] += 1
-        state["nodes"][terminal]["receipts"].append(
+        terminal_state = state["nodes"][terminal]
+        terminal_state["status"] = "succeeded"
+        terminal_state["attempts"] += 1
+        terminal_state["receipts"].append(
             {
-                "attempt": state["nodes"][terminal]["attempts"],
+                "attempt": terminal_state["attempts"],
                 "artifact": str(report),
+                "source_artifact": str(report),
                 "artifact_sha256": sha256_file(report),
                 "outcome": "succeeded",
                 "recorded_at": now,
@@ -731,10 +952,11 @@ def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description=__doc__)
     sub = command.add_subparsers(dest="command", required=True)
 
-    init = sub.add_parser("init", help="Initialize or resume a deterministic run")
+    init = sub.add_parser("init", help="Initialize or resume a native research run")
     init.add_argument("--question", required=True)
     init.add_argument("--workspace", required=True)
     init.add_argument("--output", required=True)
+    init.add_argument("--depth", choices=("auto", "deep"), default="auto")
 
     for name in ("status", "ready", "check-report", "complete"):
         item = sub.add_parser(name)
@@ -744,7 +966,7 @@ def parser() -> argparse.ArgumentParser:
     retry.add_argument("--run", required=True)
     retry.add_argument("--reason", required=True)
 
-    record = sub.add_parser("record", help="Record a node artifact and transition")
+    record = sub.add_parser("record", help="Record a durable work or verification artifact")
     record.add_argument("--run", required=True)
     record.add_argument("--node", required=True)
     record.add_argument("--artifact", required=True)
@@ -756,7 +978,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         if args.command == "init":
-            payload = initialize(args.question, args.workspace, args.output)
+            payload = initialize(args.question, args.workspace, args.output, args.depth)
         else:
             run_dir = run_path(args.run)
             if args.command == "status":

@@ -78,6 +78,7 @@ RECEIPTS = {
 _MANIFEST_CACHE: dict[str, tuple[dict[str, dict[str, Any]], str]] = {}
 STALE_LOCK_SECONDS = 30
 CANONICAL_RECEIPT_MAX_AGE_SECONDS = 24 * 60 * 60
+PROJECT_START_OBLIGATION_MARKER = "project-start-obligation.pending.json"
 
 
 class TaskError(RuntimeError):
@@ -181,30 +182,72 @@ def inspect_lock(lock: Path) -> dict[str, Any]:
 
 
 @contextmanager
-def mutation_guard(root: Path, task_id: str, enabled: bool) -> Iterator[None]:
+def admission_guard(root: Path, wait_seconds: float = 5.0) -> Iterator[None]:
+    parent = safe_join_no_symlinks(root, Path(".codex") / "task-delivery")
+    parent.mkdir(parents=True, exist_ok=True)
+    lock = parent / ".admission.lock"
+    deadline = time.monotonic() + wait_seconds
+    descriptor: int | None = None
+    while descriptor is None:
+        try:
+            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            try:
+                raw = lock.read_text(encoding="utf-8")
+                match = re.search(r"pid=(\d+)", raw)
+                pid = int(match.group(1)) if match else -1
+                age = time.time() - lock.stat().st_mtime
+            except (FileNotFoundError, OSError, ValueError):
+                continue
+            if age >= STALE_LOCK_SECONDS and not process_alive(pid):
+                lock.unlink(missing_ok=True)
+                continue
+            if time.monotonic() >= deadline:
+                fail("Другой Task Delivery процесс удерживает repo-wide admission lock.")
+            time.sleep(0.05)
+    try:
+        os.write(descriptor, f"pid={os.getpid()} at={now()}\n".encode("utf-8"))
+        os.close(descriptor)
+        yield
+    finally:
+        lock.unlink(missing_ok=True)
+
+
+@contextmanager
+def mutation_guard(
+    root: Path,
+    task_id: str,
+    enabled: bool,
+    *,
+    allow_project_obligation: bool = False,
+) -> Iterator[None]:
     if not enabled:
         yield
         return
     parent = safe_join_no_symlinks(root, Path(".codex") / "task-delivery")
     parent.mkdir(parents=True, exist_ok=True)
-    lock = lock_path(root, task_id)
-    try:
-        lock.mkdir()
-    except FileExistsError:
-        fail(
-            f"Задачу уже изменяет другой процесс: {lock}",
-            f"Проверьте владельца командой recover-lock --root {root} --task-id {task_id}; не удаляйте lock вслепую.",
-        )
-    owner = lock / "owner.json"
-    try:
-        owner.write_text(json.dumps({"pid": os.getpid(), "started_at": now()}) + "\n", encoding="utf-8")
-        yield
-    finally:
+    with admission_guard(root):
+        lock = lock_path(root, task_id)
         try:
-            owner.unlink(missing_ok=True)
-            lock.rmdir()
-        except OSError:
-            pass
+            lock.mkdir()
+        except FileExistsError:
+            fail(
+                f"Задачу уже изменяет другой процесс: {lock}",
+                f"Проверьте владельца командой recover-lock --root {root} --task-id {task_id}; не удаляйте lock вслепую.",
+            )
+        owner = lock / "owner.json"
+        try:
+            owner.write_text(json.dumps({"pid": os.getpid(), "started_at": now()}) + "\n", encoding="utf-8")
+            reject_pending_project_reopen(
+                root, allow_task_id=task_id if allow_project_obligation else None
+            )
+            yield
+        finally:
+            try:
+                owner.unlink(missing_ok=True)
+                lock.rmdir()
+            except OSError:
+                pass
 
 
 def atomic_json(path: Path, value: dict[str, Any]) -> None:
@@ -250,6 +293,7 @@ def state_exclusions(state: dict[str, Any]) -> list[str]:
     artifact_dir = Path(state["artifacts"]["plan"]).parent.as_posix()
     return [
         artifact_dir,
+        ".agent-graphs",
         ".codex/task-delivery",
         ".project-start/state.json",
         ".project-start/.state.lock",
@@ -469,6 +513,10 @@ def project_start_canonical_contract(root: Path) -> tuple[set[str], list[str]]:
             prefixes.append(relative.rstrip("/") + "/")
         else:
             files.add(relative)
+    graph_v3 = value.get("graph_v3") if isinstance(value.get("graph_v3"), dict) else {}
+    for raw in graph_v3.get("canonical_docs", []):
+        if isinstance(raw, str) and raw.strip():
+            files.add(safe_relative(raw).as_posix())
     ignored = {".agent-graphs", ".codex", ".git", ".project-start", ".venv", "build", "dist", "generated", "node_modules", "vendor"}
     for current, directories, names in os.walk(root, followlinks=False):
         current_path = Path(current)
@@ -487,7 +535,31 @@ def project_start_canonical_contract(root: Path) -> tuple[set[str], list[str]]:
     return files, prefixes
 
 
-def reject_pending_project_reopen(root: Path) -> None:
+def obligation_marker(root: Path, task_id: str) -> Path:
+    return safe_join_no_symlinks(
+        root, Path(".codex/task-delivery") / validate_task_id(task_id) / PROJECT_START_OBLIGATION_MARKER
+    )
+
+
+def pending_obligation_markers(root: Path) -> list[Path]:
+    machine_root = root / ".codex/task-delivery"
+    if not machine_root.is_dir():
+        return []
+    return sorted(
+        path
+        for path in machine_root.glob(f"*/{PROJECT_START_OBLIGATION_MARKER}")
+        if path.is_file() and not path.is_symlink()
+    )
+
+
+def reject_pending_project_reopen(root: Path, allow_task_id: str | None = None) -> None:
+    allowed = validate_task_id(allow_task_id) if allow_task_id is not None else None
+    markers = [path for path in pending_obligation_markers(root) if path.parent.name != allowed]
+    if markers:
+        fail(
+            "Новая Task Delivery заблокирована: завершение предыдущей задачи не успело durable записать "
+            "Project Start obligation: " + ", ".join(path.parent.name for path in markers)
+        )
     state_path = root / ".project-start/state.json"
     if not state_path.is_file():
         return
@@ -495,6 +567,20 @@ def reject_pending_project_reopen(root: Path) -> None:
         value = json.loads(state_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         fail(f"Project Start state не читается: {exc}")
+    graph_v3 = value.get("graph_v3") if isinstance(value.get("graph_v3"), dict) else None
+    if graph_v3 is not None and graph_v3.get("status") == "operational":
+        runtime = load_project_start_runtime()
+        try:
+            loaded = runtime.load_state(root)
+            integrity = runtime.v3_integrity_issues(root, loaded)
+        except (OSError, ValueError) as exc:
+            fail(f"Project Start v3 authority не прошёл загрузку: {exc}")
+        if integrity:
+            fail(
+                "Новая Task Delivery заблокирована: Project Start v3 authority drift: "
+                + "; ".join(item.get("message", "unknown") for item in integrity[:5])
+            )
+        value = loaded
     maintenance = value.get("maintenance") if isinstance(value.get("maintenance"), dict) else {}
     status = maintenance.get("status")
     pending = maintenance.get("pending_reopen") if isinstance(maintenance.get("pending_reopen"), dict) else {}
@@ -506,6 +592,8 @@ def reject_pending_project_reopen(root: Path) -> None:
             f"{pending.get('rationale')}"
         )
     if status == "maintenance-required":
+        if allowed is not None and required.get("task_id") == allowed:
+            return
         fail(
             "Новая Task Delivery заблокирована: сначала обработай maintenance receipt задачи "
             f"{required.get('task_id')} через Project Start."
@@ -515,11 +603,21 @@ def reject_pending_project_reopen(root: Path) -> None:
             f"Новая Task Delivery заблокирована: Project Start maintenance run {active.get('run_id')} "
             f"имеет статус {status}."
         )
+    if status == "restart-required":
+        restart = maintenance.get("pending_restart") if isinstance(maintenance.get("pending_restart"), dict) else {}
+        fail(
+            "Новая Task Delivery заблокирована: Project Start требует свежий replacement run после "
+            f"{restart.get('run_id')}: {restart.get('reason')}"
+        )
     if value.get("phase") not in {"execution", "complete"}:
         fail(
             "Task Delivery закрыт: Project Start ещё не открыл фазу execution; "
             f"текущая фаза {value.get('phase')}."
         )
+    if status == "not-ready" and graph_v3 is None:
+        return
+    if status != "operational":
+        fail(f"Новая Task Delivery заблокирована: неизвестный fail-closed maintenance status {status!r}.")
 
 
 def load_project_start_runtime() -> Any:
@@ -560,6 +658,15 @@ def mark_project_start_maintenance_required(root: Path, state_path: Path, state:
         "created_at": now(),
     }
     maintenance = project.setdefault("maintenance", {"history": []})
+    processed = maintenance.get("processed_handoffs") if isinstance(maintenance.get("processed_handoffs"), list) else []
+    if any(
+        isinstance(item, dict)
+        and item.get("task_id") == obligation["task_id"]
+        and item.get("handoff_sha256") == obligation["handoff_sha256"]
+        and item.get("task_state_sha256") == obligation["task_state_sha256"]
+        for item in processed
+    ):
+        return
     existing = maintenance.get("maintenance_required") if isinstance(maintenance.get("maintenance_required"), dict) else None
     if maintenance.get("status") == "maintenance-required" and isinstance(existing, dict):
         comparable = {key: existing.get(key) for key in obligation if key != "created_at"}
@@ -567,8 +674,11 @@ def mark_project_start_maintenance_required(root: Path, state_path: Path, state:
         if comparable == expected:
             return
         fail("Project Start уже содержит другой незакрытый Task Delivery handoff.")
-    if maintenance.get("status") in {"running", "blocked", "reopen-required"}:
-        fail(f"Project Start maintenance имеет незакрытый статус {maintenance.get('status')}.")
+    if maintenance.get("status") != "operational":
+        fail(
+            "Project Start maintenance obligation создаётся только из operational; "
+            f"текущий fail-closed статус {maintenance.get('status')!r}."
+        )
     maintenance["status"] = "maintenance-required"
     maintenance["maintenance_required"] = obligation
     maintenance.pop("active_run", None)
@@ -1100,8 +1210,10 @@ def cmd_recover_lock(args: argparse.Namespace) -> None:
 
 def cmd_complete(args: argparse.Namespace) -> None:
     root = root_path(args.root)
-    with mutation_guard(root, args.task_id, args.apply):
-        reject_pending_project_reopen(root)
+    with mutation_guard(
+        root, args.task_id, args.apply, allow_project_obligation=True
+    ):
+        reject_pending_project_reopen(root, allow_task_id=args.task_id)
         state_path, state = load_state(root, args.task_id)
         if state.get("phase") == "completed":
             missing = [
@@ -1116,6 +1228,7 @@ def cmd_complete(args: argparse.Namespace) -> None:
                 )
             if args.apply:
                 mark_project_start_maintenance_required(root, state_path, state)
+                obligation_marker(root, args.task_id).unlink(missing_ok=True)
             emit(
                 "ok" if args.apply else "preview",
                 "Задача уже завершена; Project Start maintenance obligation проверен."
@@ -1133,10 +1246,25 @@ def cmd_complete(args: argparse.Namespace) -> None:
         if not args.apply:
             emit("preview", "Точный снимок кода и доказательств готов к завершению.", next_actions=["Повторите с --apply."])
             return
+        marker = obligation_marker(root, args.task_id)
+        checkpoint = state.get("checkpoints", {}).get("handoff")
+        if not isinstance(checkpoint, dict):
+            fail("Handoff checkpoint исчез до durable completion.")
+        atomic_json(
+            marker,
+            {
+                "schema_version": 1,
+                "task_id": args.task_id,
+                "handoff_path": checkpoint.get("path"),
+                "handoff_sha256": checkpoint.get("sha256"),
+                "created_at": now(),
+            },
+        )
         state["phase"] = "completed"
         state["completed_at"] = now()
         save_state(state_path, state)
         mark_project_start_maintenance_required(root, state_path, state)
+        marker.unlink(missing_ok=True)
         emit(
             "ok",
             "Задача завершена; Project Start получил обязательную maintenance receipt до следующей задачи.",
