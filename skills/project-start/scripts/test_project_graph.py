@@ -44,20 +44,56 @@ class ProjectGraphTests(unittest.TestCase):
     def bootstrap_docs(self) -> list[str]:
         self.write(
             "AGENTS.md",
-            "# Agent map\n\n## Scope\nWhole repository scope.\n\n## Map\nDocs live in docs/project.\n\n"
-            "## Commands\nRun the declared project checks.\n\n## Boundaries\nPreserve user work and project contracts.\n",
+            "# Agent map\n\n## Scope\nWhole repository scope and its canonical documentation.\n\n"
+            "## Map\nStart with docs/README.md and then read the nearest module AGENTS.md.\n\n"
+            "## Commands\nRun the declared project checks before claiming completion.\n\n"
+            "## Boundaries\nPreserve user work, project contracts, and canonical authority.\n\n"
+            "## Agent skills\nDomain layout: docs/agents/domain.md. "
+            "Issue tracker: docs/agents/issue-tracker.md.\n",
+        )
+        self.write(
+            "CONTEXT.md",
+            "# Project context\n\nA concise glossary for the project domain.\n\n"
+            "## Language\n\n**Project**: The product represented by this repository.\n",
+        )
+        self.write(
+            "docs/README.md",
+            "# Documentation map\n\n"
+            "- [Business](project/PROJECT.md)\n"
+            "- [Domain context](../CONTEXT.md)\n"
+            "- [Foundation](project/FOUNDATION.md)\n"
+            "- [Codebase](project/CODEBASE.md)\n"
+            "- [Quality](project/QUALITY.md)\n"
+            "- [Plan](project/PLAN.md)\n"
+            "- [Agent context](../AGENTS.md)\n"
+            "- [Domain skill contract](agents/domain.md)\n"
+            "- [Issue tracker contract](agents/issue-tracker.md)\n",
+        )
+        self.write(
+            "docs/agents/domain.md",
+            "# Domain docs\n\nUse the root CONTEXT.md as the single domain glossary.\n",
+        )
+        self.write(
+            "docs/agents/issue-tracker.md",
+            "# Issue tracker\n\nUse local Markdown plans unless the repository declares a remote tracker.\n",
         )
         self.write("docs/project/PROJECT.md", "# Product\n\nOutcome and business invariants are explicit.\n")
         self.write("docs/project/FOUNDATION.md", "# Foundation\n\nArchitecture and ownership are explicit.\n")
+        self.write("docs/project/CODEBASE.md", "# Codebase\n\nModules, interfaces, seams, and paths are explicit.\n")
         self.write("docs/project/QUALITY.md", "# Quality\n\nRisks and verification commands are explicit.\n")
         self.write("docs/project/PLAN.md", "# Plan\n\nThe next observable delivery slice is explicit.\n")
-        return [
+        return sorted([
             "AGENTS.md",
+            "CONTEXT.md",
+            "docs/README.md",
+            "docs/agents/domain.md",
+            "docs/agents/issue-tracker.md",
+            "docs/project/CODEBASE.md",
             "docs/project/FOUNDATION.md",
             "docs/project/PLAN.md",
             "docs/project/PROJECT.md",
             "docs/project/QUALITY.md",
-        ]
+        ])
 
     def work_payload(
         self,
@@ -70,32 +106,58 @@ class ProjectGraphTests(unittest.TestCase):
         verification: str = "self",
         decision: dict | None = None,
         agents: list[str] | None = None,
+        capabilities: list[str] | None = None,
         confidence: str = "high",
         gaps: list[str] | None = None,
     ) -> dict:
-        coverage = (
-            {
-                "business": "docs/project/PROJECT.md",
-                "foundation": "docs/project/FOUNDATION.md",
-                "quality": "docs/project/QUALITY.md",
-                "plan": "docs/project/PLAN.md",
-                "agent_context": "AGENTS.md",
-            }
-            if mode == "bootstrap"
-            else {}
-        )
+        coverage = {
+            "business": "docs/project/PROJECT.md",
+            "documentation_map": "docs/README.md",
+            "domain_context": "CONTEXT.md",
+            "foundation": "docs/project/FOUNDATION.md",
+            "codebase": "docs/project/CODEBASE.md",
+            "quality": "docs/project/QUALITY.md",
+            "plan": "docs/project/PLAN.md",
+            "agent_context": "AGENTS.md",
+            "skill_contract": "docs/agents/domain.md",
+        }
+        default_capabilities = ["rg"]
+        if mode == "bootstrap":
+            default_capabilities.extend(
+                [
+                    "mcp:context7",
+                    "project-start:skill-contract-fallback",
+                    "domain-modeling",
+                    "codebase-design",
+                ]
+            )
+        else:
+            default_capabilities.append("mcp:fallback:local-only-maintenance")
+            changed_set = set(changed or []) | set(created or [])
+            if changed_set & {
+                "AGENTS.md",
+                "docs/README.md",
+                "docs/agents/domain.md",
+                "docs/agents/issue-tracker.md",
+            }:
+                default_capabilities.append("project-start:skill-contract-fallback")
+            if "CONTEXT.md" in changed_set or "CONTEXT-MAP.md" in changed_set:
+                default_capabilities.append("domain-modeling")
+            if changed_set & {"docs/project/FOUNDATION.md", "docs/project/CODEBASE.md"}:
+                default_capabilities.append("codebase-design")
+        pending_decision = isinstance(decision, dict) and isinstance(decision.get("question"), str)
         return {
             "schema_version": 3,
             "mode": mode,
             "summary": "Canonical project context is current and usable.",
             "classification": classification,
-            "capabilities": ["rg"],
+            "capabilities": capabilities if capabilities is not None else default_capabilities,
             "agents": agents or [],
             "canonical_docs": canonical,
             "changed_docs": changed or [],
             "created_docs": created or [],
             "evidence": [canonical[0]],
-            "coverage": coverage,
+            "coverage": {} if pending_decision else coverage,
             "verification": verification,
             "confidence": confidence,
             "gaps": gaps or [],
@@ -111,7 +173,7 @@ class ProjectGraphTests(unittest.TestCase):
             "mode": mode,
             "summary": "A material documentation decision must be resolved before edits.",
             "classification": classification,
-            "capabilities": ["rg"],
+            "capabilities": ["rg", "mcp:fallback:decision-only-pass"],
             "agents": [],
             "canonical_docs": [],
             "changed_docs": [],
@@ -193,6 +255,132 @@ class ProjectGraphTests(unittest.TestCase):
         self.assertEqual("auto", contract["default_mode"])
         for mode in ("bootstrap", "maintenance"):
             self.assertEqual({"work", "verify", "complete"}, set(contract["routes"][mode]["nodes"]))
+
+    def test_ready_exposes_the_unified_documentation_contract(self) -> None:
+        run = self.init("bootstrap")
+        ready = graph.ready(run)
+        contract = ready["data"]["documentation_contract"]
+        self.assertEqual(graph.BOOTSTRAP_COVERAGE, set(contract["coverage"]))
+        self.assertEqual("AGENTS.md", contract["anchors"]["agent_context"])
+        self.assertEqual("docs/README.md", contract["anchors"]["documentation_map"])
+        self.assertEqual({"domain-modeling", "codebase-design"}, set(contract["required_bootstrap_skills"]))
+        self.assertEqual(
+            {"setup-matt-pocock-skills", "project-start:skill-contract-fallback"},
+            set(contract["skill_contract_providers"]),
+        )
+        self.assertEqual("required", ready["data"]["mcp_policy"]["relevant_use"])
+
+    def test_bootstrap_requires_an_mcp_receipt(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        payload = self.work_payload(
+            "bootstrap",
+            docs,
+            classification="bootstrap-ready",
+            created=docs,
+            capabilities=[
+                "rg",
+                "project-start:skill-contract-fallback",
+                "domain-modeling",
+                "codebase-design",
+            ],
+        )
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "MCP receipt"):
+            graph.record(run, "work", "succeeded")
+
+    def test_bootstrap_requires_matt_pocock_documentation_skills(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        payload = self.work_payload(
+            "bootstrap",
+            docs,
+            classification="bootstrap-ready",
+            created=docs,
+            capabilities=["rg", "project-start:skill-contract-fallback"],
+        )
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "обязательные documentation skills"):
+            graph.record(run, "work", "succeeded")
+
+    def test_bootstrap_requires_available_or_internal_skill_contract_provider(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        payload = self.work_payload(
+            "bootstrap",
+            docs,
+            classification="bootstrap-ready",
+            created=docs,
+            capabilities=["rg", "mcp:context7", "domain-modeling", "codebase-design"],
+        )
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "provider skill contract"):
+            graph.record(run, "work", "succeeded")
+
+    def test_bootstrap_accepts_external_skill_contract_provider_when_available(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        payload = self.work_payload(
+            "bootstrap",
+            docs,
+            classification="bootstrap-ready",
+            created=docs,
+            capabilities=[
+                "rg",
+                "mcp:context7",
+                "setup-matt-pocock-skills",
+                "domain-modeling",
+                "codebase-design",
+            ],
+        )
+        self.write_work(run, payload)
+        graph.record(run, "work", "succeeded")
+
+    def test_large_repo_instruction_guidance_is_part_of_the_contract(self) -> None:
+        skill = (graph.SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        contract = (graph.SKILL_DIR / "references/documentation-contract.md").read_text(encoding="utf-8")
+        maintenance = (graph.SKILL_DIR / "references/maintenance.md").read_text(encoding="utf-8")
+        template = (graph.SKILL_DIR / "assets/templates/NESTED-AGENTS.md").read_text(encoding="utf-8")
+        verifier = (graph.SKILL_DIR.parents[1] / "agents/project_docs_verifier.toml").read_text(encoding="utf-8")
+        for required in ("project root", "project_doc_max_bytes", "ниже cwd", "runtime flows"):
+            self.assertIn(required, skill)
+        for required in ("execution-flow index", "entry interface", "owning spec"):
+            self.assertIn(required, contract)
+        for required in ("representative chains", "orphaned nested", "current card"):
+            self.assertIn(required, maintenance)
+        self.assertIn("Do not list every file", template)
+        self.assertIn("Do not duplicate parent guidance", template)
+        self.assertIn("effective project_doc_max_bytes", verifier)
+
+    def test_bootstrap_requires_docs_map_to_route_every_role(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        path = self.root / "docs/README.md"
+        path.write_text(
+            path.read_text(encoding="utf-8").replace("- [Codebase](project/CODEBASE.md)\n", ""),
+            encoding="utf-8",
+        )
+        self.write_work(
+            run,
+            self.work_payload("bootstrap", docs, classification="bootstrap-ready", created=docs),
+        )
+        with self.assertRaisesRegex(graph.GraphError, "docs/README.md"):
+            graph.record(run, "work", "succeeded")
+
+    def test_maintenance_requires_only_the_skill_for_the_changed_layer(self) -> None:
+        run, docs = self.maintenance()
+        target = "docs/project/CODEBASE.md"
+        self.write(target, "# Codebase\n\nA verified module boundary was added.\n")
+        payload = self.work_payload(
+            "maintenance",
+            docs,
+            classification="factual",
+            changed=[target],
+            capabilities=["rg"],
+        )
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "codebase-design"):
+            graph.record(run, "work", "succeeded")
 
     def test_bootstrap_self_path_completes_and_opens_execution(self) -> None:
         run, docs = self.completed_bootstrap()
@@ -528,16 +716,21 @@ class ProjectGraphTests(unittest.TestCase):
 
     def test_bootstrap_decision_requires_independent_verification(self) -> None:
         run = self.init("bootstrap")
-        scope = [
+        scope = sorted([
             "AGENTS.md",
+            "CONTEXT.md",
+            "docs/README.md",
+            "docs/agents/domain.md",
+            "docs/agents/issue-tracker.md",
+            "docs/project/CODEBASE.md",
             "docs/project/FOUNDATION.md",
             "docs/project/PLAN.md",
             "docs/project/PROJECT.md",
             "docs/project/QUALITY.md",
-        ]
+        ])
         pending = {
             "question": "Which initial project authority should be canonical?",
-            "recommended": "Use the compact five-document authority",
+            "recommended": "Use the unified documentation contract",
             "scope": scope,
         }
         self.write_work(run, self.decision_payload("bootstrap", "bootstrap-ready", pending))
@@ -749,8 +942,12 @@ class ProjectGraphTests(unittest.TestCase):
         graph.project_runtime.save_project_state(self.root, state, require_absent=True)
         self.write(
             "AGENTS.md",
-            "# Agent map\n\n## Scope\nWhole repository scope.\n\n## Map\nDocs live in docs/project.\n\n"
-            "## Commands\nRun the declared checks.\n\n## Boundaries\nPreserve project authority.\n",
+            "# Agent map\n\n## Scope\nWhole repository scope and canonical documentation.\n\n"
+            "## Map\nStart with docs/README.md and follow the canonical project map.\n\n"
+            "## Commands\nRun the declared checks before completion.\n\n"
+            "## Boundaries\nPreserve project authority and user-owned work.\n\n"
+            "## Agent skills\nDomain layout: docs/agents/domain.md. "
+            "Issue tracker: docs/agents/issue-tracker.md.\n",
         )
         payload = graph.initialize(
             str(self.root), "maintenance", "Adopt legacy project", "manual", None

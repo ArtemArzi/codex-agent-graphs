@@ -10,10 +10,21 @@
   "mode": "bootstrap",
   "summary": "Что установлено или синхронизировано",
   "classification": "bootstrap-ready",
-  "capabilities": ["rg", "domain-modeling"],
+  "capabilities": [
+    "rg",
+    "mcp:context7",
+    "project-start:skill-contract-fallback",
+    "domain-modeling",
+    "codebase-design"
+  ],
   "agents": [],
   "canonical_docs": [
     "AGENTS.md",
+    "CONTEXT.md",
+    "docs/README.md",
+    "docs/agents/domain.md",
+    "docs/agents/issue-tracker.md",
+    "docs/project/CODEBASE.md",
     "docs/project/FOUNDATION.md",
     "docs/project/PLAN.md",
     "docs/project/PROJECT.md",
@@ -22,6 +33,11 @@
   "changed_docs": [],
   "created_docs": [
     "AGENTS.md",
+    "CONTEXT.md",
+    "docs/README.md",
+    "docs/agents/domain.md",
+    "docs/agents/issue-tracker.md",
+    "docs/project/CODEBASE.md",
     "docs/project/FOUNDATION.md",
     "docs/project/PLAN.md",
     "docs/project/PROJECT.md",
@@ -30,10 +46,14 @@
   "evidence": ["AGENTS.md", "docs/project/PROJECT.md"],
   "coverage": {
     "business": "docs/project/PROJECT.md",
+    "documentation_map": "docs/README.md",
+    "domain_context": "CONTEXT.md",
     "foundation": "docs/project/FOUNDATION.md",
+    "codebase": "docs/project/CODEBASE.md",
     "quality": "docs/project/QUALITY.md",
     "plan": "docs/project/PLAN.md",
-    "agent_context": "AGENTS.md"
+    "agent_context": "AGENTS.md",
+    "skill_contract": "docs/agents/domain.md"
   },
   "verification": "self",
   "confidence": "high",
@@ -42,9 +62,9 @@
 }
 ```
 
-Maintenance использует `classification: no-change|factual|semantic` и `coverage: {}`. Для bootstrap дельта считается от `init`. Для maintenance `changed_docs` и `created_docs` включают дрейф канонических документов и `AGENTS.md` от последнего verified operational snapshot, а также документационные правки текущего run. Обычный внешний `CHANGELOG.md` или README не становится каноническим только из-за существования. Первый v3-проход над legacy state без точного operational snapshot всегда требует independent verify. Массивы должны точно совпасть с этой дельтой, а все затронутые документы входить в `canonical_docs`.
+Maintenance использует `classification: no-change|factual|semantic` и сохраняет тот же полный `coverage`; пустой mapping допустим только в decision-квитанции до правок. Для bootstrap дельта считается от `init`. Для maintenance `changed_docs` и `created_docs` включают дрейф канонических документов и `AGENTS.md` от последнего verified operational snapshot, а также документационные правки текущего run. Обычный внешний `CHANGELOG.md` или README не становится каноническим только из-за существования. Первый v3-проход над legacy state без точного operational snapshot всегда требует independent verify. Массивы должны точно совпасть с этой дельтой, а все затронутые документы входить в `canonical_docs`.
 
-`agents` содержит только квитанции `explorer` или `explorer:<id>`, максимум две. `capabilities` перечисляет реально использованные навыки и инструменты, а не весь доступный каталог. `evidence` содержит существующие пути внутри репозитория.
+`agents` содержит только квитанции `explorer` или `explorer:<id>`, максимум две. `capabilities` перечисляет реально использованные навыки и инструменты, а не весь доступный каталог. Оно обязано содержать `mcp:<server>` после успешного вызова либо один `mcp:fallback:<reason>` после проверки доступности; успешный receipt и fallback вместе недопустимы. Bootstrap обязан включать `domain-modeling`, `codebase-design` и ровно применимый provider skill contract: доступный `setup-matt-pocock-skills` либо `project-start:skill-contract-fallback`. Maintenance требует provider только при изменении `AGENTS.md`, документационной карты или `docs/agents/`. `evidence` содержит существующие пути внутри репозитория.
 
 Для запроса существенного решения в maintenance:
 
@@ -73,6 +93,11 @@ Bootstrap decision использует `classification: bootstrap-ready`, а д
   "docs_sha256": "<digest exact document snapshot>",
   "checked_docs": [
     "AGENTS.md",
+    "CONTEXT.md",
+    "docs/README.md",
+    "docs/agents/domain.md",
+    "docs/agents/issue-tracker.md",
+    "docs/project/CODEBASE.md",
     "docs/project/FOUNDATION.md",
     "docs/project/PLAN.md",
     "docs/project/PROJECT.md",

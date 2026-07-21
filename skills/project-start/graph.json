@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "project-start",
-  "graph_version": "3.1.0",
+  "graph_version": "3.4.0",
   "default_mode": "auto",
   "limits": {
     "max_node_retries": 1,
@@ -21,7 +21,6 @@
       "domain-modeling",
       "grill-with-docs",
       "codebase-design",
-      "setup-matt-pocock-skills",
       "to-spec",
       "to-tickets",
       "wayfinder",
@@ -29,8 +28,46 @@
       "prototype",
       "task-delivery"
     ],
+    "optional_skills": ["setup-matt-pocock-skills"],
     "default_backend": "native-codex",
     "optional_backends": ["sandcastle"]
+  },
+  "mcp_policy": {
+    "discovery": "required",
+    "relevant_use": "required",
+    "receipt_prefix": "mcp:",
+    "fallback_prefix": "mcp:fallback:",
+    "selection_order": [
+      "provider-specific-mcp",
+      "context7-for-library-docs",
+      "research-or-service-mcp",
+      "native-web-or-browser",
+      "curl"
+    ]
+  },
+  "documentation_contract": {
+    "coverage": [
+      "business",
+      "documentation_map",
+      "domain_context",
+      "foundation",
+      "codebase",
+      "quality",
+      "plan",
+      "agent_context",
+      "skill_contract"
+    ],
+    "anchors": {
+      "agent_context": "AGENTS.md",
+      "documentation_map": "docs/README.md",
+      "domain_context": ["CONTEXT.md", "CONTEXT-MAP.md"],
+      "skill_contract": ["docs/agents/domain.md", "docs/agents/issue-tracker.md"]
+    },
+    "required_bootstrap_skills": ["domain-modeling", "codebase-design"],
+    "skill_contract_providers": [
+      "setup-matt-pocock-skills",
+      "project-start:skill-contract-fallback"
+    ]
   },
   "optional_agents": ["explorer"],
   "legacy_v2_bootstrap": {

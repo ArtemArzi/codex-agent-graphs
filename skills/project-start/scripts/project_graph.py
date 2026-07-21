@@ -56,7 +56,17 @@ IGNORED_DIRS = {
     "node_modules",
     "vendor",
 }
-BOOTSTRAP_COVERAGE = {"business", "foundation", "quality", "plan", "agent_context"}
+BOOTSTRAP_COVERAGE = {
+    "business",
+    "documentation_map",
+    "domain_context",
+    "foundation",
+    "codebase",
+    "quality",
+    "plan",
+    "agent_context",
+    "skill_contract",
+}
 
 
 class GraphError(RuntimeError):
@@ -121,6 +131,35 @@ def graph_contract() -> dict[str, Any]:
             raise GraphError(f"Некорректные entry/terminal для {mode}.")
         if set(route.get("nodes", {})) != {"work", "verify", "complete"}:
             raise GraphError(f"Маршрут {mode} должен иметь только work, verify, complete.")
+    contract = graph.get("documentation_contract")
+    if not isinstance(contract, dict) or set(contract.get("coverage", [])) != BOOTSTRAP_COVERAGE:
+        raise GraphError("Project Start documentation contract содержит неверный coverage.")
+    anchors = contract.get("anchors")
+    expected_anchors = {"agent_context", "documentation_map", "domain_context", "skill_contract"}
+    if not isinstance(anchors, dict) or set(anchors) != expected_anchors:
+        raise GraphError("Project Start documentation contract содержит неверные anchors.")
+    required_skills = contract.get("required_bootstrap_skills")
+    if not isinstance(required_skills, list) or set(required_skills) != {
+        "domain-modeling",
+        "codebase-design",
+    }:
+        raise GraphError("Project Start documentation contract содержит неверные bootstrap skills.")
+    providers = contract.get("skill_contract_providers")
+    if not isinstance(providers, list) or set(providers) != {
+        "setup-matt-pocock-skills",
+        "project-start:skill-contract-fallback",
+    }:
+        raise GraphError("Project Start documentation contract содержит неверные skill contract providers.")
+    mcp_policy = graph.get("mcp_policy")
+    if (
+        not isinstance(mcp_policy, dict)
+        or mcp_policy.get("discovery") != "required"
+        or mcp_policy.get("relevant_use") != "required"
+        or mcp_policy.get("receipt_prefix") != "mcp:"
+        or mcp_policy.get("fallback_prefix") != "mcp:fallback:"
+        or not isinstance(mcp_policy.get("selection_order"), list)
+    ):
+        raise GraphError("Project Start graph содержит неверную MCP-first policy.")
     return graph
 
 
@@ -766,7 +805,12 @@ def ready(run_dir: Path) -> dict[str, Any]:
         actions.append(f"{runner_command()} record --run {shlex.quote(str(run_dir))} --node {current} --outcome <...>")
     else:
         actions.append(f"{runner_command()} complete --run {shlex.quote(str(run_dir))}")
-    return result("ready", f"Готов узел {current}.", next_actions=actions, data={"mode": state["mode"], "node": current})
+    data: dict[str, Any] = {"mode": state["mode"], "node": current}
+    if current == "work":
+        contract = graph_contract()
+        data["documentation_contract"] = contract["documentation_contract"]
+        data["mcp_policy"] = contract["mcp_policy"]
+    return result("ready", f"Готов узел {current}.", next_actions=actions, data=data)
 
 
 def strings(value: Any, field: str, *, allow_empty: bool = True) -> list[str]:
@@ -779,6 +823,35 @@ def strings(value: Any, field: str, *, allow_empty: bool = True) -> list[str]:
     return value
 
 
+def validate_mcp_capabilities(capabilities: list[str]) -> None:
+    policy = graph_contract()["mcp_policy"]
+    prefix = policy["receipt_prefix"]
+    fallback_prefix = policy["fallback_prefix"]
+    receipts = [item for item in capabilities if item.startswith(prefix)]
+    if not receipts:
+        raise GraphError(
+            "capabilities требует MCP receipt: mcp:<server> либо mcp:fallback:<reason>."
+        )
+    used: list[str] = []
+    fallbacks: list[str] = []
+    for receipt in receipts:
+        if receipt.startswith(fallback_prefix):
+            reason = receipt[len(fallback_prefix) :]
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,}", reason):
+                raise GraphError("MCP fallback требует содержательный machine-readable reason.")
+            fallbacks.append(receipt)
+            continue
+        server = receipt[len(prefix) :]
+        if (
+            not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", server)
+            or server in {"fallback", "discovery", "none", "not-needed"}
+        ):
+            raise GraphError(f"Некорректный MCP server receipt: {receipt}")
+        used.append(receipt)
+    if used and fallbacks:
+        raise GraphError("MCP fallback нельзя записывать вместе с успешным MCP server receipt.")
+
+
 def validate_root_agents(path: Path) -> None:
     text = path.read_text(encoding="utf-8")
     if re.search(r"(?i)\b(?:PENDING|TODO|TBD)\b|__REQUIRED__", text):
@@ -787,6 +860,90 @@ def validate_root_agents(path: Path) -> None:
         match = re.search(rf"(?ims)^##\s+(?:{heading})\s*$\n(?P<body>.*?)(?=^##\s+|\Z)", text)
         if not match or len(" ".join(match.group("body").split())) < 8:
             raise GraphError("Новый AGENTS.md требует заполненные Scope, Map, Commands и Boundaries.")
+    if not re.search(r"(?im)^##\s+(?:Agent skills|Навыки агентов)\s*$", text):
+        raise GraphError("Корневой AGENTS.md требует раздел Agent skills.")
+    for required in ("docs/README.md", "docs/agents/domain.md", "docs/agents/issue-tracker.md"):
+        if required not in text:
+            raise GraphError(f"Корневой AGENTS.md должен направлять к {required}.")
+
+
+def markdown_mentions(source_relative: str, text: str, target_relative: str) -> bool:
+    source_parent = Path(source_relative).parent
+    target = Path(target_relative)
+    relative = os.path.relpath(target, source_parent).replace(os.sep, "/")
+    candidates = {target.as_posix(), relative, f"./{relative}"}
+    return any(candidate in text for candidate in candidates)
+
+
+def validate_documentation_contract(
+    root: Path,
+    canonical: list[str],
+    coverage: dict[str, str],
+) -> None:
+    contract = graph_contract()["documentation_contract"]
+    anchors = contract["anchors"]
+    if coverage["agent_context"] != anchors["agent_context"]:
+        raise GraphError("coverage.agent_context должен ссылаться на корневой AGENTS.md.")
+    if coverage["documentation_map"] != anchors["documentation_map"]:
+        raise GraphError("coverage.documentation_map должен ссылаться на docs/README.md.")
+    if coverage["domain_context"] not in anchors["domain_context"]:
+        raise GraphError("coverage.domain_context должен ссылаться на CONTEXT.md или CONTEXT-MAP.md.")
+    if coverage["skill_contract"] != anchors["skill_contract"][0]:
+        raise GraphError("coverage.skill_contract должен ссылаться на docs/agents/domain.md.")
+
+    canonical_set = set(canonical)
+    required_contract_docs = set(anchors["skill_contract"])
+    if not required_contract_docs.issubset(canonical_set):
+        missing = sorted(required_contract_docs - canonical_set)
+        raise GraphError("Skill contract отсутствует в canonical_docs: " + ", ".join(missing))
+
+    map_relative = anchors["documentation_map"]
+    map_text = (root / map_relative).read_text(encoding="utf-8")
+    targets = set(coverage.values()) | required_contract_docs
+    for target in sorted(targets - {map_relative}):
+        if not markdown_mentions(map_relative, map_text, target):
+            raise GraphError(f"docs/README.md не отображает каноническую роль на {target}.")
+
+    domain_relative = coverage["domain_context"]
+    domain_text = (root / domain_relative).read_text(encoding="utf-8")
+    if re.search(r"(?i)\b(?:PENDING|TODO|TBD)\b|__REQUIRED__", domain_text):
+        raise GraphError(f"{domain_relative} содержит placeholder.")
+    if domain_relative == "CONTEXT.md":
+        if not re.search(r"(?im)^##\s+(?:Language|Язык)\s*$", domain_text):
+            raise GraphError("CONTEXT.md должен содержать раздел Language и оставаться доменным словарём.")
+    elif not re.search(r"(?im)^##\s+(?:Contexts|Контексты)\s*$", domain_text) or "CONTEXT.md" not in domain_text:
+        raise GraphError("CONTEXT-MAP.md должен перечислять контексты и ссылки на их CONTEXT.md.")
+
+
+def validate_skill_usage(
+    state: dict[str, Any],
+    capabilities: list[str],
+    coverage: dict[str, str],
+    changed_docs: set[str],
+) -> None:
+    contract = graph_contract()["documentation_contract"]
+    required: set[str] = set()
+    requires_skill_contract_provider = False
+    if state["mode"] == "bootstrap":
+        required.update(contract["required_bootstrap_skills"])
+        requires_skill_contract_provider = True
+    else:
+        setup_paths = {"AGENTS.md", "docs/README.md", *contract["anchors"]["skill_contract"]}
+        if changed_docs.intersection(setup_paths):
+            requires_skill_contract_provider = True
+        if coverage["domain_context"] in changed_docs:
+            required.add("domain-modeling")
+        if changed_docs.intersection({coverage["foundation"], coverage["codebase"]}):
+            required.add("codebase-design")
+    missing = sorted(required - set(capabilities))
+    if missing:
+        raise GraphError("Не применены обязательные documentation skills: " + ", ".join(missing))
+    providers = set(contract["skill_contract_providers"])
+    if requires_skill_contract_provider and not providers.intersection(capabilities):
+        raise GraphError(
+            "Не применён provider skill contract: setup-matt-pocock-skills либо "
+            "project-start:skill-contract-fallback."
+        )
 
 
 def validate_work(
@@ -871,27 +1028,19 @@ def validate_work(
                 except legacy_maintenance.MaintenanceError as exc:
                     raise GraphError(str(exc)) from exc
     classification = artifact["classification"]
+    coverage = artifact["coverage"]
+    if outcome == "decision":
+        if coverage not in ({}, None):
+            raise GraphError("Decision до правок использует пустой coverage.")
     if state["mode"] == "bootstrap":
         if classification != "bootstrap-ready":
             raise GraphError("Bootstrap требует classification=bootstrap-ready.")
-        coverage = artifact["coverage"]
-        if outcome == "decision":
-            if coverage not in ({}, None):
-                raise GraphError("Bootstrap decision до правок использует пустой coverage.")
-        else:
-            if not isinstance(coverage, dict) or set(coverage) != BOOTSTRAP_COVERAGE:
-                raise GraphError("Bootstrap coverage должен закрыть business/foundation/quality/plan/agent_context.")
-            for key, relative in coverage.items():
-                if not isinstance(relative, str) or relative not in canonical:
-                    raise GraphError(f"coverage.{key} должен ссылаться на canonical_docs.")
     else:
         inherited = set(state.get("baseline_canonical", []))
         if not inherited.issubset(set(canonical)):
             raise GraphError("Maintenance не может молча исключить ранее канонический документ.")
         if classification not in {"no-change", "factual", "semantic"}:
             raise GraphError("Maintenance classification должен быть no-change, factual или semantic.")
-        if artifact["coverage"] not in ({}, None):
-            raise GraphError("Maintenance не дублирует bootstrap coverage.")
         if classification == "no-change" and changed_set:
             raise GraphError("no-change не может содержать document delta.")
         if classification in {"factual", "semantic"} and not changed_set and outcome != "decision":
@@ -935,6 +1084,18 @@ def validate_work(
             raise GraphError("Document delta после ответа выходит за пределы resolved decision scope.")
         if not changed_set.issubset(set(resolved.get("scope", []))):
             raise GraphError("Полная document delta выходит за пределы resolved decision scope.")
+    if outcome != "decision":
+        if not isinstance(coverage, dict) or set(coverage) != BOOTSTRAP_COVERAGE:
+            raise GraphError(
+                "Project Start coverage должен закрыть business/documentation_map/domain_context/"
+                "foundation/codebase/quality/plan/agent_context/skill_contract."
+            )
+        for key, relative in coverage.items():
+            if not isinstance(relative, str) or relative not in canonical:
+                raise GraphError(f"coverage.{key} должен ссылаться на canonical_docs.")
+        validate_documentation_contract(root, canonical, coverage)
+        validate_skill_usage(state, capabilities, coverage, changed_set)
+    validate_mcp_capabilities(capabilities)
     if artifact["verification"] not in {"self", "independent"}:
         raise GraphError("verification должен быть self или independent.")
     if outcome == "verify" and artifact["verification"] != "independent":

@@ -8,7 +8,7 @@ This file inherits every rule from the nearest parent `AGENTS.md`. Keep only sub
 
 ## Map
 
-<!-- Route an agent to the module's public entry points, contracts, tests, and owned documents. -->
+<!-- Route common changes to public entry interfaces, implementation owners, owned documents, and focused tests. Do not list every file. -->
 
 ## Commands
 
@@ -16,4 +16,4 @@ This file inherits every rule from the nearest parent `AGENTS.md`. Keep only sub
 
 ## Boundaries
 
-<!-- State allowed dependencies, ownership seams, generated areas, and actions requiring escalation. -->
+<!-- Keep only subtree-specific rules. Do not duplicate parent guidance, business truth, controller progress, or task receipts. -->
