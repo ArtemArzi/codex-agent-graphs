@@ -1,4 +1,4 @@
 interface:
   display_name: "Adaptive Research"
   short_description: "Fast native research with adaptive depth"
-  default_prompt: "Use $research to answer this question quickly with cited evidence and deepen only when risk or complexity requires it."
+  default_prompt: "Use $research to answer this question quickly with cited evidence, route through relevant MCP servers first, and deepen only when risk or complexity requires it."

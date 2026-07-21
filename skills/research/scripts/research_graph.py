@@ -25,6 +25,9 @@ STATE_NAME = "state.json"
 LOCK_NAME = ".state.lock"
 WORK_ARTIFACT = "research.json"
 VERIFICATION_ARTIFACT = "verification.json"
+LEGACY_ACTIVE_GRAPH_IDENTITIES = {
+    ("2.1.0", "b3c872a1b1b673cc545a8c0ae16a687333d8d3aaa19ae2362861c61f0d6ef5a2"),
+}
 
 
 class GraphError(RuntimeError):
@@ -97,6 +100,7 @@ def graph_contract() -> dict[str, Any]:
         "default_depth",
         "limits",
         "optional_agents",
+        "mcp_policy",
         "nodes",
     }
     missing = required.difference(graph)
@@ -111,6 +115,16 @@ def graph_contract() -> dict[str, Any]:
         raise GraphError("Research graph must expose only work, verify, and complete")
     if graph["entry"] != "work" or graph["terminal"] != "complete":
         raise GraphError("Research graph entry or terminal node is invalid")
+    mcp_policy = graph.get("mcp_policy")
+    if (
+        not isinstance(mcp_policy, dict)
+        or mcp_policy.get("discovery") != "required"
+        or mcp_policy.get("relevant_use") != "required"
+        or mcp_policy.get("receipt_prefix") != "mcp:"
+        or mcp_policy.get("fallback_prefix") != "mcp:fallback:"
+        or not isinstance(mcp_policy.get("selection_order"), list)
+    ):
+        raise GraphError("Research graph MCP-first policy is invalid")
     for profile in ("fast", "deep"):
         if profile not in graph["limits"]:
             raise GraphError(f"Research graph is missing {profile} limits")
@@ -312,12 +326,12 @@ def load_state(run_dir: Path) -> dict[str, Any]:
         )
     if state.get("graph_id") != graph["graph_id"]:
         raise GraphError("Run belongs to another graph")
-    if state.get("graph_version") != graph["graph_version"]:
+    identity = (state.get("graph_version"), state.get("graph_sha256"))
+    current_identity = (graph["graph_version"], sha256_file(GRAPH_PATH))
+    if identity != current_identity and identity not in LEGACY_ACTIVE_GRAPH_IDENTITIES:
         raise GraphError(
-            f"Run graph version {state.get('graph_version')} does not match installed {graph['graph_version']}"
+            f"Run graph identity {identity[0]} does not match installed {graph['graph_version']}"
         )
-    if state.get("graph_sha256") != sha256_file(GRAPH_PATH):
-        raise GraphError("Installed graph contract changed since this run started")
     return state
 
 
@@ -370,6 +384,7 @@ def ready_node(run_dir: Path) -> dict[str, Any]:
                 "adaptive_budgets": {
                     profile: graph["limits"][profile] for profile in ("fast", "deep")
                 },
+                "mcp_policy": graph["mcp_policy"],
                 "allowed_outcomes": ["succeeded", "verify", "failed"],
             }
         )
@@ -492,6 +507,9 @@ def validate_work(path: Path, state: dict[str, Any], outcome: str) -> tuple[list
         errors.append("research.json must use schema_version 2")
     for label in ("capabilities", "agents", "gaps"):
         errors.extend(validate_string_list(work.get(label), label))
+    capabilities = work.get("capabilities") if isinstance(work.get("capabilities"), list) else []
+    if state.get("graph_version") == graph_contract()["graph_version"]:
+        errors.extend(validate_mcp_capabilities(capabilities))
     if not isinstance(work.get("reason"), str) or not work["reason"].strip():
         errors.append("reason must be a non-empty string")
     mode = work.get("mode")
@@ -545,6 +563,34 @@ def validate_work(path: Path, state: dict[str, Any], outcome: str) -> tuple[list
         "report_text": report_text,
         "report_sha256": report_hash,
     }
+
+
+def validate_mcp_capabilities(capabilities: list[Any]) -> list[str]:
+    policy = graph_contract()["mcp_policy"]
+    prefix = policy["receipt_prefix"]
+    fallback_prefix = policy["fallback_prefix"]
+    receipts = [item for item in capabilities if isinstance(item, str) and item.startswith(prefix)]
+    if not receipts:
+        return ["capabilities must record mcp:<server> or mcp:fallback:<reason>"]
+    used: list[str] = []
+    fallbacks: list[str] = []
+    for receipt in receipts:
+        if receipt.startswith(fallback_prefix):
+            reason = receipt[len(fallback_prefix) :]
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,}", reason):
+                return ["MCP fallback requires a substantive machine-readable reason"]
+            fallbacks.append(receipt)
+            continue
+        server = receipt[len(prefix) :]
+        if (
+            not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", server)
+            or server in {"fallback", "discovery", "none", "not-needed"}
+        ):
+            return [f"Invalid MCP server receipt: {receipt}"]
+        used.append(receipt)
+    if used and fallbacks:
+        return ["Do not record MCP fallback together with a successful MCP server receipt"]
+    return []
 
 
 def validate_verification(path: Path, outcome: str, report_hash: str) -> list[str]:

@@ -41,6 +41,7 @@ def main() -> int:
     scripts = [
         ROOT / "scripts" / "install.py",
         ROOT / "scripts" / "check_all.py",
+        ROOT / "skills" / "agent-graph-builder" / "scripts" / "graph_contract.py",
         ROOT / "skills" / "research" / "scripts" / "research_graph.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_graph.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_start.py",
@@ -51,6 +52,20 @@ def main() -> int:
         py_compile.compile(str(script), doraise=True)
     for config in sorted((ROOT / "agents").glob("*.toml")):
         tomllib.loads(config.read_text(encoding="utf-8"))
+    dependencies = json.loads(
+        (ROOT / "skills" / "agent-graph-builder" / "skill-dependencies.json").read_text(encoding="utf-8")
+    )
+    if dependencies != {
+        "schema_version": 1,
+        "required_skills": [
+            {
+                "name": "skill-creator",
+                "phase": "scaffold-and-validate",
+                "reason": "Owns generic skill structure, metadata generation, progressive disclosure and base validation.",
+            }
+        ],
+    }:
+        raise RuntimeError("Agent Graph Builder must retain its exact skill-creator dependency contract")
     graph = json.loads((ROOT / "skills" / "research" / "graph.json").read_text(encoding="utf-8"))
     if graph.get("schema_version") != 2 or set(graph["nodes"]) != {"work", "verify", "complete"}:
         raise RuntimeError("Research graph node contract changed unexpectedly")
@@ -97,18 +112,45 @@ def main() -> int:
         prompt = (ROOT / "agents" / f"{role}.toml").read_text(encoding="utf-8")
         if "spawn descendants" not in prompt or "commit" not in prompt:
             raise RuntimeError(f"Task Delivery role {role} must remain leaf-only and non-committing")
+    recovery_root = ROOT / "skills" / "development-recovery"
+    if (recovery_root / "graph.json").exists():
+        raise RuntimeError("Development Recovery must remain independent of graph runtime")
+    recovery_skill = (recovery_root / "SKILL.md").read_text(encoding="utf-8")
+    for required in ("first false assumption", "rebuild-from-checkpoint", "repair-forward"):
+        if required not in recovery_skill:
+            raise RuntimeError(f"Development Recovery contract is missing: {required}")
+    recovery_policy = (ROOT / "policies" / "development-recovery.md").read_text(encoding="utf-8")
+    if "$development-recovery" not in recovery_policy or "regardless of which graph" not in recovery_policy:
+        raise RuntimeError("Global Development Recovery trigger is missing or graph-coupled")
+    discovery_policy = (ROOT / "policies" / "large-codebase-discovery.md").read_text(encoding="utf-8")
+    for required in (
+        "Do not finalize a plan or specification",
+        "Never spawn more than two internal explorers",
+        "A third child is permitted only",
+        "generic `explorer` and `researcher` roles",
+        "A timeout is not completion",
+        "compact summary alone",
+    ):
+        if required not in discovery_policy:
+            raise RuntimeError(f"Large-codebase discovery policy is missing: {required}")
+    if (ROOT / "skills" / "codebase-discovery").exists():
+        raise RuntimeError("Large-codebase discovery must reuse existing roles instead of adding a skill")
+    graph_validator = ROOT / "skills" / "agent-graph-builder" / "scripts" / "graph_contract.py"
+    for skill in ("project-start", "research", "task-delivery"):
+        run([sys.executable, str(graph_validator), "validate", "--skill-dir", str(ROOT / "skills" / skill)])
     skill_validator = find_skill_validator()
     if skill_validator:
-        for skill in ("project-start", "research", "task-delivery"):
+        for skill in ("agent-graph-builder", "development-recovery", "project-start", "research", "task-delivery"):
             run([sys.executable, str(skill_validator), str(ROOT / "skills" / skill)])
     run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"])
     run([sys.executable, "-m", "unittest", "skills/research/scripts/test_research_graph.py", "-v"])
+    run([sys.executable, "-m", "unittest", "skills/agent-graph-builder/scripts/test_graph_contract.py", "-v"])
     run([sys.executable, "skills/project-start/scripts/test_project_start.py"])
     run([sys.executable, "skills/project-start/scripts/test_project_maintenance.py"])
     run([sys.executable, "-m", "unittest", "skills/project-start/scripts/test_project_graph.py", "-v"])
     run([sys.executable, "skills/task-delivery/scripts/test_task_delivery.py"])
     run([sys.executable, "-m", "unittest", "skills/task-delivery/scripts/test_task_graph.py", "-v"])
-    print("All graph-skill checks passed.")
+    print("All workflow checks passed.")
     return 0
 
 

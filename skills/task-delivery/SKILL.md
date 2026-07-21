@@ -38,7 +38,8 @@ python3 scripts/task_graph.py init \
   --root <repo> --mode <plan|implement|full> \
   --task-id <id> --title "<название>" \
   --outcome "<наблюдаемый результат>" \
-  --plan <relative/path/PLAN.md> --profile <light|standard|complex|critical>
+  --plan <relative/path/PLAN.md> --profile <light|standard|complex|critical> \
+  --implementation-strategy <auto|root-only|delegated-sequential>
 ```
 
 Относительные команды запускай из каталога установленного навыка. После `init` используй абсолютные команды, возвращённые runner.
@@ -61,13 +62,18 @@ python3 scripts/task_graph.py init \
 3. Выбери навыки и инструменты по задаче:
    - локальный поиск, LSP/AST и навыки кодовой базы — сначала для внутреннего исследования;
    - `$research` — только для внешних, текущих или смешанных фактов; его агенты входят в общий лимит Task Delivery;
-   - навыки стека, тестирования, безопасности и MCP — только когда они реально относятся к риску;
-   - MCP/app/browser сначала безопасно проверь на доступность; внешняя запись требует явных полномочий.
+   - MCP discovery обязателен: осмотри доступные `mcp__*` tools/resources и вызови релевантный сервер до нативного внешнего пути;
+   - provider-specific MCP используй для данных его продукта, Context7 — для официальной документации библиотек, research MCP — для внешнего поиска, Playwright или другой live MCP — для относящейся к acceptance живой системы;
+   - если задача строго локальная и подходящего сервера нет либо релевантный MCP не сработал, зафиксируй fallback и продолжай локально; не выполняй внешнюю запись без полномочий.
 4. Создай или обнови один план. В замороженной части должны быть outcome, основания, acceptance, шаги, тесты, stop conditions и точный `task-delivery:scope`. Не веди гигантский журнал снимков внутри плана.
 5. Проверь план сам. В `complex/critical` вызови `task_plan_reviewer` до реализации. В режиме `implement` повторно используй прошлый review только если runner принял неизменный план и scope.
-6. Реализуй сам. До двух `task_worker` допустимы только для независимых модулей; корневой агент остаётся владельцем интеграции. Не отдавай агентам пересекающиеся файлы.
+6. Выбери implementation strategy один раз. `light` по умолчанию `root-only`; в `standard/complex/critical` предпочитай `delegated-sequential` и отдай fresh `task_worker` хотя бы один независимо проверяемый bounded slice. Пропускай slice только для действительно маленькой или тесно связанной работы и зафиксируй конкретную причину. Если пользователь сказал «реализуй слайсами», `slice`, `delegируй реализацию` или эквивалент, запусти `init --implementation-strategy delegated-sequential`: завершение без packet/receipt запрещено. До spawn создай immutable packet по [implementation-slices.md](references/implementation-slices.md), передай точный path и digest, затем зафиксируй receipt. `plan` не запускает workers; `implement` связывает packet с точным прошлым review; `full` создаёт его после валидного плана. `delegated-parallel` остаётся fail-closed без изолированных worktrees.
 7. Запусти самые узкие реальные проверки, затем относящиеся проектные рубежи. Не утверждай успех по diff или словам агента.
 8. В `critical` отдельно вызови `task_risk_reviewer`. Создай один `task.json` по [control-artifact.md](references/control-artifact.md).
+
+В `capabilities` обязательно запиши `mcp:<server>` для реально использованного MCP либо `mcp:fallback:<reason>` после проверки доступности. Нативный web/browser и затем `curl` являются fallback, а не первым выбором при наличии подходящего MCP.
+
+В каждый делегированный slice передай только применимые skills, ближайшие инструкции, must-read файлы и уже проверенный MCP/research-контекст. Worker обязан применить required skills и вернуть `capabilities_used`; недоступный skill или недостаточный контекст означает `needs_context`. Root самостоятельно проверяет реальный diff, ownership и тесты и записывает acceptance в итоговый `task.json`; worker report не является доказательством.
 
 Для обычного самостоятельного завершения:
 
@@ -120,5 +126,6 @@ python3 scripts/task_graph.py retry --run <run-dir> --node <work|verify>
 
 - `graph.json` — исполняемый трёхузловой контракт v3.
 - `scripts/task_graph.py` — состояние, baseline, scope, digest, retry и handoff.
+- `references/implementation-slices.md` — опциональный packet/receipt/acceptance contract внутри `work`.
 - `scripts/task_delivery.py` и старые templates/references — только совместимое возобновление v2.
 - `scripts/test_task_graph.py` — целевые проверки нового короткого маршрута.

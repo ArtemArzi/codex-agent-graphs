@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "research",
-  "graph_version": "2.1.0",
+  "graph_version": "2.2.0",
   "entry": "work",
   "terminal": "complete",
   "default_depth": "auto",
@@ -26,6 +26,19 @@
     "research_scout",
     "research_synthesizer"
   ],
+  "mcp_policy": {
+    "discovery": "required",
+    "relevant_use": "required",
+    "receipt_prefix": "mcp:",
+    "fallback_prefix": "mcp:fallback:",
+    "selection_order": [
+      "provider-specific-mcp",
+      "context7-for-library-docs",
+      "research-or-service-mcp",
+      "native-web-or-browser",
+      "curl"
+    ]
+  },
   "nodes": {
     "work": {
       "role": "root",

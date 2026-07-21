@@ -69,7 +69,7 @@ class ResearchGraphTests(unittest.TestCase):
             "schema_version": 2,
             "mode": mode,
             "reason": reason or ("default narrow research" if mode == "fast" else "multiple branches"),
-            "capabilities": capabilities or ["research", "native-web"],
+            "capabilities": capabilities or ["research", "mcp:exa"],
             "agents": agents or [],
             "sources": sources or ["https://example.com/source"],
             "verification": verification,
@@ -117,6 +117,7 @@ class ResearchGraphTests(unittest.TestCase):
         self.assertEqual(contract["limits"]["fast"]["source_checkpoints"], [4, 6, 10])
         self.assertEqual(contract["limits"]["deep"]["source_checkpoints"], [10, 20, 40])
         self.assertEqual(contract["limits"]["fast"]["max_parallel_scouts"], 0)
+        self.assertEqual(contract["mcp_policy"]["relevant_use"], "required")
 
     def test_init_is_idempotent(self) -> None:
         second = graph.initialize("What is supported?", str(self.workspace), "report.md")
@@ -166,6 +167,24 @@ class ResearchGraphTests(unittest.TestCase):
             [10, 20, 40],
         )
         self.assertEqual(ready["data"]["budgets"]["max_parallel_scouts"], 0)
+        self.assertEqual(ready["data"]["mcp_policy"]["receipt_prefix"], "mcp:")
+
+    def test_work_requires_an_mcp_receipt(self) -> None:
+        self.write_report()
+        artifact = self.write_artifact(
+            "work", self.valid_work(capabilities=["research", "native-web"])
+        )
+        with self.assertRaisesRegex(graph.GraphError, "mcp:<server>"):
+            graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+
+    def test_explicit_mcp_fallback_remains_a_valid_fast_path(self) -> None:
+        self.write_report()
+        self.record_work(
+            self.valid_work(
+                capabilities=["research", "native-web", "mcp:fallback:servers-unavailable"]
+            )
+        )
+        self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
 
     def test_workspace_relative_artifact_path_is_accepted(self) -> None:
         self.write_report()
@@ -378,7 +397,7 @@ class ResearchGraphTests(unittest.TestCase):
         self.write_report([str(local)])
         self.record_work(
             self.valid_work(
-                capabilities=["research", "local-files"],
+                capabilities=["research", "local-files", "mcp:fallback:local-only-evidence"],
                 sources=[str(local)],
             )
         )
@@ -405,6 +424,19 @@ class ResearchGraphTests(unittest.TestCase):
         report.write_text(report.read_text(encoding="utf-8") + "\nchanged", encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "integrity"):
             graph.complete_run(self.run_dir)
+
+    def test_started_v2_1_run_can_finish_without_new_mcp_receipt(self) -> None:
+        state_path = self.run_dir / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["graph_version"] = "2.1.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["2.1.0"]
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        self.write_report()
+        artifact = self.write_artifact(
+            "work", self.valid_work(capabilities=["research", "native-web"])
+        )
+        graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+        self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
 
     def test_v1_state_has_actionable_restart_message(self) -> None:
         state_path = self.run_dir / "state.json"

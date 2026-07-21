@@ -46,9 +46,17 @@ class TaskGraphTests(unittest.TestCase):
         profile: str = "standard",
         task_id: str = "TD-1",
         plan: str | None = None,
+        implementation_strategy: str = "auto",
     ) -> Path:
         payload = graph.initialize(
-            str(self.root), mode, task_id, "Deliver behavior", "A verified observable behavior", plan, profile
+            str(self.root),
+            mode,
+            task_id,
+            "Deliver behavior",
+            "A verified observable behavior",
+            plan,
+            profile,
+            implementation_strategy,
         )
         return Path(payload["data"]["run"])
 
@@ -109,6 +117,125 @@ Recorded in the Task Delivery receipt.
     def agent(self, role: str, phase: str, receipt: str) -> dict:
         return {"role": role, "phase": phase, "receipt": receipt, "outcome": "pass"}
 
+    def slice_draft(
+        self,
+        run: Path,
+        identifier: str = "implementation-app",
+        *,
+        owned: list[str] | None = None,
+        supersedes: str | None = None,
+        strategy: str = "delegated-sequential",
+    ) -> Path:
+        state = self.read(run / graph.STATE_NAME)
+        review_mode = (
+            "reused"
+            if state["mode"] == "implement"
+            else ("independent" if state["profile"] in {"complex", "critical"} else "self")
+        )
+        payload = {
+            "schema_version": 1,
+            "slice_id": identifier,
+            "strategy": strategy,
+            "plan_review": {"mode": review_mode, "receipt": "/root/plan-review-before-worker"},
+            "objective": "Implement the reviewed behavior in the owned application slice.",
+            "owned_paths": owned or ["src/app.py"],
+            "excluded_paths": ["src/schema.py"],
+            "must_read": ["src/app.py"],
+            "known_facts": [{"fact": "The current value is the verified implementation baseline.", "source": "src/app.py"}],
+            "stop_questions": ["Stop if the reviewed plan no longer matches the owned runtime path."],
+            "acceptance": ["The owned behavior changes and the narrow deterministic check passes."],
+            "verification_commands": [{"command": "python3 -m unittest", "purpose": "narrow behavior"}],
+            "capability_context": {
+                "skills": [{"name": "coding-standards", "reason": "Apply the repository coding conventions.", "required": True}],
+                "mcp": [{"receipt": "mcp:context7", "mode": "provided", "purpose": "Use the already verified library context."}],
+            },
+            "supersedes": supersedes,
+        }
+        path = run / f"{identifier}-packet-draft.json"
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return path
+
+    def slice_receipt(
+        self,
+        run: Path,
+        identifier: str = "implementation-app",
+        *,
+        status: str = "done",
+        changed: list[str] | None = None,
+        include_skill: bool = True,
+        concerns: list[str] | None = None,
+    ) -> Path:
+        state = self.read(run / graph.STATE_NAME)
+        record = state["slices"][identifier]
+        capabilities = [
+            {
+                "kind": "mcp",
+                "name": "mcp:context7",
+                "status": "consumed",
+                "evidence": "Used the verified library context supplied by root.",
+            }
+        ]
+        if include_skill:
+            capabilities.insert(
+                0,
+                {
+                    "kind": "skill",
+                    "name": "coding-standards",
+                    "status": "applied",
+                    "evidence": "Applied the selected coding conventions to the owned implementation.",
+                },
+            )
+        payload = {
+            "schema_version": 1,
+            "slice_id": identifier,
+            "packet_sha256": record["packet_sha256"],
+            "worker_receipt": f"/root/{identifier}-worker",
+            "status": status,
+            "summary": "Implemented the bounded slice and reported its evidence to root.",
+            "changed_paths": changed if changed is not None else (["src/app.py"] if status in {"done", "done_with_concerns"} else []),
+            "tests": (
+                [{"command": "python3 -m unittest", "purpose": "narrow behavior", "exit_code": 0, "status": "passed"}]
+                if status in {"done", "done_with_concerns"}
+                else []
+            ),
+            "artifacts": [],
+            "capabilities_used": capabilities,
+            "concerns": concerns or [],
+            "residual_risks": [],
+            "discoveries": [{"fact": "The narrow behavior is covered by the assigned command.", "source": "src/app.py"}],
+            "context_request": "Need the missing interface decision from root." if status == "needs_context" else None,
+            "blocker": "The owned contract cannot be changed safely." if status == "blocked" else None,
+        }
+        path = run / f"{identifier}-worker-draft.json"
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return path
+
+    def worker_agent(self, run: Path, identifier: str = "implementation-app") -> dict:
+        record = self.read(run / graph.STATE_NAME)["slices"][identifier]
+        return {
+            "role": "task_worker",
+            "phase": "implementation",
+            "receipt": record["worker_receipt"],
+            "outcome": record["worker_status"],
+            "slice_id": identifier,
+            "packet_sha256": record["packet_sha256"],
+            "receipt_sha256": record["receipt_sha256"],
+        }
+
+    def accepted_slice(self, run: Path, identifier: str = "implementation-app") -> dict:
+        record = self.read(run / graph.STATE_NAME)["slices"][identifier]
+        return {
+            "slice_id": identifier,
+            "packet_sha256": record["packet_sha256"],
+            "receipt_sha256": record["receipt_sha256"],
+            "root_acceptance": {
+                "verdict": "accepted_with_concerns" if record["worker_status"] == "done_with_concerns" else "accepted",
+                "verified_changed_paths": record["changed_paths"],
+                "tests": [{"command": "python3 -m unittest", "purpose": "root replay", "exit_code": 0, "status": "passed"}],
+                "concerns_resolution": ["Root verified and bounded the reported concern."] if record["worker_status"] == "done_with_concerns" else [],
+            },
+        }
+
     def work_payload(
         self,
         run: Path,
@@ -119,13 +246,21 @@ Recorded in the Task Delivery receipt.
         decision: dict | None = None,
         external: dict | None = None,
         changed: list[str] | None = None,
+        capabilities: list[str] | None = None,
+        implementation: dict | None = None,
     ) -> dict:
         state = self.read(run / graph.STATE_NAME)
         plan = self.root / state["plan_path"]
-        implementation = (
-            {"status": "not-run", "changed_paths": []}
+        implementation = implementation or (
+            {"status": "not-run", "changed_paths": [], "strategy": "root-only", "slices": []}
             if state["mode"] == "plan"
-            else {"status": "complete", "changed_paths": changed or ["src/app.py"]}
+            else {
+                "status": "complete",
+                "changed_paths": changed or ["src/app.py"],
+                "strategy": "root-only",
+                "delegation_reason": "The implementation is one tightly coupled local seam with no independent worker result.",
+                "slices": [],
+            }
         )
         tests = [] if state["mode"] == "plan" else [
             {"command": "python3 -m unittest", "purpose": "narrow behavior", "exit_code": 0, "status": "passed"}
@@ -137,7 +272,11 @@ Recorded in the Task Delivery receipt.
             "profile": state["profile"],
             "summary": "The requested behavior is implemented and verified against the current repository.",
             "confidence": confidence,
-            "capabilities": ["repository search", "project test command"],
+            "capabilities": capabilities or [
+                "repository search",
+                "project test command",
+                "mcp:fallback:local-only-task",
+            ],
             "agents": agents or [],
             "research": {
                 "internal": ["src/app.py and the nearest project instructions were inspected"],
@@ -185,6 +324,292 @@ Recorded in the Task Delivery receipt.
         self.assertEqual({"plan", "implement", "full"}, set(contract["routes"]))
         for mode in graph.MODES:
             self.assertEqual({"work", "verify", "complete"}, set(contract["routes"][mode]["nodes"]))
+        self.assertEqual("adaptive", contract["delegation_policy"]["default_strategy"])
+        self.assertEqual(
+            "delegated-sequential",
+            contract["delegation_policy"]["profile_preference"]["standard"],
+        )
+        self.assertFalse(contract["delegation_policy"]["parallel_write_enabled"])
+
+    def test_cli_exposes_slice_commands_without_new_graph_nodes(self) -> None:
+        created = graph.parser().parse_args(
+            ["slice-create", "--run", "/tmp/run", "--packet", "/tmp/packet.json"]
+        )
+        recorded = graph.parser().parse_args(
+            ["slice-record", "--run", "/tmp/run", "--slice-id", "implementation-app", "--receipt", "/tmp/receipt.json"]
+        )
+        self.assertEqual("slice-create", created.command)
+        self.assertEqual("slice-record", recorded.command)
+        initialized = graph.parser().parse_args(
+            [
+                "init",
+                "--root",
+                "/tmp/repo",
+                "--task-id",
+                "TD-1",
+                "--title",
+                "Deliver",
+                "--outcome",
+                "Deliver behavior",
+                "--implementation-strategy",
+                "delegated-sequential",
+            ]
+        )
+        self.assertEqual("delegated-sequential", initialized.implementation_strategy)
+
+    def test_explicit_slice_request_rejects_root_only_completion(self) -> None:
+        run = self.initialize(implementation_strategy="delegated-sequential")
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run))
+        with self.assertRaisesRegex(graph.GraphError, "запрос на реализацию слайсами"):
+            graph.record(run, "work", "verify")
+
+    def test_adaptive_standard_root_only_requires_reason(self) -> None:
+        run = self.initialize()
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        payload = self.work_payload(run)
+        payload["implementation"].pop("delegation_reason")
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "delegation_reason"):
+            graph.record(run, "work", "verify")
+
+    def test_ready_prefers_slice_for_standard_but_not_light(self) -> None:
+        standard = self.initialize(task_id="TD-STANDARD")
+        standard_ready = graph.ready(standard)
+        self.assertEqual("delegated-sequential", standard_ready["data"]["implementation_strategy_preferred"])
+        self.assertIn("slice-create", standard_ready["next_actions"][0])
+
+        light = self.initialize(profile="light", task_id="TD-LIGHT")
+        light_ready = graph.ready(light)
+        self.assertEqual("root-only", light_ready["data"]["implementation_strategy_preferred"])
+        self.assertNotIn("slice-create", " ".join(light_ready["next_actions"]))
+
+    def test_slice_contract_is_progressively_disclosed(self) -> None:
+        skill = (graph.SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        reference = (graph.SKILL_DIR / "references/implementation-slices.md").read_text(encoding="utf-8")
+        worker = (graph.SKILL_DIR.parents[1] / "agents/task_worker.toml").read_text(encoding="utf-8")
+        self.assertIn("work → complete", skill)
+        self.assertIn("implementation-slices.md", skill)
+        self.assertIn("`plan` никогда не запускает implementation workers", reference)
+        self.assertIn("implement` выдаёт packet", reference)
+        self.assertIn("`full` сначала", reference)
+        self.assertIn("each selected required skill's SKILL.md", worker)
+
+    def test_plan_mode_cannot_create_implementation_slice(self) -> None:
+        run = self.initialize(mode="plan", profile="standard")
+        self.plan()
+        with self.assertRaisesRegex(graph.GraphError, "plan не запускает"):
+            graph.register_slice(run, self.slice_draft(run))
+
+    def test_full_mode_records_skill_bound_slice_and_root_acceptance(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [self.accepted_slice(run)],
+        }
+        payload = self.work_payload(
+            run,
+            agents=[self.worker_agent(run)],
+            capabilities=["repository search", "project test command", "mcp:context7"],
+            implementation=implementation,
+        )
+        self.write_work(run, payload)
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+        work = self.read(run / graph.STATE_NAME)["nodes"]["work"]["receipts"][-1]
+        self.assertEqual("delegated-sequential", work["implementation_strategy"])
+        self.assertEqual("implementation-app", work["accepted_slices"][0]["slice_id"])
+
+    def test_complex_full_slice_binds_independent_plan_review_before_worker(self) -> None:
+        run = self.initialize(profile="complex")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        plan_reviewer = self.agent("task_plan_reviewer", "plan-review", "/root/plan-review-before-worker")
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [self.accepted_slice(run)],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[plan_reviewer, self.worker_agent(run)],
+                review_mode="independent",
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+
+    def test_complex_full_slice_rejects_self_review_before_worker(self) -> None:
+        run = self.initialize(profile="complex")
+        self.plan()
+        draft = self.slice_draft(run)
+        payload = self.read(draft)
+        payload["plan_review"] = {"mode": "self", "receipt": "root:self-review"}
+        draft.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "independent plan review"):
+            graph.register_slice(run, draft)
+
+    def test_implement_mode_can_delegate_after_exact_plan_reuse(self) -> None:
+        plan_run = self.initialize(mode="plan", profile="standard")
+        self.plan()
+        self.write_work(plan_run, self.work_payload(plan_run))
+        graph.record(plan_run, "work", "succeeded")
+        graph.complete(plan_run)
+        run = self.initialize(mode="implement", profile="standard", plan="docs/tasks/TD-1/PLAN.md")
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [self.accepted_slice(run)],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[self.worker_agent(run)],
+                review_mode="reused",
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+
+    def test_required_slice_skill_must_be_reported_as_applied(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        with self.assertRaisesRegex(graph.GraphError, "selected skill|обязательный skill"):
+            graph.record_slice(run, "implementation-app", self.slice_receipt(run, include_skill=False))
+
+    def test_worker_change_outside_slice_ownership_is_rejected(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan(scope="src")
+        graph.register_slice(run, self.slice_draft(run, owned=["src/app.py"]))
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write("src/other.py", "OUTSIDE = True\n")
+        receipt = self.slice_receipt(run, changed=["src/app.py", "src/other.py"])
+        with self.assertRaisesRegex(graph.GraphError, "вне slice ownership"):
+            graph.record_slice(run, "implementation-app", receipt)
+
+    def test_slice_packet_tampering_is_rejected(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        created = graph.register_slice(run, self.slice_draft(run))
+        packet = Path(created["data"]["packet"])
+        packet.write_text(packet.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        self.write("src/app.py", "VALUE = 2\n")
+        with self.assertRaisesRegex(graph.GraphError, "packet изменился"):
+            graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+
+    def test_plan_drift_after_slice_issue_requires_new_packet(self) -> None:
+        run = self.initialize(profile="standard")
+        plan = self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        plan.write_text(plan.read_text(encoding="utf-8").replace("narrow test passes", "narrow test and lint pass"), encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "План изменился"):
+            graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
+
+    def test_needs_context_can_be_superseded_by_one_bounded_slice(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
+        graph.register_slice(
+            run,
+            self.slice_draft(run, "implementation-app-v2", supersedes="implementation-app"),
+        )
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app-v2", self.slice_receipt(run, "implementation-app-v2"))
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [self.accepted_slice(run, "implementation-app-v2")],
+        }
+        agents = [self.worker_agent(run), self.worker_agent(run, "implementation-app-v2")]
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=agents,
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+
+    def test_done_with_concerns_requires_root_resolution(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(
+            run,
+            "implementation-app",
+            self.slice_receipt(run, status="done_with_concerns", concerns=["The neighboring adapter was not exercised."]),
+        )
+        accepted = self.accepted_slice(run)
+        accepted["root_acceptance"]["concerns_resolution"] = []
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [accepted],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[self.worker_agent(run)],
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        with self.assertRaisesRegex(graph.GraphError, "concerns_resolution"):
+            graph.record(run, "work", "verify")
+
+    def test_parallel_write_slice_is_fail_closed(self) -> None:
+        run = self.initialize(profile="complex")
+        self.plan()
+        with self.assertRaisesRegex(graph.GraphError, "worktree isolation"):
+            graph.register_slice(run, self.slice_draft(run, strategy="delegated-parallel"))
+
+    def test_ready_exposes_mcp_first_policy(self) -> None:
+        run = self.initialize(profile="light")
+        ready = graph.ready(run)
+        self.assertEqual("required", ready["data"]["mcp_policy"]["discovery"])
+
+    def test_work_requires_an_mcp_receipt(self) -> None:
+        run = self.initialize(profile="light")
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        payload = self.work_payload(
+            run, capabilities=["repository search", "project test command"]
+        )
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "MCP receipt"):
+            graph.record(run, "work", "succeeded")
 
     def test_light_full_completes_without_subagent(self) -> None:
         run = self.initialize(profile="light")
@@ -412,6 +837,69 @@ Recorded in the Task Delivery receipt.
         self.assertEqual("blocked", blocked["status"])
         with self.assertRaisesRegex(graph.GraphError, "терминален"):
             graph.retry(run, "verify")
+
+    def test_started_v3_0_run_can_finish_without_new_mcp_receipt(self) -> None:
+        run = self.initialize(profile="light")
+        state_path = run / graph.STATE_NAME
+        state = self.read(state_path)
+        state["graph_version"] = "3.0.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.0.0"]
+        state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        payload = self.work_payload(
+            run, capabilities=["repository search", "project test command"]
+        )
+        self.write_work(run, payload)
+        ready = graph.record(run, "work", "succeeded")
+        self.assertEqual("complete", ready["data"]["current"])
+
+    def test_started_v3_1_run_can_finish_without_slice_contract(self) -> None:
+        run = self.initialize(profile="light")
+        state_path = run / graph.STATE_NAME
+        state = self.read(state_path)
+        state["graph_version"] = "3.1.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.1.0"]
+        state.pop("implementation_strategy", None)
+        state.pop("slices", None)
+        state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        payload = self.work_payload(run)
+        payload["implementation"].pop("strategy")
+        payload["implementation"].pop("slices")
+        self.write_work(run, payload)
+        ready = graph.record(run, "work", "succeeded")
+        self.assertEqual("complete", ready["data"]["current"])
+
+    def test_slice_receipt_tampering_blocks_complete(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [self.accepted_slice(run)],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[self.worker_agent(run)],
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        graph.record(run, "work", "verify")
+        self.write_verify(run, self.verify_payload(run))
+        graph.record(run, "verify", "succeeded")
+        receipt = Path(self.read(run / graph.STATE_NAME)["slices"]["implementation-app"]["receipt_path"])
+        receipt.write_text(receipt.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "Worker receipt изменился"):
+            graph.complete(run)
 
     def test_v2_task_id_is_not_silently_migrated(self) -> None:
         state = self.root / ".codex/task-delivery/TD-1/state.json"

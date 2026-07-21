@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install and verify graph-skills in WSL CLI and Codex Desktop homes."""
+"""Install and verify Codex workflows in WSL CLI and Codex Desktop homes."""
 
 from __future__ import annotations
 
@@ -20,7 +20,9 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_ROOT = REPO_ROOT / "skills"
 AGENTS_ROOT = REPO_ROOT / "agents"
-SKILLS = ("project-start", "research", "task-delivery")
+GLOBAL_POLICY_SOURCE = REPO_ROOT / "policies" / "development-recovery.md"
+DISCOVERY_POLICY_SOURCE = REPO_ROOT / "policies" / "large-codebase-discovery.md"
+SKILLS = ("agent-graph-builder", "development-recovery", "project-start", "research", "task-delivery")
 AGENT_ROLES = (
     "project_docs_auditor",
     "project_docs_curator",
@@ -39,8 +41,20 @@ BLOCK_START = "# BEGIN codex-agent-graphs: graph agents"
 BLOCK_END = "# END codex-agent-graphs: graph agents"
 LEGACY_BLOCK_START = "# BEGIN codex-agent-graphs: research agents"
 LEGACY_BLOCK_END = "# END codex-agent-graphs: research agents"
+POLICY_BLOCK_START = "<!-- BEGIN codex-development-recovery -->"
+POLICY_BLOCK_END = "<!-- END codex-development-recovery -->"
+DISCOVERY_POLICY_BLOCK_START = "<!-- BEGIN codex-large-codebase-discovery -->"
+DISCOVERY_POLICY_BLOCK_END = "<!-- END codex-large-codebase-discovery -->"
 MANAGED_RE = re.compile(
     rf"(?ms)^\s*(?:{re.escape(BLOCK_START)}|{re.escape(LEGACY_BLOCK_START)})\n.*?^\s*(?:{re.escape(BLOCK_END)}|{re.escape(LEGACY_BLOCK_END)})\n?"
+)
+POLICY_MANAGED_RE = re.compile(
+    rf"(?ms)^[ \t]*{re.escape(POLICY_BLOCK_START)}[ \t]*\r?\n.*?"
+    rf"^[ \t]*{re.escape(POLICY_BLOCK_END)}[ \t]*(?:\r?\n|$)"
+)
+DISCOVERY_POLICY_MANAGED_RE = re.compile(
+    rf"(?ms)^[ \t]*{re.escape(DISCOVERY_POLICY_BLOCK_START)}[ \t]*\r?\n.*?"
+    rf"^[ \t]*{re.escape(DISCOVERY_POLICY_BLOCK_END)}[ \t]*(?:\r?\n|$)"
 )
 EXCLUDED_NAMES = {"__pycache__", ".pytest_cache", ".DS_Store"}
 
@@ -138,6 +152,72 @@ def config_status(codex_home: Path) -> str:
     return "in-sync" if original == config_with_block(original) else ("missing" if not config.exists() else "drift")
 
 
+def policy_block(source: Path, start: str, end: str) -> str:
+    if not source.is_file() or source.is_symlink():
+        raise InstallError(f"Invalid global policy source: {source}")
+    policy = source.read_text(encoding="utf-8").strip()
+    if not policy:
+        raise InstallError(f"Empty global policy source: {source}")
+    managed_markers = (
+        POLICY_BLOCK_START,
+        POLICY_BLOCK_END,
+        DISCOVERY_POLICY_BLOCK_START,
+        DISCOVERY_POLICY_BLOCK_END,
+    )
+    if any(marker in policy for marker in managed_markers):
+        raise InstallError(f"Global policy source contains a managed marker: {source}")
+    return f"{start}\n{policy}\n{end}\n"
+
+
+def global_policy_block() -> str:
+    return policy_block(GLOBAL_POLICY_SOURCE, POLICY_BLOCK_START, POLICY_BLOCK_END)
+
+
+def discovery_policy_block() -> str:
+    return policy_block(
+        DISCOVERY_POLICY_SOURCE,
+        DISCOVERY_POLICY_BLOCK_START,
+        DISCOVERY_POLICY_BLOCK_END,
+    )
+
+
+def agents_with_policy(original: str) -> str:
+    managed = (
+        (
+            "development-recovery",
+            POLICY_BLOCK_START,
+            POLICY_BLOCK_END,
+            POLICY_MANAGED_RE,
+        ),
+        (
+            "large-codebase-discovery",
+            DISCOVERY_POLICY_BLOCK_START,
+            DISCOVERY_POLICY_BLOCK_END,
+            DISCOVERY_POLICY_MANAGED_RE,
+        ),
+    )
+    without_managed = original
+    for name, start, end, pattern in managed:
+        start_count = without_managed.count(start)
+        end_count = without_managed.count(end)
+        if start_count != end_count or start_count > 1:
+            raise InstallError(f"Malformed or duplicate managed {name} policy block")
+        if start_count and len(list(pattern.finditer(without_managed))) != 1:
+            raise InstallError(f"Malformed or embedded managed {name} policy block")
+        without_managed = pattern.sub("", without_managed)
+    without_managed = without_managed.rstrip()
+    blocks = f"{global_policy_block()}\n{discovery_policy_block()}"
+    return f"{without_managed}\n\n{blocks}" if without_managed else blocks
+
+
+def agents_policy_status(codex_home: Path) -> str:
+    agents_file = codex_home / "AGENTS.md"
+    if agents_file.is_symlink():
+        raise InstallError(f"Symlinked AGENTS.md is not managed automatically: {agents_file}")
+    original = agents_file.read_text(encoding="utf-8") if agents_file.exists() else ""
+    return "in-sync" if original == agents_with_policy(original) else ("missing" if not agents_file.exists() else "drift")
+
+
 def atomic_write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
@@ -205,7 +285,7 @@ def replace_file(source: Path, target: Path, backup: Path) -> str:
     return "installed"
 
 
-def preflight_environment(codex_home: Path) -> tuple[str, str]:
+def preflight_environment(codex_home: Path) -> tuple[str, str, str, str]:
     codex_home = codex_home.expanduser().resolve()
     for skill in SKILLS:
         manifest(SKILLS_ROOT / skill)
@@ -222,13 +302,19 @@ def preflight_environment(codex_home: Path) -> tuple[str, str]:
         raise InstallError(f"Symlinked config.toml is not managed automatically: {config}")
     original = config.read_text(encoding="utf-8") if config.exists() else ""
     candidate = config_with_block(original)
-    return original, candidate
+    agents_file = codex_home / "AGENTS.md"
+    if agents_file.is_symlink():
+        raise InstallError(f"Symlinked AGENTS.md is not managed automatically: {agents_file}")
+    agents_original = agents_file.read_text(encoding="utf-8") if agents_file.exists() else ""
+    agents_candidate = agents_with_policy(agents_original)
+    return original, candidate, agents_original, agents_candidate
 
 
 def install_environment(codex_home: Path) -> dict[str, Any]:
     codex_home = codex_home.expanduser().resolve()
-    original, candidate = preflight_environment(codex_home)
+    original, candidate, agents_original, agents_candidate = preflight_environment(codex_home)
     config = codex_home / "config.toml"
+    agents_file = codex_home / "AGENTS.md"
     backup = backup_root(codex_home)
     changes: list[dict[str, str]] = []
     for skill in SKILLS:
@@ -252,6 +338,24 @@ def install_environment(codex_home: Path) -> dict[str, Any]:
         atomic_write(config, candidate)
         config_change = "installed"
     changes.append({"kind": "config", "name": "managed-agent-block", "status": config_change, "target": str(config)})
+
+    if agents_candidate == agents_original:
+        policy_change = "in-sync"
+    else:
+        if agents_file.exists():
+            agents_backup = backup / "AGENTS.md"
+            agents_backup.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(agents_file, agents_backup)
+        atomic_write(agents_file, agents_candidate)
+        policy_change = "installed"
+    changes.append(
+        {
+            "kind": "policy",
+            "name": "managed-global-policies",
+            "status": policy_change,
+            "target": str(agents_file),
+        }
+    )
     verification = verify_environment(codex_home)
     if verification["status"] != "ok":
         raise InstallError(f"Post-install verification failed for {codex_home}: {verification['issues']}")
@@ -285,6 +389,14 @@ def verify_environment(codex_home: Path) -> dict[str, Any]:
     statuses.append({"kind": "config", "name": "managed-agent-block", "status": status})
     if status != "in-sync" and not any("Unmanaged config" in issue for issue in issues):
         issues.append(f"config managed-agent-block: {status}")
+    try:
+        policy_status = agents_policy_status(codex_home)
+    except InstallError as exc:
+        policy_status = "conflict"
+        issues.append(str(exc))
+    statuses.append({"kind": "policy", "name": "managed-global-policies", "status": policy_status})
+    if policy_status != "in-sync" and not any("managed" in issue and "policy block" in issue for issue in issues):
+        issues.append(f"policy managed-global-policies: {policy_status}")
     return {
         "status": "ok" if not issues else "failed",
         "codex_home": str(codex_home),
@@ -317,6 +429,11 @@ def plan_environment(codex_home: Path) -> dict[str, Any]:
     except InstallError:
         config = "conflict"
     items.append({"kind": "config", "name": "managed-agent-block", "status": config})
+    try:
+        policy = agents_policy_status(codex_home)
+    except InstallError:
+        policy = "conflict"
+    items.append({"kind": "policy", "name": "managed-global-policies", "status": policy})
     return {"codex_home": str(codex_home), "items": items}
 
 

@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.0.0",
+  "graph_version": "3.3.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
@@ -9,7 +9,9 @@
     "max_agents_per_run": 5,
     "max_parallel_agents": 2,
     "max_parallel_explorers": 2,
-    "max_parallel_workers": 2
+    "max_parallel_workers": 2,
+    "max_slices_per_run": 2,
+    "max_selected_skills_per_slice": 3
   },
   "profiles": {
     "light": {"plan_reviewers": 0, "result_reviewers": 0},
@@ -24,6 +26,42 @@
     "task_result_reviewer",
     "task_risk_reviewer"
   ],
+  "mcp_policy": {
+    "discovery": "required",
+    "relevant_use": "required",
+    "receipt_prefix": "mcp:",
+    "fallback_prefix": "mcp:fallback:",
+    "selection_order": [
+      "provider-specific-mcp",
+      "context7-for-library-docs",
+      "research-or-service-mcp",
+      "native-web-or-browser",
+      "curl"
+    ]
+  },
+  "delegation_policy": {
+    "default_strategy": "adaptive",
+    "profile_preference": {
+      "light": "root-only",
+      "standard": "delegated-sequential",
+      "complex": "delegated-sequential",
+      "critical": "delegated-sequential"
+    },
+    "explicit_slice_request": "required",
+    "strategies": [
+      "root-only",
+      "delegated-sequential",
+      "delegated-parallel"
+    ],
+    "worker_statuses": [
+      "done",
+      "done_with_concerns",
+      "needs_context",
+      "blocked"
+    ],
+    "parallel_write_isolation": "worktree-required",
+    "parallel_write_enabled": false
+  },
   "routes": {
     "plan": {
       "entry": "work",

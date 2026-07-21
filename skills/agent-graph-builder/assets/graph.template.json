@@ -1,0 +1,49 @@
+{
+  "schema_version": 2,
+  "graph_id": "__GRAPH_ID__",
+  "graph_version": "1.0.0",
+  "default_mode": "__MODE__",
+  "limits": {
+    "max_node_retries": 1,
+    "max_verification_repairs": 1
+  },
+  "optional_agents": ["__VERIFIER_ROLE__"],
+  "mcp_policy": {
+    "discovery": "required",
+    "relevant_use": "required",
+    "receipt_prefix": "mcp:",
+    "fallback_prefix": "mcp:fallback:",
+    "selection_order": [
+      "provider-specific-mcp",
+      "context7-for-library-docs",
+      "research-or-service-mcp",
+      "native-web-or-browser",
+      "curl"
+    ]
+  },
+  "routes": {
+    "__MODE__": {
+      "entry": "work",
+      "terminal": "complete",
+      "nodes": {
+        "work": {
+          "role": "root",
+          "artifact": "__WORK_ARTIFACT__",
+          "on_success": "complete",
+          "on_verify": "verify",
+          "on_decision": "decision-required"
+        },
+        "verify": {
+          "role": "__VERIFIER_ROLE__",
+          "artifact": "verification.json",
+          "on_success": "complete",
+          "on_rejected": "work"
+        },
+        "complete": {
+          "role": "root",
+          "artifact": "__COMPLETE_ARTIFACT__"
+        }
+      }
+    }
+  }
+}

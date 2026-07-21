@@ -1,0 +1,4 @@
+interface:
+  display_name: "Development Recovery"
+  short_description: "Recover safely from spec-code divergence"
+  default_prompt: "Use $development-recovery to classify this implementation divergence and choose a safe recovery path."

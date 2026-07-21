@@ -10,14 +10,14 @@ Use the graph as a small control layer around one native Codex research loop. Do
 ## Core contract
 
 - Start with the root agent in `fast` mode unless the user explicitly requests deep work or a strong escalation signal is already present.
-- Read only the installed skills relevant to the question. Treat Exa, Deep Research, market research, literature review, documentation lookup, browser search, MCP, apps, and local files as optional capabilities, not mandatory stages.
+- Read only the installed skills relevant to the question. MCP discovery and relevant MCP use are mandatory inside `work`; Exa, Deep Research, domain skills, apps, browser search, and local files remain adaptive capabilities, not graph stages.
 - Keep normal research read-only except for ignored run state and the requested report.
 - Prefer primary and authoritative sources. Open sources; do not treat search snippets as evidence.
 - Put citations next to material factual claims and separate source claims, inference, contradiction, and unknowns.
 - Expand sources only while coverage is incomplete. Stop when enough evidence exists for an honest answer; source checkpoints and hard limits are not quotas.
 - Do not ask the user to approve ordinary search, source selection, safe fallbacks, or internal delegation.
 
-Read [routing.md](references/routing.md) for depth and capability selection. Read [source-policy.md](references/source-policy.md) before writing `research.json`. Read [roles.md](references/roles.md) only when delegation or independent verification is justified.
+Read [routing.md](references/routing.md) for depth and capability selection. Read [source-policy.md](references/source-policy.md) and [control-artifact.md](references/control-artifact.md) before writing `research.json`. Read [roles.md](references/roles.md) only when delegation or independent verification is justified.
 
 ## Start or resume
 
@@ -35,8 +35,8 @@ The runner stores ignored, resumable state under `<workspace>/.agent-graphs/rese
 Perform the complete research task natively inside one root turn:
 
 1. Understand the decision and freshness need without creating a separate intake artifact.
-2. Inspect the currently exposed skills and tools; load only likely capabilities.
-3. Search and open an initial evidence set, then test coverage before crossing each source checkpoint in `ready`. Continue only for an unanswered sub-question, weak material claim, unresolved contradiction, missing source class, or meaningful new evidence in the latest batch.
+2. Inspect exposed `mcp__*` tools/resources and make one relevant MCP call before a general native-web path. Prefer a provider-specific MCP, Context7 for official library documentation, a research MCP such as Exa/Tavily/Firecrawl, or the service MCP that owns the requested data. Do not substitute `curl` while a suitable MCP is available.
+3. Search and open an initial evidence set, then test coverage before crossing each source checkpoint in `ready`. Continue only for an unanswered sub-question, weak material claim, unresolved contradiction, missing source class, or meaningful new evidence in the latest batch. If every relevant MCP is unavailable or fails, continue automatically through native web/browser and finally `curl`, and record the reason.
 4. Compare evidence and write the final report directly to the requested output path. Stop early when the latest batch is redundant and remaining gaps are unlikely to change the answer.
 5. Write one small `research.json` containing mode, reason, used capabilities, optional agents, cited sources, confidence, gaps, and verification decision.
 6. Record one durable work receipt.
@@ -61,11 +61,13 @@ python3 scripts/research_graph.py retry --run "<run-directory>" --reason "<fallb
 
 ## Use capabilities natively
 
-- Use `exa-search` for focused neural discovery, code context, companies, or people when its MCP surface is available.
+- Use the owning provider MCP first: OpenAI Developer Docs for OpenAI, GitHub for repository truth, Linear/Notion for their workspace data, Playwright for live browser state, and comparable service-specific servers when exposed.
+- Use Context7 before general web search for version-sensitive official library or framework documentation.
+- Use Exa, Tavily, Firecrawl, or another research MCP for focused discovery, code context, companies, or people.
 - Use `deep-research` only after deep routing; never import a broad source target into fast mode or treat the deep 40-source emergency ceiling as a goal.
 - Use official documentation skills for version-sensitive technical claims.
 - Use domain skills such as market research or literature review when the question actually belongs to that domain.
-- Fall back automatically to native web search, browser, local files, or another admitted source path when a preferred MCP is unavailable.
+- Record each successful server as `mcp:<server>` in `capabilities`. Only when no relevant MCP succeeds, record one `mcp:fallback:<reason>` and fall back automatically to native web search, browser, local files, or `curl`. A fallback receipt is not permission to skip MCP discovery.
 
 ## Use multiple agents only on evidence
 

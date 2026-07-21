@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Graph Builder"
+  short_description: "Создаёт лёгкие проверяемые агентские графы"
+  default_prompt: "Используй $agent-graph-builder, чтобы создать или стандартизировать Codex-native граф с единым проверяемым контрактом."

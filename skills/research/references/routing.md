@@ -10,14 +10,14 @@ The root may use any relevant installed skill or exposed tool. Capability use do
 
 | Need | Preferred capability | Fallback |
 |---|---|---|
-| Current web facts or focused discovery | `exa-search` when its MCP tools are exposed | native web search or browser |
+| Current web facts or focused discovery | Exa, Tavily, or Firecrawl MCP | native web search or browser |
 | Thorough multi-source investigation | `deep-research`, only in deep mode | scouts plus native web tools |
-| Official technical documentation | `documentation-lookup`, `openai-docs`, or product-specific docs | official websites and local docs |
+| Official technical documentation | provider-specific MCP, then Context7 | official websites, local docs, native web, then `curl` |
 | Scholarly evidence | `literature-review` and original papers | academic search plus primary papers |
 | Market or company decision | `market-research` plus Exa/company sources | filings, first-party data, reputable analysis |
 | Repository or local-product truth | local files, tests, CLI help, MCP for the live system | report the unavailable proof path |
 
-Inspect exact MCP/tool names at runtime. Do not fail because a preferred skill, model, or connector is absent; use the next safe path and record material use in `capabilities` or a decision-relevant absence in `gaps`.
+Inspect exact MCP/tool names at runtime and call the best relevant server before a native external path. Record success as `mcp:<server>`. If no relevant server succeeds, record `mcp:fallback:<reason>` and use the next safe path; do not fail the research merely because a preferred server is absent. Never use fallback as a reason to ignore an exposed relevant MCP.
 
 ## Expand by coverage, not count
 
