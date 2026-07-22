@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "required_skills": [
+    {
+      "name": "task-delivery",
+      "phase": "accepted-candidate-delivery",
+      "reason": "Owns planning, implementation, tests, result review and Project Start handoff for an accepted candidate."
+    }
+  ],
+  "optional_skills": [
+    {
+      "name": "research",
+      "phase": "candidate-evidence",
+      "reason": "Provides bounded external evidence only when the candidate depends on a current external fact."
+    },
+    {
+      "name": "development-recovery",
+      "phase": "delivery-recovery",
+      "reason": "Handles specification or evidence divergence without adding graph nodes."
+    },
+    {
+      "name": "project-start",
+      "phase": "post-delivery-maintenance",
+      "reason": "Consumes the Task Delivery handoff when documentation maintenance is required."
+    }
+  ]
+}

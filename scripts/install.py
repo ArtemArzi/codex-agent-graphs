@@ -22,8 +22,16 @@ SKILLS_ROOT = REPO_ROOT / "skills"
 AGENTS_ROOT = REPO_ROOT / "agents"
 GLOBAL_POLICY_SOURCE = REPO_ROOT / "policies" / "development-recovery.md"
 DISCOVERY_POLICY_SOURCE = REPO_ROOT / "policies" / "large-codebase-discovery.md"
-SKILLS = ("agent-graph-builder", "development-recovery", "project-start", "research", "task-delivery")
+SKILLS = (
+    "agent-graph-builder",
+    "continuous-improvement",
+    "development-recovery",
+    "project-start",
+    "research",
+    "task-delivery",
+)
 AGENT_ROLES = (
+    "improvement_verifier",
     "project_docs_auditor",
     "project_docs_curator",
     "project_docs_verifier",
@@ -105,6 +113,7 @@ def file_status(source: Path, target: Path) -> str:
 def managed_block() -> str:
     lines = [BLOCK_START]
     descriptions = {
+        "improvement_verifier": "Conditional Continuous Improvement candidate verifier.",
         "project_docs_auditor": "Legacy v2 Project Start drift auditor.",
         "project_docs_curator": "Legacy v2 Project Start factual updater.",
         "project_docs_verifier": "Conditional Project Start v3 documentation verifier.",

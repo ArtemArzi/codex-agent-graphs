@@ -1,0 +1,4 @@
+interface:
+  display_name: "Continuous Improvement"
+  short_description: "Find and deliver one safe repository improvement"
+  default_prompt: "Use $continuous-improvement to find one evidence-backed repository problem and safely deliver or report it."

@@ -42,6 +42,7 @@ def main() -> int:
         ROOT / "scripts" / "install.py",
         ROOT / "scripts" / "check_all.py",
         ROOT / "skills" / "agent-graph-builder" / "scripts" / "graph_contract.py",
+        ROOT / "skills" / "continuous-improvement" / "scripts" / "continuous_improvement_graph.py",
         ROOT / "skills" / "research" / "scripts" / "research_graph.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_graph.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_start.py",
@@ -112,6 +113,29 @@ def main() -> int:
         prompt = (ROOT / "agents" / f"{role}.toml").read_text(encoding="utf-8")
         if "spawn descendants" not in prompt or "commit" not in prompt:
             raise RuntimeError(f"Task Delivery role {role} must remain leaf-only and non-committing")
+    improvement_root = ROOT / "skills" / "continuous-improvement"
+    improvement_graph = json.loads((improvement_root / "graph.json").read_text(encoding="utf-8"))
+    if improvement_graph.get("schema_version") != 2 or improvement_graph.get("default_mode") != "full":
+        raise RuntimeError("Continuous Improvement v1 must use schema 2 and full default mode")
+    if set(improvement_graph.get("routes", {})) != {"audit", "full"}:
+        raise RuntimeError("Continuous Improvement must expose audit and full routes")
+    for mode in ("audit", "full"):
+        if set(improvement_graph["routes"][mode]["nodes"]) != {"work", "verify", "complete"}:
+            raise RuntimeError(f"Continuous Improvement {mode} must remain a three-node control graph")
+    if improvement_graph["limits"].get("max_candidates_per_run") != 1:
+        raise RuntimeError("Continuous Improvement must select at most one candidate per run")
+    if improvement_graph["delivery_policy"].get("required_skill") != "task-delivery":
+        raise RuntimeError("Continuous Improvement must delegate accepted code work to Task Delivery")
+    if any(improvement_graph["delivery_policy"].get(key) for key in ("allow_push", "allow_merge", "allow_deploy")):
+        raise RuntimeError("Continuous Improvement cannot push, merge or deploy autonomously")
+    dependencies = json.loads((improvement_root / "skill-dependencies.json").read_text(encoding="utf-8"))
+    required = {item.get("name") for item in dependencies.get("required_skills", [])}
+    if dependencies.get("schema_version") != 1 or required != {"task-delivery"}:
+        raise RuntimeError("Continuous Improvement must retain its exact Task Delivery dependency")
+    improvement_prompt = (ROOT / "agents" / "improvement_verifier.toml").read_text(encoding="utf-8")
+    for required_text in ("spawn descendants", "commit", "High or protected risk"):
+        if required_text not in improvement_prompt:
+            raise RuntimeError(f"Continuous Improvement verifier is missing: {required_text}")
     recovery_root = ROOT / "skills" / "development-recovery"
     if (recovery_root / "graph.json").exists():
         raise RuntimeError("Development Recovery must remain independent of graph runtime")
@@ -136,15 +160,23 @@ def main() -> int:
     if (ROOT / "skills" / "codebase-discovery").exists():
         raise RuntimeError("Large-codebase discovery must reuse existing roles instead of adding a skill")
     graph_validator = ROOT / "skills" / "agent-graph-builder" / "scripts" / "graph_contract.py"
-    for skill in ("project-start", "research", "task-delivery"):
+    for skill in ("continuous-improvement", "project-start", "research", "task-delivery"):
         run([sys.executable, str(graph_validator), "validate", "--skill-dir", str(ROOT / "skills" / skill)])
     skill_validator = find_skill_validator()
     if skill_validator:
-        for skill in ("agent-graph-builder", "development-recovery", "project-start", "research", "task-delivery"):
+        for skill in (
+            "agent-graph-builder",
+            "continuous-improvement",
+            "development-recovery",
+            "project-start",
+            "research",
+            "task-delivery",
+        ):
             run([sys.executable, str(skill_validator), str(ROOT / "skills" / skill)])
     run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"])
     run([sys.executable, "-m", "unittest", "skills/research/scripts/test_research_graph.py", "-v"])
     run([sys.executable, "-m", "unittest", "skills/agent-graph-builder/scripts/test_graph_contract.py", "-v"])
+    run([sys.executable, "-m", "unittest", "skills/continuous-improvement/scripts/test_continuous_improvement_graph.py", "-v"])
     run([sys.executable, "skills/project-start/scripts/test_project_start.py"])
     run([sys.executable, "skills/project-start/scripts/test_project_maintenance.py"])
     run([sys.executable, "-m", "unittest", "skills/project-start/scripts/test_project_graph.py", "-v"])
