@@ -1,62 +1,226 @@
 # Codex Agent Graphs
 
-Canonical Git repository for three user-facing graph workflows, one graph-building meta-skill, one global recovery capability and one global discovery policy:
+> Turn recurring Codex work into resumable, bounded, evidence-backed workflows — without replacing Codex with another orchestrator.
 
-- `project-start`: project foundation plus an operational documentation-maintenance route.
-- `research`: adaptive native research with a fast default and conditional deep/multi-agent verification.
-- `task-delivery`: staged implementation and verification.
-- `agent-graph-builder`: creates and validates new graph-backed skills against the shared model-first contract, layered on the system `skill-creator`.
-- `development-recovery`: non-graph recovery when implementation evidence diverges from an accepted specification or plan.
-- `large-codebase-discovery`: a managed global `AGENTS.md` policy that delegates bounded repository research and joins all required evidence before a plan or specification.
+**Start a project. Research a hard question. Deliver a software task.** Codex Agent Graphs packages those workflows as native Codex skills, backed by small standard-library Python controllers that preserve state, bind evidence, and verify when work is actually complete.
 
-The three operational graph skills remain independent. `agent-graph-builder` is a non-runtime meta-skill: it invokes the system `$skill-creator` for generic skill scaffolding, then adds the common graph contract, controller boundaries and tests. `development-recovery` is a small implicitly invokable skill activated by a managed global `AGENTS.md` invariant; it has no `graph.json`, graph state or custom agents. Large-codebase discovery deliberately adds no skill: it reuses Codex's generic `explorer`/`researcher`, Task Delivery's explorers and `$research`, then enforces a join before planning. Internal graph roles live under `agents/` and do not become additional skills.
+- **Native to Codex:** skills, custom agents, `AGENTS.md`, MCP, and the root agent you already use.
+- **Model-first:** Codex owns judgment, planning, research, implementation, and synthesis.
+- **Deterministic where it matters:** scripts own paths, transitions, retry limits, receipts, hashes, and completion checks.
+- **Adaptive, not agent-hungry:** the fast path stays single-agent; specialist agents appear only when scope or risk justifies them.
+- **Portable:** one installer keeps WSL CLI and Codex Desktop copies in sync.
 
-## Why a skill plus code
+This is an independent community project, not an official OpenAI repository.
 
-The skill is the Codex-native entry point and carries the operating instructions. The Python runner stores only durable graph state, enforces transitions and budgets, hashes artifacts, and makes runs resumable. Codex performs the semantic work with native skills, tools and optional subagents; the runner does not call a model API directly.
+## Why this exists
 
-Research v2 uses three durable states: `work -> optional verify -> complete`. Planning, capability selection, search, evidence capture, reconciliation and drafting stay inside one native root-agent work loop. Fast mode uses no internal agents. MCP discovery and relevant MCP use are required inside `work`; Exa, Deep Research and domain skills, planner, scouts, synthesizer and verifier remain conditional capabilities rather than mandatory stages.
+Powerful prompts are easy to write and hard to operate repeatedly. Long-running work tends to lose its boundaries: plans drift, evidence gets separated from claims, retries become loops, and “done” becomes a feeling.
 
-Project Start v3 follows the same model-first shape for both bootstrap and documentation maintenance: `work -> optional verify -> complete`. One root agent owns research and documentation edits; up to two read-only explorers and one independent verifier are conditional. Deterministic code keeps path safety, exact document deltas, decisions, retries, receipts, state compatibility and SHA-256 integrity.
+Codex Agent Graphs adds a deliberately small control layer:
 
-All three graphs use one MCP-first policy without adding a node: discover the current MCP surface, call the provider-specific server or Context7/research/service MCP that fits the question, then use native web/browser and finally `curl` only as fallbacks. Every new work receipt records `mcp:<server>` or an explicit `mcp:fallback:<reason>`.
-
-New graph-backed skills should be created through `agent-graph-builder`. Its validator enforces the shared `work → optional verify → complete` topology, bounded retries, MCP receipts, environment-selected agent roles, controller/test presence and the separation between model judgment and deterministic state. Existing Project Start, Research and Task Delivery all pass this contract.
-
-## Install
-
-Preview changes:
-
-```bash
-python3 scripts/install.py plan
+```text
+work  ───────────────→  complete
+  └── when risk requires it → verify ──┘
 ```
 
-Install identical copies into WSL CLI and Desktop, including graph-only custom agents:
+The graph does not tell the model how to think. It makes lifecycle, scope, evidence, and completion explicit enough to resume and audit.
+
+## Choose your workflow
+
+| Invoke | What it delivers | Best for |
+| --- | --- | --- |
+| `$project-start` | A canonical project foundation or a focused documentation-maintenance pass | New repositories, inherited codebases, and keeping `AGENTS.md` plus project docs aligned with reality |
+| `$research` | Cited, decision-ready research that starts fast and deepens only when the evidence demands it | Technical investigation, comparisons, current facts, and high-confidence research reports |
+| `$task-delivery` | One scoped software task from Markdown plan through implementation, tests, review, and handoff | Features, fixes, refactors, plan-only work, or implementation from an accepted plan |
+
+Three supporting capabilities keep those workflows healthy:
+
+| Capability | Role |
+| --- | --- |
+| `$agent-graph-builder` | Creates or standardizes graph-backed skills against the shared contract; it is a meta-skill, not another runtime workflow |
+| `$development-recovery` | Recovers when specification, plan, code, tests, or observed behavior diverge; it is a conditional non-graph skill |
+| Large-codebase discovery | A managed global policy that bounds repository exploration and joins the evidence before planning; it deliberately adds no new skill or graph |
+
+## Quick start
+
+### Requirements
+
+- Codex CLI or Codex Desktop
+- Python 3.11 or newer
+- Git
+
+Clone the repository and preview every change before installation:
 
 ```bash
+git clone https://github.com/ArtemArzi/codex-agent-graphs.git
+cd codex-agent-graphs
+python3 scripts/install.py plan --wsl
+```
+
+Install into the local WSL/CLI Codex home and verify exact file hashes:
+
+```bash
+python3 scripts/install.py install --wsl
+python3 scripts/install.py verify --wsl
+```
+
+If you use Codex in WSL and Codex Desktop on Windows, install and verify both copies together:
+
+```bash
+python3 scripts/install.py plan --all
 python3 scripts/install.py install --all
 python3 scripts/install.py verify --all
 ```
 
-The installer copies files instead of creating cross-filesystem symlinks. It also installs bounded development-recovery and large-codebase-discovery blocks into each environment's global `AGENTS.md`. Existing skills, configuration and global instructions are backed up before replacement; unrelated `AGENTS.md` content is preserved.
+The Desktop home is auto-detected when possible. Override either target explicitly when needed:
 
-Codex loads skills, global instructions and custom-agent configuration at session start. Open a new CLI session or a new Desktop task after installation. The Project Start verifier and four Research roles are available conditionally; the Project Start auditor and curator remain installed only so active v2 runs can finish.
+```bash
+python3 scripts/install.py install \
+  --wsl --wsl-home /path/to/wsl/.codex
 
-## Project Start routes
+python3 scripts/install.py install \
+  --desktop --desktop-home /mnt/c/Users/you/.codex
+```
 
-`skills/project-start/graph.json` is the versioned contract for one user-facing graph with two modes:
+Open a new CLI session or Desktop task after installation so Codex loads the new skills, policies, and agent configuration.
 
-- `bootstrap`: one native work loop normalizes the documentation map, domain context, business, foundation, codebase, quality, plan, skill contract and agent context, then hands implementation to Task Delivery;
-- `maintenance`: one native work loop classifies the exact documentation delta as no-change, factual or semantic and updates only what is needed.
+### Try the workflows
 
-Bootstrap applies `setup-matt-pocock-skills`, `domain-modeling` and `codebase-design` inside the same work loop; maintenance selects them only for the changed documentation layer. Native Codex remains the orchestrator. Sandcastle may be selected as later execution infrastructure, but it is not nested as a second graph owner.
+```text
+$project-start prepare this existing repository for reliable agent development
 
-Task Delivery completion creates a durable `maintenance-required` obligation, so the next task cannot begin until Project Start returns to `operational` or requests a real semantic decision. Root and nested `AGENTS.md` files are canonical maintenance inputs. Stable modules may receive inherited local context maps; hooks may only trigger an audit, never author or approve those instructions. Active v2 maintenance runs use the frozen legacy graph; every new run uses `scripts/project_graph.py`.
+$research compare the current approaches to local-first agent memory and give me a cited recommendation
 
-## Validate
+$task-delivery add rate limiting to this API and prove the behavior with tests
+
+$agent-graph-builder turn our release checklist into a resumable graph-backed skill
+```
+
+Skills can also trigger implicitly when the request matches their description, but explicit invocation is the clearest way to select a workflow.
+
+## What gets installed
+
+The installer copies files; it does not create cross-filesystem symlinks.
+
+| Installed surface | What changes |
+| --- | --- |
+| Skills | Five directories under each target Codex home: `agent-graph-builder`, `development-recovery`, `project-start`, `research`, and `task-delivery` |
+| Custom agents | Twelve bounded role definitions for conditional exploration, implementation, planning review, result review, project-doc verification, and deep research |
+| `config.toml` | One managed block that registers those custom roles without replacing unrelated configuration |
+| Global `AGENTS.md` | Managed development-recovery and large-codebase-discovery policy blocks; unrelated instructions are preserved |
+
+Before replacement, existing managed files are backed up under `backups/agent-graphs/`. Installation uses staged copies and finishes with manifest and SHA-256 verification. Drift is reported rather than silently overwritten.
+
+## How the pieces work together
+
+```mermaid
+flowchart LR
+    U["You invoke a workflow"] --> R["Codex root agent"]
+    R --> S["Installed skills and MCP/apps"]
+    R --> A["Optional bounded subagents"]
+    R --> C["Local Python controller"]
+    C --> E["State, receipts, hashes, and completion gate"]
+    S --> R
+    A --> R
+    E --> D["Resumable, verifiable result"]
+```
+
+The root agent remains the sole orchestrator and final truth owner. Optional subagents receive narrow packets and stay leaf-only. The controller never calls a model API and never replaces semantic work with a state machine.
+
+All three operational graphs share the same topology — `work → optional verify → complete` — while exposing different modes:
+
+- **Project Start:** `bootstrap`, `maintenance`, or automatic routing.
+- **Research:** fast single-agent work by default, with evidence-driven deepening and conditional independent verification.
+- **Task Delivery:** `plan`, `implement`, or `full`, with `light`, `standard`, `complex`, and `critical` risk profiles.
+
+## Skills, plugins, and MCP
+
+Codex Agent Graphs is currently distributed as a source repository with native skills and agent configuration. **It does not bundle or require a plugin package.** A plugin wrapper can become a later distribution layer; it is not part of the runtime architecture.
+
+It also does not bundle an MCP server. During a run, each operational workflow discovers the MCP surface already available to Codex and prefers the provider that owns the data — for example GitHub for repository state or a documentation MCP for current library docs. A work receipt records either `mcp:<server>` or an explicit checked fallback reason.
+
+Dependencies and companion capabilities are intentionally visible:
+
+| Capability | Relationship |
+| --- | --- |
+| System `$skill-creator` | Required only when `$agent-graph-builder` scaffolds or restructures a graph skill |
+| `domain-modeling` and `codebase-design` | Expected companion skills for the full Project Start bootstrap; they are not vendored by this repository |
+| `setup-matt-pocock-skills` | Optional Project Start companion; an internal Project Start fallback is used when it is unavailable |
+| Other installed skills, apps, and MCP servers | Selected adaptively inside `work` when the task actually needs them; they are not mandatory graph stages |
+
+This follows Codex's native separation of concerns: [`AGENTS.md`](https://learn.chatgpt.com/docs/agent-configuration/agents-md) carries durable guidance, [skills](https://learn.chatgpt.com/docs/build-skills) package reusable workflows, [subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) handle bounded specialist work, [MCP](https://learn.chatgpt.com/docs/extend/mcp) connects external systems, and [plugins](https://learn.chatgpt.com/docs/plugins) package workflows and integrations for distribution.
+
+## Inside each workflow
+
+### Project Start
+
+Project Start builds the working context that ordinary coding agents usually have to rediscover on every task. Bootstrap normalizes the documentation map, domain, business context, foundation, codebase, quality bar, implementation plan, and agent instructions. Maintenance classifies the exact documentation delta after delivery and updates only the affected layer.
+
+Task Delivery completion can create a durable maintenance obligation, so the next task does not quietly proceed on stale project context.
+
+### Research
+
+Research starts with one native Codex agent and a bounded evidence budget. It expands only for an unanswered sub-question, weak material claim, unresolved contradiction, missing source class, or meaningful new evidence. Deep mode can use focused scouts and a verifier, but agent count is a ceiling, not a target.
+
+The deterministic gate binds the report to its sources and control artifact; it does not pretend to validate reasoning by re-running it in code.
+
+### Task Delivery
+
+Task Delivery owns one software task. It finds the project's real plan owner, freezes outcome and scope, implements against that plan, runs narrow and project-level checks, and creates a handoff backed by exact digests. Review depth scales with risk instead of forcing the same ceremony onto every change.
+
+Parallel write delegation is intentionally fail-closed until isolated worktrees can be proven.
+
+### Agent Graph Builder
+
+Agent Graph Builder layers graph-specific structure on top of the system `$skill-creator`. Its validator checks graph identity and versioning, the three-node topology, bounded retries, capability receipts, controller/test presence, model-free routing, and the division between model judgment and deterministic enforcement.
+
+It is for repeated workflows that benefit from resumability, evidence handoffs, or conditional review — not for turning every prompt into a graph.
+
+## Validate before you trust it
+
+The repository gate uses only the Python standard library:
 
 ```bash
 python3 scripts/check_all.py
 ```
 
-Format and configuration references: [Codex skills](https://learn.chatgpt.com/docs/customization/overview#skills) and [Codex `config.toml`](https://learn.chatgpt.com/docs/config-file/config-reference#configtoml).
+It compiles controllers, validates TOML and skill structure, checks every operational graph against the shared contract, and runs the focused test suites for installation, Project Start, Research, Task Delivery, and Agent Graph Builder.
+
+For a release or local modification, run the complete gate:
+
+```bash
+python3 scripts/check_all.py
+python3 scripts/install.py install --all
+python3 scripts/install.py verify --all
+git diff --check
+```
+
+## Design principles
+
+1. **Keep judgment in the model.** Graphs constrain lifecycle and evidence, not reasoning.
+2. **Make the fast path cheap.** Multi-agent depth is conditional.
+3. **Bind claims to artifacts.** Receipts and SHA-256 digests make checkpoints inspectable.
+4. **Fail closed on unsafe orchestration.** Bounds, ownership, and compatibility are enforced in code.
+5. **Preserve user state.** Dirty work, installed configuration, and active legacy runs are treated as real constraints.
+6. **Use one control plane.** Codex orchestrates; scripts never become a competing agent runtime.
+
+## Repository map
+
+```text
+skills/       native skill instructions, graph contracts, references, and controllers
+agents/       installable custom-agent role definitions
+policies/     managed global AGENTS.md policies
+scripts/      installer and repository-wide validation gate
+tests/        installer and integration checks
+```
+
+Start with [`AGENTS.md`](AGENTS.md) for repository invariants, then read the relevant `skills/<name>/SKILL.md` and `graph.json`.
+
+## Current boundaries
+
+- Installation is built and tested for WSL CLI plus Codex Desktop homes; other host layouts may need an explicit path or installer adaptation.
+- Companion skills named above are not vendored here.
+- No plugin or marketplace manifest is included yet.
+- This repository currently has no declared open-source license. Public visibility lets you inspect and evaluate the work, but it is not an open-source grant.
+
+Issues and focused pull requests are welcome, especially when they include a reproducible workflow failure, a controller test, or a concrete portability improvement.
