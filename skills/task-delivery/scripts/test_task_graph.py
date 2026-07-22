@@ -124,6 +124,7 @@ Recorded in the Task Delivery receipt.
         *,
         owned: list[str] | None = None,
         supersedes: str | None = None,
+        repair_for_work_sha256: str | None = None,
         strategy: str = "delegated-sequential",
     ) -> Path:
         state = self.read(run / graph.STATE_NAME)
@@ -133,7 +134,7 @@ Recorded in the Task Delivery receipt.
             else ("independent" if state["profile"] in {"complex", "critical"} else "self")
         )
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "slice_id": identifier,
             "strategy": strategy,
             "plan_review": {"mode": review_mode, "receipt": "/root/plan-review-before-worker"},
@@ -144,12 +145,25 @@ Recorded in the Task Delivery receipt.
             "known_facts": [{"fact": "The current value is the verified implementation baseline.", "source": "src/app.py"}],
             "stop_questions": ["Stop if the reviewed plan no longer matches the owned runtime path."],
             "acceptance": ["The owned behavior changes and the narrow deterministic check passes."],
-            "verification_commands": [{"command": "python3 -m unittest", "purpose": "narrow behavior"}],
+            "test_impact": [
+                {"level": "unit", "action": "not-applicable", "paths": [], "reason": "The fixture uses a command-only smoke check."},
+                {"level": "integration", "action": "not-applicable", "paths": [], "reason": "No integration boundary changes in this fixture."},
+                {"level": "e2e", "action": "not-applicable", "paths": [], "reason": "No user journey changes in this fixture."},
+            ],
+            "slice_checks": [{"command": "python3 -m unittest", "purpose": "narrow behavior"}],
+            "deferred_final_checks": [
+                {"command": "python3 -m unittest discover", "purpose": "integrated final behavior"}
+            ],
             "capability_context": {
                 "skills": [{"name": "coding-standards", "reason": "Apply the repository coding conventions.", "required": True}],
                 "mcp": [{"receipt": "mcp:context7", "mode": "provided", "purpose": "Use the already verified library context."}],
             },
             "supersedes": supersedes,
+            **(
+                {"repair_for_work_sha256": repair_for_work_sha256}
+                if repair_for_work_sha256 is not None
+                else {}
+            ),
         }
         path = run / f"{identifier}-packet-draft.json"
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -186,7 +200,7 @@ Recorded in the Task Delivery receipt.
                 },
             )
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "slice_id": identifier,
             "packet_sha256": record["packet_sha256"],
             "worker_receipt": f"/root/{identifier}-worker",
@@ -198,6 +212,12 @@ Recorded in the Task Delivery receipt.
                 if status in {"done", "done_with_concerns"}
                 else []
             ),
+            "test_changes": [
+                {"level": "unit", "action": "not-applicable", "paths": []},
+                {"level": "integration", "action": "not-applicable", "paths": []},
+                {"level": "e2e", "action": "not-applicable", "paths": []},
+            ],
+            "deferred_final_checks": self.read(Path(record["packet_path"]))["deferred_final_checks"],
             "artifacts": [],
             "capabilities_used": capabilities,
             "concerns": concerns or [],
@@ -222,19 +242,86 @@ Recorded in the Task Delivery receipt.
             "receipt_sha256": record["receipt_sha256"],
         }
 
-    def accepted_slice(self, run: Path, identifier: str = "implementation-app") -> dict:
+    def acceptance_draft(
+        self,
+        run: Path,
+        identifier: str = "implementation-app",
+        *,
+        concerns_resolution: list[str] | None = None,
+    ) -> Path:
+        state = self.read(run / graph.STATE_NAME)
+        record = state["slices"][identifier]
+        default_resolution = (
+            ["Root verified and bounded the reported concern."]
+            if record["worker_status"] == "done_with_concerns"
+            else []
+        )
+        acceptance = {
+            "schema_version": 1,
+            "slice_id": identifier,
+            "packet_sha256": record["packet_sha256"],
+            "receipt_sha256": record["receipt_sha256"],
+            "verdict": "accepted_with_concerns" if record["worker_status"] == "done_with_concerns" else "accepted",
+            "verified_changed_paths": record["changed_paths"],
+            "tests": [
+                {"command": "python3 -m unittest", "purpose": "narrow behavior", "exit_code": 0, "status": "passed"}
+            ],
+            "verified_discoveries": [],
+            "concerns_resolution": default_resolution if concerns_resolution is None else concerns_resolution,
+            "next_objective": "Continue with the next reviewed implementation slice or final integrated checks.",
+        }
+        path = run / f"{identifier}-acceptance-draft.json"
+        path.write_text(json.dumps(acceptance, indent=2) + "\n", encoding="utf-8")
+        return path
+
+    def accepted_slice(
+        self,
+        run: Path,
+        identifier: str = "implementation-app",
+        *,
+        concerns_resolution: list[str] | None = None,
+    ) -> dict:
         record = self.read(run / graph.STATE_NAME)["slices"][identifier]
+        if record["status"] != "accepted":
+            graph.accept_slice(
+                run,
+                identifier,
+                self.acceptance_draft(run, identifier, concerns_resolution=concerns_resolution),
+            )
+            record = self.read(run / graph.STATE_NAME)["slices"][identifier]
         return {
             "slice_id": identifier,
             "packet_sha256": record["packet_sha256"],
             "receipt_sha256": record["receipt_sha256"],
-            "root_acceptance": {
-                "verdict": "accepted_with_concerns" if record["worker_status"] == "done_with_concerns" else "accepted",
-                "verified_changed_paths": record["changed_paths"],
-                "tests": [{"command": "python3 -m unittest", "purpose": "root replay", "exit_code": 0, "status": "passed"}],
-                "concerns_resolution": ["Root verified and bounded the reported concern."] if record["worker_status"] == "done_with_concerns" else [],
-            },
+            "acceptance_sha256": record["acceptance_sha256"],
         }
+
+    def delegated_run_after_verifier_reject(self) -> tuple[Path, str]:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [self.accepted_slice(run)],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[self.worker_agent(run)],
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        graph.record(run, "work", "verify")
+        self.write_verify(run, self.verify_payload(run, "reject"))
+        graph.record(run, "verify", "failed")
+        state = self.read(run / graph.STATE_NAME)
+        return run, state["nodes"]["work"]["receipts"][-1]["sha256"]
 
     def work_payload(
         self,
@@ -263,7 +350,8 @@ Recorded in the Task Delivery receipt.
             }
         )
         tests = [] if state["mode"] == "plan" else [
-            {"command": "python3 -m unittest", "purpose": "narrow behavior", "exit_code": 0, "status": "passed"}
+            {"command": "python3 -m unittest", "purpose": "narrow behavior", "exit_code": 0, "status": "passed"},
+            {"command": "python3 -m unittest discover", "purpose": "integrated final behavior", "exit_code": 0, "status": "passed"},
         ]
         return {
             "schema_version": 3,
@@ -319,6 +407,35 @@ Recorded in the Task Delivery receipt.
     def write_verify(self, run: Path, payload: dict) -> None:
         (run / graph.VERIFY_NAME).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
+    def scope_amendment(
+        self,
+        run: Path,
+        *,
+        added_paths: list[str],
+        plan_review_receipt: str = "/root/plan-review-before-worker",
+        impacts: dict[str, bool] | None = None,
+    ) -> Path:
+        payload = {
+            "schema_version": 1,
+            "authority": "root-technical",
+            "plan_review_receipt": plan_review_receipt,
+            "added_paths": added_paths,
+            "evidence_paths": ["src/app.py"],
+            "reason": "Runtime evidence proved that this technical owner is required by the reviewed implementation path.",
+            "impacts": impacts
+            or {
+                "outcome_changed": False,
+                "acceptance_changed": False,
+                "public_contract_changed": False,
+                "data_or_security_changed": False,
+                "external_state_changed": False,
+                "risk_profile_changed": False,
+            },
+        }
+        path = run / "scope-amendment-draft.json"
+        path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        return path
+
     def test_graph_has_only_three_control_nodes(self) -> None:
         contract = graph.graph_contract()
         self.assertEqual({"plan", "implement", "full"}, set(contract["routes"]))
@@ -330,6 +447,9 @@ Recorded in the Task Delivery receipt.
             contract["delegation_policy"]["profile_preference"]["standard"],
         )
         self.assertFalse(contract["delegation_policy"]["parallel_write_enabled"])
+        self.assertEqual("slice-accept", contract["context_policy"]["checkpoint_after"])
+        self.assertFalse(contract["context_policy"]["global_hook_required"])
+        self.assertEqual("exact-union-by-check-id", contract["test_policy"]["deferred_final_checks"])
 
     def test_cli_exposes_slice_commands_without_new_graph_nodes(self) -> None:
         created = graph.parser().parse_args(
@@ -338,8 +458,18 @@ Recorded in the Task Delivery receipt.
         recorded = graph.parser().parse_args(
             ["slice-record", "--run", "/tmp/run", "--slice-id", "implementation-app", "--receipt", "/tmp/receipt.json"]
         )
+        accepted = graph.parser().parse_args(
+            ["slice-accept", "--run", "/tmp/run", "--slice-id", "implementation-app", "--acceptance", "/tmp/acceptance.json"]
+        )
+        rehydrated = graph.parser().parse_args(["context-rehydrate", "--run", "/tmp/run"])
+        amended = graph.parser().parse_args(
+            ["scope-amend", "--run", "/tmp/run", "--amendment", "/tmp/amendment.json"]
+        )
         self.assertEqual("slice-create", created.command)
         self.assertEqual("slice-record", recorded.command)
+        self.assertEqual("slice-accept", accepted.command)
+        self.assertEqual("context-rehydrate", rehydrated.command)
+        self.assertEqual("scope-amend", amended.command)
         initialized = graph.parser().parse_args(
             [
                 "init",
@@ -392,10 +522,13 @@ Recorded in the Task Delivery receipt.
         worker = (graph.SKILL_DIR.parents[1] / "agents/task_worker.toml").read_text(encoding="utf-8")
         self.assertIn("work → complete", skill)
         self.assertIn("implementation-slices.md", skill)
-        self.assertIn("`plan` никогда не запускает implementation workers", reference)
-        self.assertIn("implement` выдаёт packet", reference)
-        self.assertIn("`full` сначала", reference)
+        self.assertIn("`plan` не запускает workers", reference)
+        self.assertIn("`implement` переиспользует exact review", reference)
+        self.assertIn("`full` создаёт packet", reference)
+        self.assertIn("context-rehydrate → slice-create", reference)
+        self.assertIn("deferred_final_checks", reference)
         self.assertIn("each selected required skill's SKILL.md", worker)
+        self.assertIn("не выдаётся за вычисленный остаток", skill)
 
     def test_plan_mode_cannot_create_implementation_slice(self) -> None:
         run = self.initialize(mode="plan", profile="standard")
@@ -521,6 +654,29 @@ Recorded in the Task Delivery receipt.
         with self.assertRaisesRegex(graph.GraphError, "packet изменился"):
             graph.record_slice(run, "implementation-app", self.slice_receipt(run))
 
+    def test_slice_create_rolls_back_artifacts_when_state_save_fails(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        with mock.patch.object(graph, "save_run", side_effect=OSError("injected save failure")):
+            with self.assertRaisesRegex(OSError, "injected save failure"):
+                graph.register_slice(run, self.slice_draft(run))
+        self.assertFalse((run / graph.SLICES_DIR / "implementation-app").exists())
+        self.assertNotIn("implementation-app", self.read(run / graph.STATE_NAME)["slices"])
+
+    def test_slice_accept_rolls_back_artifacts_when_state_save_fails(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        with mock.patch.object(graph, "save_run", side_effect=OSError("injected save failure")):
+            with self.assertRaisesRegex(OSError, "injected save failure"):
+                graph.accept_slice(run, "implementation-app", self.acceptance_draft(run))
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("recorded", state["slices"]["implementation-app"]["status"])
+        self.assertFalse((run / graph.SLICES_DIR / "implementation-app" / graph.SLICE_ACCEPTANCE_NAME).exists())
+        self.assertFalse((run / graph.CONTEXT_CHECKPOINT_NAME).exists())
+
     def test_plan_drift_after_slice_issue_requires_new_packet(self) -> None:
         run = self.initialize(profile="standard")
         plan = self.plan()
@@ -559,21 +715,104 @@ Recorded in the Task Delivery receipt.
         ready = graph.record(run, "work", "verify")
         self.assertEqual("verify", ready["data"]["current"])
 
-    def test_done_with_concerns_requires_root_resolution(self) -> None:
+    def test_second_unsuccessful_normal_slice_blocks_run_explicitly(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
+        graph.register_slice(
+            run,
+            self.slice_draft(run, "implementation-app-v2", supersedes="implementation-app"),
+        )
+        blocked = graph.record_slice(
+            run,
+            "implementation-app-v2",
+            self.slice_receipt(run, "implementation-app-v2", status="needs_context"),
+        )
+        self.assertEqual("blocked", blocked["status"])
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("blocked", state["status"])
+        self.assertEqual("failed", state["nodes"]["work"]["status"])
+
+    def test_unresolved_slice_rejects_unrelated_successor_before_worker_spawn(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
+        with self.assertRaisesRegex(graph.GraphError, "supersedes exact unresolved slice"):
+            graph.register_slice(run, self.slice_draft(run, "implementation-other"))
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual(["implementation-app"], sorted(state["slices"]))
+
+    def test_ready_routes_unresolved_slice_to_exact_successor(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
+        ready = graph.ready(run)
+        self.assertIn("supersedes=implementation-app", ready["next_actions"][0])
+        self.assertFalse(any("task.json" in action for action in ready["next_actions"]))
+
+    def test_successful_slice_requires_root_acceptance_before_next_packet(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src")
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        with self.assertRaisesRegex(graph.GraphError, "slice-accept"):
+            graph.register_slice(
+                run,
+                self.slice_draft(run, "implementation-other", owned=["src/other.py"]),
+            )
+
+    def test_ready_routes_successful_slice_to_acceptance(self) -> None:
         run = self.initialize(profile="standard")
         self.plan()
         graph.register_slice(run, self.slice_draft(run))
         self.write("src/app.py", "VALUE = 2\n")
-        graph.record_slice(
-            run,
-            "implementation-app",
-            self.slice_receipt(run, status="done_with_concerns", concerns=["The neighboring adapter was not exercised."]),
-        )
-        accepted = self.accepted_slice(run)
-        accepted["root_acceptance"]["concerns_resolution"] = []
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        ready = graph.ready(run)
+        self.assertIn("slice-accept", ready["next_actions"][0])
+        self.assertIn("implementation-app", ready["next_actions"][0])
+        self.assertFalse(any("task.json" in action for action in ready["next_actions"]))
+
+    def test_final_work_rejects_successful_slice_without_root_acceptance(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
         implementation = {
             "status": "complete",
             "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[self.worker_agent(run)],
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        with self.assertRaisesRegex(graph.GraphError, "root acceptance"):
+            graph.record(run, "work", "verify")
+
+    def test_final_work_rejects_paths_outside_root_acceptance_union(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src")
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        accepted = self.accepted_slice(run)
+        self.write("src/other.py", "OTHER = 2\n")
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py", "src/other.py"],
             "strategy": "delegated-sequential",
             "slices": [accepted],
         }
@@ -586,14 +825,486 @@ Recorded in the Task Delivery receipt.
                 implementation=implementation,
             ),
         )
-        with self.assertRaisesRegex(graph.GraphError, "concerns_resolution"):
+        with self.assertRaisesRegex(graph.GraphError, "root-accepted path provenance"):
             graph.record(run, "work", "verify")
+
+    def test_done_with_concerns_requires_root_resolution(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(
+            run,
+            "implementation-app",
+            self.slice_receipt(run, status="done_with_concerns", concerns=["The neighboring adapter was not exercised."]),
+        )
+        with self.assertRaisesRegex(graph.GraphError, "concerns_resolution"):
+            self.accepted_slice(run, concerns_resolution=[])
 
     def test_parallel_write_slice_is_fail_closed(self) -> None:
         run = self.initialize(profile="complex")
         self.plan()
         with self.assertRaisesRegex(graph.GraphError, "worktree isolation"):
             graph.register_slice(run, self.slice_draft(run, strategy="delegated-parallel"))
+
+    def test_second_slice_requires_exact_checkpoint_rehydrate(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src")
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        first = self.accepted_slice(run)
+        first_checkpoint = self.read(run / graph.STATE_NAME)["context"]["latest_checkpoint_sha256"]
+
+        with self.assertRaisesRegex(graph.GraphError, "context-rehydrate"):
+            graph.register_slice(
+                run,
+                self.slice_draft(run, "implementation-other", owned=["src/other.py"]),
+            )
+
+        rehydrated = graph.rehydrate_context(run)
+        self.assertEqual(first_checkpoint, rehydrated["data"]["checkpoint_sha256"])
+        created = graph.register_slice(
+            run,
+            self.slice_draft(run, "implementation-other", owned=["src/other.py"]),
+        )
+        packet = self.read(Path(created["data"]["packet"]))
+        self.assertEqual(first_checkpoint, packet["context_checkpoint"]["sha256"])
+        self.write("src/other.py", "OTHER = 2\n")
+        graph.record_slice(
+            run,
+            "implementation-other",
+            self.slice_receipt(run, "implementation-other", changed=["src/other.py"]),
+        )
+        second = self.accepted_slice(run, "implementation-other")
+        state = self.read(run / graph.STATE_NAME)
+        checkpoint = self.read(Path(state["context"]["latest_checkpoint_path"]))
+        self.assertEqual(["src"], checkpoint["plan_scope"])
+        self.assertNotIn("remaining_scope", checkpoint)
+        self.assertEqual(["src/app.py", "src/other.py"], checkpoint["accepted_changed_paths"])
+        self.assertEqual(
+            {"implementation-app", "implementation-other"},
+            {item["slice_id"] for item in checkpoint["accepted_slices"]},
+        )
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py", "src/other.py"],
+            "strategy": "delegated-sequential",
+            "slices": [first, second],
+        }
+        agents = [self.worker_agent(run), self.worker_agent(run, "implementation-other")]
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=agents,
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+
+    def test_context_checkpoint_tampering_blocks_rehydrate(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        self.accepted_slice(run)
+        checkpoint = run / graph.CONTEXT_CHECKPOINT_NAME
+        checkpoint.write_text(checkpoint.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "checkpoint отсутствует или изменился"):
+            graph.rehydrate_context(run)
+
+    def test_repository_drift_after_acceptance_blocks_rehydrate_and_next_slice(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src")
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        self.accepted_slice(run)
+        self.write("src/app.py", "VALUE = 3\n")
+        with self.assertRaisesRegex(graph.GraphError, "Repository изменился"):
+            graph.rehydrate_context(run)
+        with self.assertRaisesRegex(graph.GraphError, "Repository изменился"):
+            graph.register_slice(
+                run,
+                self.slice_draft(run, "implementation-other", owned=["src/other.py"]),
+            )
+
+    def test_final_work_requires_deferred_check_union(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [self.accepted_slice(run)],
+        }
+        payload = self.work_payload(
+            run,
+            agents=[self.worker_agent(run)],
+            capabilities=["repository search", "project test command", "mcp:context7"],
+            implementation=implementation,
+        )
+        payload["tests"] = [payload["tests"][0]]
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "deferred_final_checks"):
+            graph.record(run, "work", "verify")
+
+    def test_update_test_impact_requires_actual_test_change(self) -> None:
+        self.write("tests/test_app.py", "def test_app():\n    assert True\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src/app.py\ntests/test_app.py")
+        draft = self.slice_draft(run, owned=["src/app.py", "tests/test_app.py"])
+        payload = self.read(draft)
+        payload["test_impact"][0] = {
+            "level": "unit",
+            "action": "update",
+            "paths": ["tests/test_app.py"],
+            "reason": "The changed unit behavior requires updating its focused test.",
+        }
+        draft.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        graph.register_slice(run, draft)
+        self.write("src/app.py", "VALUE = 2\n")
+        receipt = self.slice_receipt(run)
+        receipt_payload = self.read(receipt)
+        receipt_payload["test_changes"][0] = {
+            "level": "unit",
+            "action": "update",
+            "paths": ["tests/test_app.py"],
+        }
+        receipt.write_text(json.dumps(receipt_payload, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "обязан изменить"):
+            graph.record_slice(run, "implementation-app", receipt)
+
+    def test_needs_context_may_stop_before_planned_test_update(self) -> None:
+        self.write("tests/test_app.py", "def test_app():\n    assert True\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src/app.py\ntests/test_app.py")
+        draft = self.slice_draft(run, owned=["src/app.py", "tests/test_app.py"])
+        payload = self.read(draft)
+        payload["test_impact"][0] = {
+            "level": "unit",
+            "action": "update",
+            "paths": ["tests/test_app.py"],
+            "reason": "The planned unit behavior will require a focused test update.",
+        }
+        draft.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        graph.register_slice(run, draft)
+        receipt = self.slice_receipt(run, status="needs_context")
+        receipt_payload = self.read(receipt)
+        receipt_payload["test_changes"][0] = {
+            "level": "unit",
+            "action": "update",
+            "paths": ["tests/test_app.py"],
+        }
+        receipt.write_text(json.dumps(receipt_payload, indent=2) + "\n", encoding="utf-8")
+        recorded = graph.record_slice(run, "implementation-app", receipt)
+        self.assertEqual("needs_context", recorded["data"]["status"])
+
+    def test_needs_context_cannot_leave_unaccepted_delta(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        receipt = self.slice_receipt(run, status="needs_context", changed=["src/app.py"])
+        with self.assertRaisesRegex(graph.GraphError, "непринятую дельту"):
+            graph.record_slice(run, "implementation-app", receipt)
+
+    def test_applicable_e2e_requires_deferred_final_check(self) -> None:
+        self.write("tests/e2e/test_flow.py", "def test_flow():\n    assert True\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src/app.py\ntests/e2e/test_flow.py")
+        draft = self.slice_draft(run, owned=["src/app.py", "tests/e2e/test_flow.py"])
+        payload = self.read(draft)
+        payload["test_impact"][2] = {
+            "level": "e2e",
+            "action": "reuse",
+            "paths": ["tests/e2e/test_flow.py"],
+            "reason": "The existing E2E flow covers the changed behavior.",
+        }
+        payload["deferred_final_checks"] = []
+        draft.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "E2E impact"):
+            graph.register_slice(run, draft)
+
+    def test_reuse_test_path_must_remain_unchanged(self) -> None:
+        self.write("tests/test_app.py", "def test_app():\n    assert True\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src/app.py\ntests/test_app.py")
+        draft = self.slice_draft(run, owned=["src/app.py", "tests/test_app.py"])
+        payload = self.read(draft)
+        payload["test_impact"][0] = {
+            "level": "unit",
+            "action": "reuse",
+            "paths": ["tests/test_app.py"],
+            "reason": "The existing test is expected to remain unchanged.",
+        }
+        draft.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        graph.register_slice(run, draft)
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write("tests/test_app.py", "def test_app():\n    assert 2 == 2\n")
+        receipt = self.slice_receipt(run, changed=["src/app.py", "tests/test_app.py"])
+        receipt_payload = self.read(receipt)
+        receipt_payload["test_changes"][0] = {
+            "level": "unit",
+            "action": "reuse",
+            "paths": ["tests/test_app.py"],
+        }
+        receipt.write_text(json.dumps(receipt_payload, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "объявленный reuse"):
+            graph.record_slice(run, "implementation-app", receipt)
+
+    def test_safe_scope_amendment_is_root_owned_and_digest_chained(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
+        amended = graph.amend_scope(
+            run,
+            self.scope_amendment(run, added_paths=["src/other.py"]),
+        )
+        self.assertEqual("amended", amended["status"])
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual(1, len(state["scope_amendments"]))
+        chain = graph.validate_amendment_chain(state, run)
+        self.assertEqual(amended["data"]["after_digest"], chain["effective_digest"])
+        self.assertIn("src/other.py", graph.validate_plan(self.root / state["plan_path"])[1])
+
+    def test_light_full_root_only_can_record_safe_technical_scope_amendment(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="light", implementation_strategy="root-only")
+        self.plan()
+        amended = graph.amend_scope(
+            run,
+            self.scope_amendment(
+                run,
+                added_paths=["src/other.py"],
+                plan_review_receipt="root:self-review",
+            ),
+        )
+        self.assertEqual("amended", amended["status"])
+        self.assertIn("src/other.py", graph.validate_plan(self.root / self.read(run / graph.STATE_NAME)["plan_path"])[1])
+
+    def test_scope_amendment_rejects_semantic_or_protected_expansion(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
+        impacts = {
+            "outcome_changed": True,
+            "acceptance_changed": False,
+            "public_contract_changed": False,
+            "data_or_security_changed": False,
+            "external_state_changed": False,
+            "risk_profile_changed": False,
+        }
+        with self.assertRaisesRegex(graph.GraphError, "user decision"):
+            graph.amend_scope(
+                run,
+                self.scope_amendment(run, added_paths=["src/other.py"], impacts=impacts),
+            )
+        with self.assertRaisesRegex(graph.GraphError, "Protected path"):
+            graph.amend_scope(
+                run,
+                self.scope_amendment(run, added_paths=["apps/core/migrations/0001.py"]),
+            )
+        with self.assertRaisesRegex(graph.GraphError, "exact file paths|parent tree"):
+            graph.amend_scope(run, self.scope_amendment(run, added_paths=["src"]))
+        for ci_path in (
+            ".GITLAB-CI.YML",
+            ".travis.yml",
+            ".drone.yml",
+            "Jenkinsfile",
+            ".circleci/config.yml",
+            "db/migrate/001_add_users.rb",
+            "alembic/versions/001_add_users.py",
+            "prisma/schema.prisma",
+            "db/schema.rb",
+            "db/structure.sql",
+            "schema.sql",
+        ):
+            with self.assertRaisesRegex(graph.GraphError, "Protected path"):
+                graph.amend_scope(run, self.scope_amendment(run, added_paths=[ci_path]))
+
+    def test_root_only_amendment_review_binding_survives_delegated_switch(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="complex", implementation_strategy="auto")
+        self.plan()
+        graph.amend_scope(
+            run,
+            self.scope_amendment(
+                run,
+                added_paths=["src/other.py"],
+                plan_review_receipt="/root/original-independent-plan-review",
+            ),
+        )
+        with self.assertRaisesRegex(graph.GraphError, "exact review receipt"):
+            graph.register_slice(
+                run,
+                self.slice_draft(run, owned=["src/other.py"]),
+            )
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("root-only", state["implementation_strategy"])
+        self.assertEqual({}, state["slices"])
+
+    def test_implement_reuses_reviewed_base_through_safe_amendment_chain(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        plan_run = self.initialize(mode="plan", profile="standard")
+        self.plan()
+        self.write_work(plan_run, self.work_payload(plan_run))
+        graph.record(plan_run, "work", "succeeded")
+        graph.complete(plan_run)
+        run = self.initialize(mode="implement", profile="standard", plan="docs/tasks/TD-1/PLAN.md")
+        amended = graph.amend_scope(
+            run,
+            self.scope_amendment(
+                run,
+                added_paths=["src/other.py"],
+                plan_review_receipt="task-state:plan-review",
+            ),
+        )
+        self.assertEqual("amended", amended["status"])
+        created = graph.register_slice(
+            run,
+            self.slice_draft(run, owned=["src/other.py"]),
+        )
+        packet = self.read(Path(created["data"]["packet"]))
+        self.assertEqual("reused", packet["plan_review"]["mode"])
+        state = self.read(run / graph.STATE_NAME)
+        chain = graph.validate_amendment_chain(state, run)
+        task = self.read(self.root / ".codex/task-delivery/TD-1/state.json")
+        self.assertEqual(task["checkpoints"]["plan-review"]["plan_digest"], chain["base_digest"])
+
+    def test_scope_amendment_receipt_tampering_is_rejected(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
+        graph.amend_scope(run, self.scope_amendment(run, added_paths=["src/other.py"]))
+        state = self.read(run / graph.STATE_NAME)
+        receipt = Path(state["scope_amendments"][0]["path"])
+        receipt.write_text(receipt.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "изменился после record"):
+            graph.validate_amendment_chain(state, run)
+
+    def test_amendment_tampering_blocks_checkpoint_rehydrate(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        self.accepted_slice(run)
+        graph.amend_scope(run, self.scope_amendment(run, added_paths=["src/other.py"]))
+        state = self.read(run / graph.STATE_NAME)
+        receipt = Path(state["scope_amendments"][0]["path"])
+        receipt.write_text(receipt.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "изменился после record"):
+            graph.rehydrate_context(run)
+
+    def test_model_guidance_never_requests_user_hash_echo(self) -> None:
+        research = (graph.SKILL_DIR.parents[1] / "docs/research/task-delivery-context-checkpoint-research.md").read_text(encoding="utf-8")
+        reference = (graph.SKILL_DIR / "references/implementation-slices.md").read_text(encoding="utf-8")
+        self.assertNotIn("exact user hash is useful", research)
+        self.assertIn("must never ask the\nuser to echo an amendment hash", research)
+        self.assertIn("Никакого «разреши случайный hash»", reference)
+
+    def test_started_v3_3_slice_keeps_exact_legacy_contract(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        state = self.read(run / graph.STATE_NAME)
+        state["graph_version"] = "3.3.0"
+        state["graph_sha256"] = "07b19482bca36d54ace9a3cc470e76e421b2b1c14f0ee123c90a7792af79b7e8"
+        state.pop("context")
+        state.pop("scope_amendments")
+        (run / graph.STATE_NAME).write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        draft = self.slice_draft(run)
+        draft_payload = self.read(draft)
+        draft_payload["schema_version"] = 1
+        draft_payload["verification_commands"] = draft_payload.pop("slice_checks")
+        draft_payload.pop("test_impact")
+        draft_payload.pop("deferred_final_checks")
+        draft.write_text(json.dumps(draft_payload, indent=2) + "\n", encoding="utf-8")
+        created = graph.register_slice(run, draft)
+        packet_path = Path(created["data"]["packet"])
+        packet = self.read(packet_path)
+        self.assertNotIn("check_id", packet["verification_commands"][0])
+        self.write("src/app.py", "VALUE = 2\n")
+        record = self.read(run / graph.STATE_NAME)["slices"]["implementation-app"]
+        receipt = {
+            "schema_version": 1,
+            "slice_id": "implementation-app",
+            "packet_sha256": record["packet_sha256"],
+            "worker_receipt": "/root/legacy-v33-worker",
+            "status": "done",
+            "summary": "The legacy slice completed with its exact historical receipt contract.",
+            "changed_paths": ["src/app.py"],
+            "tests": [{"command": "python3 -m unittest", "purpose": "narrow behavior", "status": "passed", "exit_code": 0}],
+            "artifacts": [],
+            "capabilities_used": [
+                {"kind": "skill", "name": "coding-standards", "status": "applied", "evidence": "Applied legacy selected skill."},
+                {"kind": "mcp", "name": "mcp:context7", "status": "consumed", "evidence": "Consumed legacy MCP context."},
+            ],
+            "concerns": [],
+            "residual_risks": [],
+            "discoveries": [],
+            "context_request": None,
+            "blocker": None,
+        }
+        receipt_path = run / "legacy-worker.json"
+        receipt_path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+        graph.record_slice(run, "implementation-app", receipt_path)
+        legacy_ready = graph.ready(run)
+        self.assertTrue(any("task.json" in action for action in legacy_ready["next_actions"]))
+        self.assertFalse(any("slice-accept" in action for action in legacy_ready["next_actions"]))
+        self.assertFalse(any("context-rehydrate" in action for action in legacy_ready["next_actions"]))
+        record = self.read(run / graph.STATE_NAME)["slices"]["implementation-app"]
+        canonical_receipt = self.read(Path(record["receipt_path"]))
+        self.assertNotIn("check_id", canonical_receipt["tests"][0])
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [
+                {
+                    "slice_id": "implementation-app",
+                    "packet_sha256": record["packet_sha256"],
+                    "receipt_sha256": record["receipt_sha256"],
+                    "root_acceptance": {
+                        "verdict": "accepted",
+                        "verified_changed_paths": ["src/app.py"],
+                        "tests": [{"command": "python3 -m unittest", "purpose": "root replay", "status": "passed", "exit_code": 0}],
+                        "concerns_resolution": [],
+                    },
+                }
+            ],
+        }
+        payload = self.work_payload(
+            run,
+            agents=[self.worker_agent(run)],
+            capabilities=["repository search", "project test command", "mcp:context7"],
+            implementation=implementation,
+        )
+        payload["tests"][0]["check_id"] = "legacy-extra-field-is-ignored"
+        payload["tests"].append(dict(payload["tests"][0]))
+        self.write_work(run, payload)
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+        self.write_verify(run, self.verify_payload(run, "reject"))
+        rejected = graph.record(run, "verify", "failed")
+        self.assertIsNone(rejected["data"]["verification_repair_work_sha256"])
+        self.assertNotIn("repair_for_work_sha256", " ".join(rejected["next_actions"]))
+        self.assertIsNone(graph.status(run)["data"]["verification_repair_work_sha256"])
 
     def test_ready_exposes_mcp_first_policy(self) -> None:
         run = self.initialize(profile="light")
@@ -830,6 +1541,20 @@ Recorded in the Task Delivery receipt.
         graph.record(run, "work", "verify")
         self.write_verify(run, self.verify_payload(run, "reject"))
         graph.record(run, "verify", "failed")
+        root_ready = graph.ready(run)
+        self.assertIsNone(root_ready["data"]["verification_repair_work_sha256"])
+        self.assertIn("root-owned candidate", " ".join(root_ready["next_actions"]))
+        self.assertNotIn("slice-create", " ".join(root_ready["next_actions"]))
+        rejected_work_sha = self.read(run / graph.STATE_NAME)["nodes"]["work"]["receipts"][-1]["sha256"]
+        with self.assertRaisesRegex(graph.GraphError, "только для уже delegated candidate"):
+            graph.register_slice(
+                run,
+                self.slice_draft(
+                    run,
+                    "invalid-root-repair-slice",
+                    repair_for_work_sha256=rejected_work_sha,
+                ),
+            )
         self.write_work(run, self.work_payload(run))
         graph.record(run, "work", "verify")
         self.write_verify(run, self.verify_payload(run, "reject"))
@@ -837,6 +1562,85 @@ Recorded in the Task Delivery receipt.
         self.assertEqual("blocked", blocked["status"])
         with self.assertRaisesRegex(graph.GraphError, "терминален"):
             graph.retry(run, "verify")
+
+    def test_delegated_verifier_repair_is_exact_bounded_and_reverified(self) -> None:
+        run, rejected_work_sha = self.delegated_run_after_verifier_reject()
+        repair_ready = graph.ready(run)
+        self.assertEqual(rejected_work_sha, repair_ready["data"]["verification_repair_work_sha256"])
+        self.assertIn("repair_for_work_sha256", " ".join(repair_ready["next_actions"]))
+        graph.rehydrate_context(run)
+        with self.assertRaisesRegex(graph.GraphError, "exact repair_for_work_sha256"):
+            graph.register_slice(
+                run,
+                self.slice_draft(
+                    run,
+                    "verifier-repair-wrong",
+                    repair_for_work_sha256="a" * 64,
+                ),
+            )
+        graph.register_slice(
+            run,
+            self.slice_draft(
+                run,
+                "verifier-repair",
+                repair_for_work_sha256=rejected_work_sha,
+            ),
+        )
+        self.write("src/app.py", "VALUE = 3\n")
+        graph.record_slice(run, "verifier-repair", self.slice_receipt(run, "verifier-repair"))
+        self.accepted_slice(run, "verifier-repair")
+        graph.rehydrate_context(run)
+        with self.assertRaisesRegex(graph.GraphError, "лимит verifier repair"):
+            graph.register_slice(
+                run,
+                self.slice_draft(
+                    run,
+                    "verifier-repair-second",
+                    repair_for_work_sha256=rejected_work_sha,
+                ),
+            )
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py"],
+            "strategy": "delegated-sequential",
+            "slices": [
+                self.accepted_slice(run, "implementation-app"),
+                self.accepted_slice(run, "verifier-repair"),
+            ],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[self.worker_agent(run), self.worker_agent(run, "verifier-repair")],
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+        self.write_verify(run, self.verify_payload(run, "pass"))
+        completed = graph.record(run, "verify", "succeeded")
+        self.assertEqual("complete", completed["data"]["current"])
+
+    def test_unsuccessful_verifier_repair_slice_blocks_run(self) -> None:
+        run, rejected_work_sha = self.delegated_run_after_verifier_reject()
+        graph.rehydrate_context(run)
+        graph.register_slice(
+            run,
+            self.slice_draft(
+                run,
+                "verifier-repair",
+                repair_for_work_sha256=rejected_work_sha,
+            ),
+        )
+        blocked = graph.record_slice(
+            run,
+            "verifier-repair",
+            self.slice_receipt(run, "verifier-repair", status="needs_context"),
+        )
+        self.assertEqual("blocked", blocked["status"])
+        self.assertEqual("blocked", self.read(run / graph.STATE_NAME)["status"])
 
     def test_started_v3_0_run_can_finish_without_new_mcp_receipt(self) -> None:
         run = self.initialize(profile="light")

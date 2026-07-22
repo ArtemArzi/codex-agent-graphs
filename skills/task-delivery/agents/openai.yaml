@@ -1,5 +1,4 @@
 interface:
   display_name: "Task Delivery"
-  short_description: "Быстрый цикл от плана до проверенной реализации"
-  default_prompt: "Используй $task-delivery; выбери режим и профиль, подключи релевантные skills/MCP и доведи задачу до доказанного результата. Для standard/complex/critical предпочитай bounded sequential slice; явную просьбу реализовать слайсами считай обязательной."
-  brand_color: "#2563EB"
+  short_description: "Deliver planned changes through a compact adaptive graph"
+  default_prompt: "Use $task-delivery to plan, implement, test, review, and hand off this task with proportionate controls."

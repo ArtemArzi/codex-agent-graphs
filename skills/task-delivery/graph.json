@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.3.0",
+  "graph_version": "3.4.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
@@ -11,7 +11,10 @@
     "max_parallel_explorers": 2,
     "max_parallel_workers": 2,
     "max_slices_per_run": 2,
-    "max_selected_skills_per_slice": 3
+    "max_verification_repair_slices": 1,
+    "max_selected_skills_per_slice": 3,
+    "max_root_technical_amendments": 2,
+    "max_paths_per_scope_amendment": 2
   },
   "profiles": {
     "light": {"plan_reviewers": 0, "result_reviewers": 0},
@@ -61,6 +64,60 @@
     ],
     "parallel_write_isolation": "worktree-required",
     "parallel_write_enabled": false
+  },
+  "context_policy": {
+    "checkpoint_schema_version": 1,
+    "checkpoint_after": "slice-accept",
+    "rehydrate_before": "next-slice",
+    "host_compact": "optional",
+    "global_hook_required": false
+  },
+  "test_policy": {
+    "packet_schema_version": 2,
+    "check_identity": "sha256-command-purpose",
+    "impact_actions": ["reuse", "update", "add", "not-applicable"],
+    "impact_levels": ["unit", "integration", "e2e", "static", "other"],
+    "required_impact_levels": ["unit", "integration", "e2e"],
+    "root_replay_minimum_per_slice": 1,
+    "deferred_final_checks": "exact-union-by-check-id"
+  },
+  "scope_amendment_policy": {
+    "allowed_authority": "root-technical",
+    "review_effect": "preserve-reviewed-base-through-digest-chain",
+    "protected_prefixes": [
+      ".git",
+      ".codex",
+      ".agent-graphs",
+      ".github/workflows",
+      ".circleci",
+      ".buildkite",
+      ".teamcity",
+      "db/migrate",
+      "alembic/versions",
+      "migrations",
+      "secrets"
+    ],
+    "protected_names": [
+      ".env",
+      ".env.local",
+      ".env.production",
+      "schema.prisma",
+      "schema.rb",
+      "schema.sql",
+      "structure.sql",
+      ".gitlab-ci.yml",
+      ".travis.yml",
+      ".drone.yml",
+      ".cirrus.yml",
+      "bitrise.yml",
+      "buildspec.yml",
+      "buildspec.yaml",
+      "jenkinsfile",
+      "azure-pipelines.yml",
+      "bitbucket-pipelines.yml",
+      "cloudbuild.yaml",
+      "appveyor.yml"
+    ]
   },
   "routes": {
     "plan": {

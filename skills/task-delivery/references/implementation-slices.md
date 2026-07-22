@@ -1,40 +1,40 @@
 # Implementation slices
 
-Этот протокол действует только внутри существующего узла `work`, когда root действительно вызывает `task_worker`. Он не создаёт новый graph node и не добавляет overhead для `root-only`.
+Этот протокол живёт внутри одного узла `work`. Он добавляет проверяемые handoff-границы, но не превращает Task Delivery в длинный граф.
 
-## Содержание
-
-- [Стратегии и режимы](#стратегии-и-режимы)
-- [Slice packet](#slice-packet)
-- [Worker receipt](#worker-receipt)
-- [Root acceptance](#root-acceptance)
-- [Повтор и discoveries](#повтор-и-discoveries)
+Ниже описан v2 slice contract только для новых graph `3.4` runs. Активный `3.3.0` run сохраняет v1 packet/receipt и inline root acceptance без `slice-accept`, checkpoint, scope amendment и verifier-repair команд.
 
 ## Стратегии и режимы
 
-- `root-only` — default только для `light`, маленькой или тесно связанной реализации; никаких slice artifacts.
-- `delegated-sequential` — один активный write slice, максимум два packet за run.
-- `delegated-parallel` — зарезервирован, но fail-closed до проверяемой изоляции отдельных worktrees.
+- `root-only` — `light`, маленькая или тесно связанная реализация; slice artifacts отсутствуют.
+- `delegated-sequential` — один активный write slice, максимум два normal packet за run; после verifier reject допускается ровно один дополнительный repair packet.
+- `delegated-parallel` — fail-closed, пока нет доказанной изоляции отдельных worktrees.
 
-`plan` никогда не запускает implementation workers. `implement` выдаёт packet только после проверки неизменного reviewed plan. `full` сначала доводит текущий план до валидного состояния и затем может зарегистрировать packet внутри того же `work`.
+`plan` не запускает workers. `implement` переиспользует exact review сохранённого плана. `full` создаёт packet после текущего plan review. Явная просьба реализовать слайсами требует `--implementation-strategy delegated-sequential`; root-only completion тогда запрещён.
 
-Профиль `light` остаётся root-only. Для `standard/complex/critical` adaptive-маршрут предпочитает хотя бы один `delegated-sequential` slice. Root-only допустим, когда реализация слишком мала или настолько связана, что handoff не даёт отдельного проверяемого результата; запиши эту конкретную причину в `implementation.delegation_reason`.
+## Короткий цикл
 
-Явная просьба пользователя «реализуй слайсами», `slice`, «делегируй реализацию» или эквивалент сильнее adaptive-решения. Инициализируй run с `--implementation-strategy delegated-sequential`; runner не примет root-only результат. Явный `--implementation-strategy root-only` сохраняет прямое выполнение. В режиме `plan` implementation strategy всегда root-only, потому что код не меняется.
+Для каждого успешного slice:
 
-## Slice packet
+`slice-create → task_worker → slice-record → root diff/test review → slice-accept`
 
-Root создаёт draft вне производственного manifest, например внутри run-каталога или `/tmp`, затем выполняет:
+Если нужен следующий slice:
+
+`context-rehydrate → slice-create`
+
+После последнего slice root запускает union дорогих final checks и формирует один `task.json`. Физический compact сессии опционален: controller checkpoint, а не память чата, является переходным контрактом.
+
+## Slice packet v2
+
+Root создаёт draft в run-каталоге или `/tmp` и выполняет:
 
 ```bash
 python3 scripts/task_graph.py slice-create --run <run-dir> --packet <draft.json>
 ```
 
-Минимальный draft:
-
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "slice_id": "implementation-api",
   "strategy": "delegated-sequential",
   "plan_review": {"mode": "self", "receipt": "root:self-review"},
@@ -45,44 +45,49 @@ python3 scripts/task_graph.py slice-create --run <run-dir> --packet <draft.json>
   "known_facts": [{"fact": "Проверенный факт.", "source": "src/api/contract.ts"}],
   "stop_questions": ["Остановиться, если требуется изменить общий schema contract."],
   "acceptance": ["Наблюдаемая проверка проходит."],
-  "verification_commands": [{"command": "npm test -- api", "purpose": "Узкий контракт API"}],
+  "test_impact": [
+    {"level": "unit", "action": "update", "paths": ["tests/api/index.test.ts"], "reason": "Изменено unit-поведение."},
+    {"level": "integration", "action": "reuse", "paths": ["tests/api/contract.test.ts"], "reason": "Контракт уже покрыт."},
+    {"level": "e2e", "action": "not-applicable", "paths": [], "reason": "User journey не меняется."}
+  ],
+  "slice_checks": [{"command": "npm test -- api-unit", "purpose": "Быстрый контракт API"}],
+  "deferred_final_checks": [{"command": "npm run e2e -- api-flow", "purpose": "Интегрированный API flow"}],
   "capability_context": {
     "skills": [{"name": "coding-standards", "reason": "Применить правила стека.", "required": true}],
     "mcp": [{"receipt": "mcp:context7", "mode": "provided", "purpose": "Использовать уже проверенную документацию."}]
   },
-  "supersedes": null
+  "supersedes": null,
+  "repair_for_work_sha256": null
 }
 ```
 
-Runner сам добавляет exact plan digest, repository baseline digest, SHA-256 каждого `must_read` файла и timestamp. `owned_paths` обязаны быть подмножеством plan scope и не пересекаться с `excluded_paths`.
+`test_impact` обязан классифицировать unit, integration и E2E как `reuse`, `update`, `add` или `not-applicable`. Для `update/add` test path входит в ownership и должен реально измениться. Runner добавляет canonical `check_id = SHA-256(command + purpose)`, plan/baseline digests, hashes `must_read`, предыдущий checkpoint digest и timestamp.
 
-В `full` packet фиксирует уже состоявшийся `self` или `independent` plan review; `complex/critical` требуют independent receipt до worker. В `implement` runner сам связывает packet с сохранённым точным review прошлого plan run и записывает `reused`.
+Передай fresh worker только canonical packet path, packet SHA-256 и ближайшие инструкции. Worker полностью читает максимум три required skills и использует переданный MCP/research context; вся история root-сессии ему не нужна.
 
-Передай свежему worker только canonical packet path, packet SHA-256 и запрет выходить за packet. Не передавай всю историю root-сессии.
-
-Выбирай максимум три применимых skills. Worker обязан полностью прочитать каждый required skill из каталога текущего запуска и ближайшие instruction-файлы из `must_read`. Не загружай весь каталог навыков.
-
-## Worker receipt
-
-Worker пишет draft receipt и root фиксирует его:
+## Worker receipt v2
 
 ```bash
 python3 scripts/task_graph.py slice-record \
   --run <run-dir> --slice-id <slice-id> --receipt <worker-receipt.json>
 ```
 
-Receipt содержит:
-
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "slice_id": "implementation-api",
   "packet_sha256": "64 hex",
   "worker_receipt": "/root/task_worker_api",
   "status": "done",
   "summary": "Что сделано.",
   "changed_paths": ["src/api/index.ts", "tests/api/index.test.ts"],
-  "tests": [{"command": "npm test -- api", "purpose": "Узкий контракт API", "exit_code": 0, "status": "passed"}],
+  "tests": [{"command": "npm test -- api-unit", "purpose": "Быстрый контракт API", "exit_code": 0, "status": "passed"}],
+  "test_changes": [
+    {"level": "unit", "action": "update", "paths": ["tests/api/index.test.ts"]},
+    {"level": "integration", "action": "reuse", "paths": ["tests/api/contract.test.ts"]},
+    {"level": "e2e", "action": "not-applicable", "paths": []}
+  ],
+  "deferred_final_checks": [{"command": "npm run e2e -- api-flow", "purpose": "Интегрированный API flow"}],
   "artifacts": [],
   "capabilities_used": [{"kind": "skill", "name": "coding-standards", "status": "applied", "evidence": "Как skill повлиял на реализацию."}],
   "concerns": [],
@@ -93,34 +98,83 @@ Receipt содержит:
 }
 ```
 
-Допустимые статусы: `done`, `done_with_concerns`, `needs_context`, `blocked`. `done` требует выполненные назначенные проверки и отсутствие скрытых concerns. Недоступный required skill или недостающий authority context требует `needs_context`, а не догадку.
+`done|done_with_concerns` требуют все `slice_checks` зелёными, exact test-impact report и неизменный список deferred checks. Worker не обязан поднимать весь стенд на каждом slice и не имеет права помечать deferred E2E как выполненный. До первой правки worker сохраняет обратимый patch или private pre-edit copy только своей owned delta. Перед `needs_context|blocked` он откатывает только собственные edits к exact slice baseline, не использует broad git restore и не оставляет непринятую дельту. Controller проверяет это по manifest и fail-closed останавливает receipt при остаточных или параллельных изменениях; provenance он не угадывает и файлы автоматически не перезаписывает.
 
-Runner проверяет packet digest, plan drift, точную дельту с slice baseline, ownership, commands и required capabilities. Receipt остаётся указателем на evidence, а не доказательством истины.
+## Root acceptance и checkpoint
 
-## Root acceptance
-
-Root читает реальный diff, проверяет ownership и соседние контракты, повторяет узкие проверки и добавляет принятый slice в `task.json.implementation.slices`:
+Root читает фактический diff, проверяет ownership и соседние контракты, повторяет минимум один exact `slice_check` и создаёт draft:
 
 ```json
 {
+  "schema_version": 1,
   "slice_id": "implementation-api",
   "packet_sha256": "64 hex",
   "receipt_sha256": "64 hex",
-  "root_acceptance": {
-    "verdict": "accepted",
-    "verified_changed_paths": ["src/api/index.ts", "tests/api/index.test.ts"],
-    "tests": [{"command": "npm test -- api", "purpose": "Root replay", "exit_code": 0, "status": "passed"}],
-    "concerns_resolution": []
+  "verdict": "accepted",
+  "verified_changed_paths": ["src/api/index.ts", "tests/api/index.test.ts"],
+  "tests": [{"command": "npm test -- api-unit", "purpose": "Быстрый контракт API", "exit_code": 0, "status": "passed"}],
+  "verified_discoveries": [],
+  "concerns_resolution": [],
+  "next_objective": "Интегрировать следующий bounded slice или перейти к final checks."
+}
+```
+
+```bash
+python3 scripts/task_graph.py slice-accept \
+  --run <run-dir> --slice-id <slice-id> --acceptance <acceptance.json>
+```
+
+Runner сохраняет immutable `root-acceptance.json` и обновляет `context-checkpoint.json`. Следующий packet запрещён, пока успешный worker receipt не принят root. В `task.json.implementation.slices` root переносит только `slice_id`, `packet_sha256`, `receipt_sha256` и `acceptance_sha256`; controller сам перечитывает canonical acceptance и требует, чтобы final changed paths ровно совпали с union accepted path provenance. Root-only integration edits внутри delegated strategy не допускаются.
+
+Если нужен следующий slice:
+
+```bash
+python3 scripts/task_graph.py context-rehydrate --run <run-dir>
+```
+
+Команда проверяет checkpoint identity и возвращает accepted slices, проверенные discoveries, исходный `plan_scope`, exact accepted paths, deferred checks и next objective. `plan_scope` не изображает вычисленный остаток для directory scope: следующий objective определяет root. Следующий packet получает exact checkpoint SHA-256. После последнего slice rehydrate не требуется.
+
+## Final tests
+
+Worker запускает быстрые проверки только своей области. Root после интеграции всех slices запускает deduplicated union `deferred_final_checks`, включая существующие, обновлённые или новые E2E tests, которые покрывают изменённый flow. Каждый exact command/purpose должен появиться зелёным в `task.json.tests`; иначе work не завершится.
+
+## Repair после verifier reject
+
+Reject не открывает новый этап графа: controller возвращает тот же узел `work` и публикует `verification_repair_work_sha256` в `ready/status`. Для delegated run последовательность одна:
+
+`verify reject → context-rehydrate → slice-create(repair_for_work_sha256) → task_worker → slice-record → slice-accept → новый task.json → verify`
+
+Repair packet связан с exact отклонённым `task.json`, использует тот же reviewed plan/scope и является единственным дополнительным worker packet сверх двух normal packets. Несовпадающий SHA-256, второй repair packet или `needs_context|blocked` от repair worker блокируют run; скрытый root bypass запрещён. Если второй normal packet завершился `needs_context|blocked`, run также становится явно blocked вместо бесконечного продолжения.
+
+## Safe scope amendment
+
+Если реальный trace доказал пропущенный технический owner, а активный packet завершился `needs_context|blocked`, root может подготовить:
+
+```json
+{
+  "schema_version": 1,
+  "authority": "root-technical",
+  "plan_review_receipt": "root:self-review",
+  "added_paths": ["src/api/adapter.ts"],
+  "evidence_paths": ["src/api/contract.ts"],
+  "reason": "Trace доказал обязательный implementation owner.",
+  "impacts": {
+    "outcome_changed": false,
+    "acceptance_changed": false,
+    "public_contract_changed": false,
+    "data_or_security_changed": false,
+    "external_state_changed": false,
+    "risk_profile_changed": false
   }
 }
 ```
 
-`done_with_concerns` требует `accepted_with_concerns` и непустое объяснение resolution. Не создавай reviewer на каждый маленький slice; общий `task_result_reviewer` проверяет уже интегрированный кандидат согласно profile.
+```bash
+python3 scripts/task_graph.py scope-amend --run <run-dir> --amendment <amendment.json>
+```
 
-## Повтор и discoveries
+Runner связывает amendment с exact reviewed base, добавляет максимум два безопасных пути набора, создаёт ordered digest receipt и сохраняет review через эту цепочку. Изменение семантики, acceptance, публичного контракта, данных, безопасности, внешнего состояния, риска, migrations, secrets, env или CI workflow не является technical amendment: требуется решение пользователя и новый review. Никакого «разреши случайный hash» в контракте нет.
 
-`needs_context` и `blocked` завершают конкретный immutable packet. Для same-scope correction создай второй packet с новым `slice_id` и `supersedes`; общий лимит остаётся два packet на run.
+## Повтор и durable facts
 
-Discoveries остаются внутри worker receipt. Root переносит только проверенные относящиеся факты в следующий packet. Они не попадают автоматически в memory или канонические документы; durable факт проходит обычный `HANDOFF → Project Start maintenance`.
-
-Выбор остаётся лёгким routing-решением внутри `work`, а не новым этапом графа. Eval стратегии не является стадией пользовательского run.
+Для same-scope correction после первого `needs_context|blocked` создай второй normal packet с новым `slice_id` и `supersedes`; общий лимит — два normal packet. Второй неуспешный normal packet является явной терминальной остановкой. Root переносит в checkpoint только проверенные discoveries. Durable факт попадает в каноническую документацию только через обычный `HANDOFF → Project Start maintenance`.
