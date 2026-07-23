@@ -67,4 +67,6 @@ python3 scripts/continuous_improvement_graph.py retry --run <run-dir> --node <wo
 
 `complete` повторно проверяет graph identity, immutable receipts, отсутствие недекларированной дельты, Task Delivery completion и точный non-default-branch commit. Затем создаёт `IMPROVEMENT.md` со статусом `no-op`, `issue-ready` или `delivered`.
 
+После успешного `complete` упакуй terminal run через `<CODEX_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root <repo> --run <run-dir>`. Runtime сохранит копию `IMPROVEMENT.md`, если она находится внутри run. Никогда не упаковывай `running` или `blocked`; pruning остаётся отдельной dry-run-first операцией.
+
 Нормальный результат может быть `no-op`. Не создавай задачу ради самого запуска и не запускай бесконечный loop: один trigger — один bounded проход — один кандидат максимум.

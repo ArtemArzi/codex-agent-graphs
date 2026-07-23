@@ -91,6 +91,13 @@ At minimum bind:
 - current node, attempts and bounded repair count;
 - final artifact digest.
 
+After terminal completion, apply the separate shared artifact lifecycle. Keep
+canonical user outputs at their owning project paths, preserve unresolved raw
+state, and compact safely terminal execution material into a verified archive
+plus `FINAL.json`. Retention and garbage collection are post-completion
+operations, never additional graph nodes. See
+[artifact-lifecycle.md](artifact-lifecycle.md).
+
 The verifier receives the exact work receipt and candidate digests. Completion rechecks current files rather than trusting the verifier or worker summary.
 
 ## Agents and capabilities

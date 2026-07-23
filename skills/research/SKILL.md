@@ -89,3 +89,10 @@ python3 scripts/research_graph.py complete --run "<run-directory>"
 ```
 
 The deterministic gate checks receipt and report hashes, the small control artifact, source-to-report citation identity, mode/agent bounds, and conditional verifier completion. It does not inspect reasoning or repeat semantic research.
+
+After successful completion, preserve the requested report at its canonical
+output path and compact only the terminal run through
+`<CODEX_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root
+<workspace> --run <run-directory>`. Never compact a running or blocked run.
+Artifact pruning remains a separate dry-run-first command and is not a graph
+node or hook.

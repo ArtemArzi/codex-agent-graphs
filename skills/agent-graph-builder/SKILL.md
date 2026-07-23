@@ -42,7 +42,8 @@ The scaffold refuses to overwrite existing graph or control-artifact files. It d
 6. Make agents conditional capabilities, not mandatory stages. Root owns synthesis and final truth; subagents receive bounded packets and remain leaf workers. Never hard-code model names in the graph skill.
 7. Route installed skills and relevant MCP context inside `work`. Record actual capability receipts or an explicit checked fallback; never add a separate MCP node.
 8. Version `graph.json` and the durable state schema. Pin active runs to the graph identity and add an explicit compatibility or migration path before changing a released contract.
-9. Read [graph-contract.md](references/graph-contract.md) while designing fields and [evaluation.md](references/evaluation.md) before claiming completion.
+9. Classify run material by [artifact-lifecycle.md](references/artifact-lifecycle.md). Canonical outputs remain project history; active state remains resumable; safely terminal raw state uses the shared runtime for verified compaction and explicit TTL pruning. Do not add a cleanup node or destructive hook.
+10. Read [graph-contract.md](references/graph-contract.md) while designing fields and [evaluation.md](references/evaluation.md) before claiming completion.
 
 ## Validate
 
@@ -66,6 +67,7 @@ Return:
 - deterministic versus model-owned responsibilities;
 - optional agents and capability routing;
 - state, receipt and compatibility contract;
+- artifact retention, compaction and cleanup impact;
 - exact validation commands and results;
 - installation or migration impact;
 - residual risks.

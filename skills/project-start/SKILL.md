@@ -122,6 +122,8 @@ python3 scripts/project_graph.py recover --root <repo>
 
 Старые активные v2 maintenance runs можно завершить прежним `project_maintenance.py` по [legacy-инструкции](references/legacy-v2-resume.md); новые запуски всегда используй через `project_graph.py`.
 
+После успешного завершения сохрани канонические документы и `.project-start/state.json` на месте, затем упакуй только terminal run через `<CODEX_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root <repo> --run <run-dir>`. Не упаковывай active, blocked, restart-required или непроверенный superseded run. Очистка остаётся отдельной dry-run-first командой, а не узлом или hook.
+
 Полный жизненный цикл и условия остановки: [references/lifecycle.md](references/lifecycle.md).
 
 ## Служебные ресурсы

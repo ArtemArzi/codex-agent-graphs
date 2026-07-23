@@ -20,6 +20,8 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_ROOT = REPO_ROOT / "skills"
 AGENTS_ROOT = REPO_ROOT / "agents"
+GRAPH_RUNTIME_ROOT = REPO_ROOT / "agent-graph-runtime"
+GRAPH_RUNTIME_TARGET = "agent-graph-runtime"
 GLOBAL_POLICY_SOURCE = REPO_ROOT / "policies" / "development-recovery.md"
 DISCOVERY_POLICY_SOURCE = REPO_ROOT / "policies" / "large-codebase-discovery.md"
 SKILLS = (
@@ -296,6 +298,7 @@ def replace_file(source: Path, target: Path, backup: Path) -> str:
 
 def preflight_environment(codex_home: Path) -> tuple[str, str, str, str]:
     codex_home = codex_home.expanduser().resolve()
+    manifest(GRAPH_RUNTIME_ROOT)
     for skill in SKILLS:
         manifest(SKILLS_ROOT / skill)
     for role in AGENT_ROLES:
@@ -326,6 +329,20 @@ def install_environment(codex_home: Path) -> dict[str, Any]:
     agents_file = codex_home / "AGENTS.md"
     backup = backup_root(codex_home)
     changes: list[dict[str, str]] = []
+    runtime_target = codex_home / GRAPH_RUNTIME_TARGET
+    runtime_status = replace_directory(
+        GRAPH_RUNTIME_ROOT,
+        runtime_target,
+        backup / GRAPH_RUNTIME_TARGET,
+    )
+    changes.append(
+        {
+            "kind": "runtime",
+            "name": GRAPH_RUNTIME_TARGET,
+            "status": runtime_status,
+            "target": str(runtime_target),
+        }
+    )
     for skill in SKILLS:
         source = SKILLS_ROOT / skill
         target = codex_home / "skills" / skill
@@ -380,6 +397,12 @@ def verify_environment(codex_home: Path) -> dict[str, Any]:
     codex_home = codex_home.expanduser().resolve()
     issues: list[str] = []
     statuses: list[dict[str, str]] = []
+    runtime_status = path_status(GRAPH_RUNTIME_ROOT, codex_home / GRAPH_RUNTIME_TARGET)
+    statuses.append(
+        {"kind": "runtime", "name": GRAPH_RUNTIME_TARGET, "status": runtime_status}
+    )
+    if runtime_status != "in-sync":
+        issues.append(f"runtime {GRAPH_RUNTIME_TARGET}: {runtime_status}")
     for skill in SKILLS:
         status = path_status(SKILLS_ROOT / skill, codex_home / "skills" / skill)
         statuses.append({"kind": "skill", "name": skill, "status": status})
@@ -416,7 +439,13 @@ def verify_environment(codex_home: Path) -> dict[str, Any]:
 
 def plan_environment(codex_home: Path) -> dict[str, Any]:
     codex_home = codex_home.expanduser().resolve()
-    items: list[dict[str, str]] = []
+    items: list[dict[str, str]] = [
+        {
+            "kind": "runtime",
+            "name": GRAPH_RUNTIME_TARGET,
+            "status": path_status(GRAPH_RUNTIME_ROOT, codex_home / GRAPH_RUNTIME_TARGET),
+        }
+    ]
     for skill in SKILLS:
         items.append(
             {

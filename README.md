@@ -32,6 +32,7 @@ The graph does not tell the model how to think. It makes lifecycle, scope, evide
 | `$project-start` | A canonical project foundation or a focused documentation-maintenance pass | New repositories, inherited codebases, and keeping `AGENTS.md` plus project docs aligned with reality |
 | `$research` | Cited, decision-ready research that starts fast and deepens only when the evidence demands it | Technical investigation, comparisons, current facts, and high-confidence research reports |
 | `$task-delivery` | One scoped software task from Markdown plan through implementation, tests, review, and handoff | Features, fixes, refactors, plan-only work, or implementation from an accepted plan |
+| `$continuous-improvement` | One evidence-backed repository improvement or an honest no-op/issue-ready result | Bounded autonomous maintenance from a failing test, CI signal, regression, or explicit audit request |
 
 Three supporting capabilities keep those workflows healthy:
 
@@ -104,8 +105,9 @@ The installer copies files; it does not create cross-filesystem symlinks.
 
 | Installed surface | What changes |
 | --- | --- |
-| Skills | Five directories under each target Codex home: `agent-graph-builder`, `development-recovery`, `project-start`, `research`, and `task-delivery` |
-| Custom agents | Twelve bounded role definitions for conditional exploration, implementation, planning review, result review, project-doc verification, and deep research |
+| Skills | Six directories under each target Codex home: `agent-graph-builder`, `continuous-improvement`, `development-recovery`, `project-start`, `research`, and `task-delivery` |
+| Shared runtime | `agent-graph-runtime/` under each target Codex home for deterministic artifact inventory, verified compaction, and explicit TTL pruning |
+| Custom agents | Thirteen bounded role definitions for conditional exploration, implementation, planning review, result review, project-doc verification, improvement verification, and deep research |
 | `config.toml` | One managed block that registers those custom roles without replacing unrelated configuration |
 | Global `AGENTS.md` | Managed development-recovery and large-codebase-discovery policy blocks; unrelated instructions are preserved |
 
@@ -127,11 +129,30 @@ flowchart LR
 
 The root agent remains the sole orchestrator and final truth owner. Optional subagents receive narrow packets and stay leaf-only. The controller never calls a model API and never replaces semantic work with a state machine.
 
-All three operational graphs share the same topology — `work → optional verify → complete` — while exposing different modes:
+All four operational graphs share the same topology — `work → optional verify → complete` — while exposing different modes:
 
 - **Project Start:** `bootstrap`, `maintenance`, or automatic routing.
 - **Research:** fast single-agent work by default, with evidence-driven deepening and conditional independent verification.
 - **Task Delivery:** `plan`, `implement`, or `full`, with `light`, `standard`, `complex`, and `critical` risk profiles.
+- **Continuous Improvement:** `audit` or `full`, with one candidate maximum and Task Delivery owning accepted implementation.
+
+## Artifact lifecycle
+
+Canonical plans, reports, handoffs, decisions, and maintained documentation stay
+at their project paths. Full run state remains untouched while work is active,
+blocked, or awaiting implementation. After safe terminal completion, the shared
+runtime can create one verified archive and one permanent compact receipt:
+
+```text
+.agent-graphs/history/<graph>/<run>/FINAL.json
+.agent-graphs/archives/<graph>/<run>.tar.gz
+```
+
+Inventory and compaction do not delete raw state. Pruning is a dry-run unless
+`--apply` is supplied, validates the archive and raw manifest again, never
+follows symlinks, and never deletes canonical outputs. Successful raw state has
+a seven-day default retention; its archive has thirty days. These values may be
+overridden per repository in `.agent-graphs/retention.json`.
 
 ## Skills, plugins, and MCP
 
@@ -210,6 +231,7 @@ git diff --check
 skills/       native skill instructions, graph contracts, references, and controllers
 agents/       installable custom-agent role definitions
 policies/     managed global AGENTS.md policies
+agent-graph-runtime/ shared deterministic artifact lifecycle
 scripts/      installer and repository-wide validation gate
 tests/        installer and integration checks
 ```

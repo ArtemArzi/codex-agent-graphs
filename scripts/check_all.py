@@ -41,6 +41,7 @@ def main() -> int:
     scripts = [
         ROOT / "scripts" / "install.py",
         ROOT / "scripts" / "check_all.py",
+        ROOT / "agent-graph-runtime" / "artifact_lifecycle.py",
         ROOT / "skills" / "agent-graph-builder" / "scripts" / "graph_contract.py",
         ROOT / "skills" / "continuous-improvement" / "scripts" / "continuous_improvement_graph.py",
         ROOT / "skills" / "research" / "scripts" / "research_graph.py",

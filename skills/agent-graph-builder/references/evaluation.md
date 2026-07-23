@@ -32,6 +32,9 @@ Test at least:
 8. path traversal and unsafe ownership are rejected where files are mutated;
 9. legacy active-run behavior matches the declared compatibility policy;
 10. completion generates and rechecks the final artifact.
+11. artifact inventory is read-only, compaction refuses unresolved state, and
+    explicit pruning rejects symlinks, tampering, premature TTL and canonical
+    outputs.
 
 Add domain tests for permissions, source quality, implementation scope, external state or other material invariants.
 
@@ -53,4 +56,7 @@ Treat a partial run as partial coverage. Record the first untested transition ra
 
 ## Release gate
 
-Run focused tests, the repository-wide gate, installer plan/install/verify for every supported environment, and `git diff --check`. Inspect the complete diff and preserve unrelated dirty work. Commit only after all generated and installed copies match.
+Run focused tests, the shared artifact-lifecycle tests, the repository-wide
+gate, installer plan/install/verify for every supported environment, and
+`git diff --check`. Inspect the complete diff and preserve unrelated dirty
+work. Commit only after all generated and installed copies match.

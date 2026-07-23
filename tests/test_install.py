@@ -32,6 +32,9 @@ class InstallerTests(unittest.TestCase):
     def test_install_and_verify(self) -> None:
         result = installer.install_environment(self.home)
         self.assertEqual(installer.verify_environment(self.home)["status"], "ok")
+        self.assertTrue(
+            (self.home / "agent-graph-runtime" / "artifact_lifecycle.py").is_file()
+        )
         self.assertTrue((self.home / "skills" / "research" / "graph.json").is_file())
         self.assertTrue((self.home / "skills" / "agent-graph-builder" / "SKILL.md").is_file())
         self.assertTrue((self.home / "skills" / "continuous-improvement" / "graph.json").is_file())
@@ -157,6 +160,27 @@ class InstallerTests(unittest.TestCase):
         backups = list((self.home / "backups" / "agent-graphs").rglob("research/SKILL.md"))
         self.assertEqual(len(backups), 1)
         self.assertEqual(backups[0].read_text(encoding="utf-8"), "local drift")
+
+    def test_runtime_drift_is_backed_up_and_repaired(self) -> None:
+        installer.install_environment(self.home)
+        installed = self.home / "agent-graph-runtime" / "artifact_lifecycle.py"
+        installed.write_text("runtime drift", encoding="utf-8")
+        verification = installer.verify_environment(self.home)
+        self.assertEqual("failed", verification["status"])
+        self.assertIn(
+            "runtime agent-graph-runtime: drift",
+            verification["issues"],
+        )
+        result = installer.install_environment(self.home)
+        self.assertEqual("ok", installer.verify_environment(self.home)["status"])
+        self.assertIsNotNone(result["backup"])
+        backups = list(
+            (self.home / "backups" / "agent-graphs").rglob(
+                "agent-graph-runtime/artifact_lifecycle.py"
+            )
+        )
+        self.assertEqual(1, len(backups))
+        self.assertEqual("runtime drift", backups[0].read_text(encoding="utf-8"))
 
     def test_unmanaged_agent_role_conflict_is_rejected(self) -> None:
         config = self.home / "config.toml"
