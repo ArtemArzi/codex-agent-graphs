@@ -117,6 +117,8 @@ class ResearchGraphTests(unittest.TestCase):
         self.assertEqual(contract["limits"]["fast"]["source_checkpoints"], [4, 6, 10])
         self.assertEqual(contract["limits"]["deep"]["source_checkpoints"], [10, 20, 40])
         self.assertEqual(contract["limits"]["fast"]["max_parallel_scouts"], 0)
+        self.assertEqual("skill-only", contract["execution_policy"]["default_tier"])
+        self.assertEqual("when-relevant", contract["mcp_policy"]["discovery"])
         self.assertEqual(contract["mcp_policy"]["relevant_use"], "required")
 
     def test_init_is_idempotent(self) -> None:
@@ -182,6 +184,19 @@ class ResearchGraphTests(unittest.TestCase):
         self.record_work(
             self.valid_work(
                 capabilities=["research", "native-web", "mcp:fallback:servers-unavailable"]
+            )
+        )
+        self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
+
+    def test_local_tracked_research_accepts_not_applicable_mcp(self) -> None:
+        self.write_report()
+        self.record_work(
+            self.valid_work(
+                capabilities=[
+                    "research",
+                    "local-files",
+                    "mcp:not-applicable:local-evidence-only",
+                ]
             )
         )
         self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
@@ -434,6 +449,19 @@ class ResearchGraphTests(unittest.TestCase):
         self.write_report()
         artifact = self.write_artifact(
             "work", self.valid_work(capabilities=["research", "native-web"])
+        )
+        graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
+        self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")
+
+    def test_started_v2_2_run_can_finish_with_legacy_receipt_contract(self) -> None:
+        state_path = self.run_dir / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["graph_version"] = "2.2.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["2.2.0"]
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        self.write_report()
+        artifact = self.write_artifact(
+            "work", self.valid_work(capabilities=["research", "mcp:exa"])
         )
         graph.record_node(self.run_dir, "work", str(artifact), "succeeded")
         self.assertEqual(graph.load_state(self.run_dir)["current"], "complete")

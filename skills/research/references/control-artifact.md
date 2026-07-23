@@ -9,7 +9,7 @@ Minimum form:
   "schema_version": 2,
   "mode": "fast",
   "reason": "Why this depth is proportionate.",
-  "capabilities": ["mcp:provider-or-server"],
+  "capabilities": ["mcp:not-applicable:local-evidence-only"],
   "agents": [],
   "sources": [
     {
@@ -29,7 +29,9 @@ Minimum form:
 Rules:
 
 - `mode` is `fast` or `deep` and must respect the requested depth and source/agent bounds.
-- `capabilities` records actual tools and includes `mcp:<server>` or a checked `mcp:fallback:<reason>`.
+- `capabilities` records actual tools and exactly one MCP status:
+  `mcp:<server>`, `mcp:fallback:<reason>`, or
+  `mcp:not-applicable:<reason>`.
 - `agents` contains only roles actually used; fast mode keeps it empty.
 - `sources` identifies each cited source and the report claims it supports. Search snippets are not sources.
 - `verification` is `self` for direct completion or `independent` when the work outcome routes to `verify`.

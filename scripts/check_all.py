@@ -73,11 +73,32 @@ def main() -> int:
         raise RuntimeError("Research graph node contract changed unexpectedly")
     if graph.get("default_depth") != "auto" or graph["limits"]["fast"]["max_parallel_scouts"] != 0:
         raise RuntimeError("Research fast path must remain native and single-agent by default")
+    if graph.get("graph_version") != "2.3.0":
+        raise RuntimeError("Research current graph must remain 2.3.0")
+    if (
+        graph.get("execution_policy", {}).get("default_tier") != "skill-only"
+        or graph.get("mcp_policy", {}).get("discovery") != "when-relevant"
+    ):
+        raise RuntimeError("Research adaptive execution contract changed unexpectedly")
     project_graph = json.loads((ROOT / "skills" / "project-start" / "graph.json").read_text(encoding="utf-8"))
     if set(project_graph["routes"]) != {"bootstrap", "maintenance"}:
         raise RuntimeError("Project Start must expose exactly bootstrap and maintenance routes")
     if project_graph.get("schema_version") != 2 or project_graph.get("default_mode") != "auto":
         raise RuntimeError("Project Start v3 must use schema 2 and auto mode")
+    if project_graph.get("graph_version") != "3.5.0":
+        raise RuntimeError("Project Start current graph must remain 3.5.0")
+    documentation_contract = project_graph.get("documentation_contract", {})
+    if "engineering_standard" not in documentation_contract.get("coverage", []):
+        raise RuntimeError("Project Start must retain the engineering_standard semantic role")
+    if set(documentation_contract.get("engineering_standard_providers", [])) != {
+        "coding-standards",
+        "project-start:engineering-standard-fallback",
+    }:
+        raise RuntimeError("Project Start engineering standard provider contract changed")
+    if not (
+        ROOT / "skills" / "project-start" / "assets" / "templates" / "ENGINEERING.md"
+    ).is_file():
+        raise RuntimeError("Project Start engineering standard template is missing")
     if project_graph["legacy_v2_bootstrap"]["phases"] != [
         "discovery", "foundation", "planning", "tickets", "execution", "complete"
     ]:
@@ -92,6 +113,12 @@ def main() -> int:
             raise RuntimeError(f"Project Start {mode} must remain a three-node control graph")
     if project_graph["limits"]["maintenance"]["max_parallel_explorers"] > 2:
         raise RuntimeError("Project Start maintenance explorer bound is too high")
+    if (
+        project_graph.get("execution_policy", {}).get("default_tier") != "tracked"
+        or project_graph.get("work_policy", {}).get("fast_path") != "root-only"
+        or project_graph.get("mcp_policy", {}).get("discovery") != "when-relevant"
+    ):
+        raise RuntimeError("Project Start adaptive execution contract changed unexpectedly")
     verifier_prompt = (ROOT / "agents" / "project_docs_verifier.toml").read_text(encoding="utf-8")
     if "schema_version 1" not in verifier_prompt or "schema_version 3" not in verifier_prompt:
         raise RuntimeError("Project Start verifier must remain dual-compatible with active v2 and new v3 runs")
@@ -100,8 +127,8 @@ def main() -> int:
     task_graph = json.loads((ROOT / "skills" / "task-delivery" / "graph.json").read_text(encoding="utf-8"))
     if task_graph.get("schema_version") != 2 or task_graph.get("default_mode") != "full":
         raise RuntimeError("Task Delivery v3 must use schema 2 and full default mode")
-    if task_graph.get("graph_version") != "3.4.0":
-        raise RuntimeError("Task Delivery current graph must remain 3.4.0")
+    if task_graph.get("graph_version") != "3.5.0":
+        raise RuntimeError("Task Delivery current graph must remain 3.5.0")
     if set(task_graph.get("routes", {})) != {"plan", "implement", "full"}:
         raise RuntimeError("Task Delivery must expose plan, implement and full routes")
     for mode in ("plan", "implement", "full"):
@@ -109,11 +136,31 @@ def main() -> int:
             raise RuntimeError(f"Task Delivery {mode} must remain a three-node control graph")
     if set(task_graph.get("profiles", {})) != {"light", "standard", "complex", "critical"}:
         raise RuntimeError("Task Delivery risk profiles changed unexpectedly")
+    if (
+        task_graph["profiles"]["standard"].get("result_reviewers") != 0
+        or task_graph["profiles"]["complex"].get("result_reviewers") != 0
+        or task_graph["profiles"]["critical"].get("result_reviewers") != 1
+    ):
+        raise RuntimeError("Task Delivery result review must remain risk-triggered")
     limits = task_graph["limits"]
-    if limits["max_agents_per_run"] > 5 or limits["max_parallel_agents"] > 2:
+    if limits["max_agents_per_run"] > 8 or limits["max_parallel_agents"] > 2:
         raise RuntimeError("Task Delivery agent bounds are too high")
-    if limits.get("max_slices_per_run") != 2 or limits.get("max_verification_repair_slices") != 1:
+    if (
+        limits.get("max_slices_per_run") != 2
+        or limits.get("max_explicit_slices_per_run") != 6
+        or limits.get("max_verification_repair_slices") != 1
+    ):
         raise RuntimeError("Task Delivery slice and verifier-repair bounds changed unexpectedly")
+    if (
+        task_graph.get("work_policy", {}).get("fast_path") != "root-only"
+        or task_graph.get("work_policy", {})
+        .get("budgets", {})
+        .get("max_no_new_evidence_iterations")
+        != 2
+        or task_graph.get("mcp_policy", {}).get("discovery") != "when-relevant"
+        or task_graph.get("execution_policy", {}).get("default_tier") != "skill-only"
+    ):
+        raise RuntimeError("Task Delivery efficiency contract changed unexpectedly")
     if task_graph.get("context_policy") != {
         "checkpoint_schema_version": 1,
         "checkpoint_after": "slice-accept",
@@ -147,6 +194,14 @@ def main() -> int:
     improvement_graph = json.loads((improvement_root / "graph.json").read_text(encoding="utf-8"))
     if improvement_graph.get("schema_version") != 2 or improvement_graph.get("default_mode") != "full":
         raise RuntimeError("Continuous Improvement v1 must use schema 2 and full default mode")
+    if improvement_graph.get("graph_version") != "1.1.0":
+        raise RuntimeError("Continuous Improvement current graph must remain 1.1.0")
+    if (
+        improvement_graph.get("execution_policy", {}).get("default_tier") != "tracked"
+        or improvement_graph.get("work_policy", {}).get("fast_path") != "root-only"
+        or improvement_graph.get("mcp_policy", {}).get("discovery") != "when-relevant"
+    ):
+        raise RuntimeError("Continuous Improvement adaptive execution contract changed")
     if set(improvement_graph.get("routes", {})) != {"audit", "full"}:
         raise RuntimeError("Continuous Improvement must expose audit and full routes")
     for mode in ("audit", "full"):
@@ -191,7 +246,15 @@ def main() -> int:
         raise RuntimeError("Large-codebase discovery must reuse existing roles instead of adding a skill")
     graph_validator = ROOT / "skills" / "agent-graph-builder" / "scripts" / "graph_contract.py"
     for skill in ("continuous-improvement", "project-start", "research", "task-delivery"):
-        run([sys.executable, str(graph_validator), "validate", "--skill-dir", str(ROOT / "skills" / skill)])
+        command = [
+            sys.executable,
+            str(graph_validator),
+            "validate",
+            "--skill-dir",
+            str(ROOT / "skills" / skill),
+        ]
+        command.append("--require-work-policy")
+        run(command)
     skill_validator = find_skill_validator()
     if skill_validator:
         for skill in (

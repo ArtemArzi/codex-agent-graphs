@@ -10,9 +10,13 @@
 ## Static checks
 
 - `$skill-creator` quick validation passes.
-- `graph_contract.py validate` passes.
+- `graph_contract.py validate --require-work-policy` passes for a new or migrated graph.
 - Every route contains only `work`, `verify`, `complete` unless an explicit tested exception is documented.
 - Retry and verification-repair budgets are bounded.
+- Work budgets and loop guards enforce the root-only fast path, need-based
+  capabilities, independent agent scopes and two-iteration no-new-evidence stop.
+- Adaptive execution declares whether the default is skill-only or tracked and
+  keeps verified execution risk-triggered.
 - `agents/openai.yaml` names the skill in `default_prompt`.
 - No TODO, placeholder or hard-coded model remains.
 - A fresh `$skill-creator` template fails graph scaffold until its TODOs and final metadata are resolved.
@@ -47,12 +51,20 @@ Observe:
 - whether the skill triggers correctly;
 - whether the root keeps semantic work native;
 - whether agents are called only when useful;
-- whether skills/MCP context is actually used;
+- whether skills/MCP context is used when relevant and local-only work avoids
+  ritual capability discovery;
 - whether commands are executable from the installed path;
 - whether the controller blocks a false completion;
 - elapsed time and avoidable handoff overhead.
+- agent starts, review starts, waits/handoffs, artifact count and compactions;
+- duplicate scopes, evidence-free retries and unnecessary documentation follow-up.
 
 Treat a partial run as partial coverage. Record the first untested transition rather than inferring success.
+
+Compare representative tasks across `skill-only`, `tracked`, and the previous
+full route with the same model, tools and acceptance criteria. A graph does not
+pass merely because it is predictable: it must not add material wall time,
+tokens or artifacts without closing a real risk or evidence gap.
 
 ## Release gate
 

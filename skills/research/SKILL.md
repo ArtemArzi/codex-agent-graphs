@@ -1,16 +1,34 @@
 ---
 name: research
-description: Run fast, adaptive, evidence-backed research with native Codex tools, installed skills, MCP/apps, and optional multi-agent depth. Use when the user asks to research, investigate, compare, verify current facts, survey a field, or produce a cited decision-ready answer; start with one native agent and automatically deepen only for real complexity or risk.
+description: Run fast, adaptive, evidence-backed research with native Codex tools, installed skills, MCP/apps, optional durable tracking, and bounded multi-agent depth. Use when the user asks to research, investigate, compare, verify current facts, survey a field, or produce a cited decision-ready answer; use a skill-only root loop by default and admit the graph only for deep, resumable, persistent, or independently verified work.
 ---
 
 # Research
 
-Use the graph as a small control layer around one native Codex research loop. Do not turn planning, searching, evidence capture, reconciliation, or drafting into separate graph nodes.
+Use one native Codex research loop. Add the graph only when durable state or
+independent verification closes a real need. Do not turn planning, searching,
+evidence capture, reconciliation, or drafting into separate graph nodes.
+
+## Choose the execution tier
+
+- `skill-only` — default for a normal question that fits one session. Search,
+  open sources, synthesize and answer directly. Do not initialize the
+  controller and do not create `research.json` or a run directory.
+- `tracked` — use the controller when the work may cross sessions, must produce
+  a persistent report, needs a durable source ledger/handoff, or the user
+  explicitly asks to track or resume it.
+- `verified` — tracked research plus `research_verifier` when material claims
+  are high-risk, contradictory, weakly supported, due-diligence grade, or the
+  user explicitly requests independent verification.
 
 ## Core contract
 
-- Start with the root agent in `fast` mode unless the user explicitly requests deep work or a strong escalation signal is already present.
-- Read only the installed skills relevant to the question. MCP discovery and relevant MCP use are mandatory inside `work`; Exa, Deep Research, domain skills, apps, browser search, and local files remain adaptive capabilities, not graph stages.
+- Start with one root agent and a bounded initial evidence set. `fast` and
+  `deep` are controller depths only after `tracked` or `verified` is admitted.
+- Read only the installed skills relevant to the question. Discover MCP when
+  the question needs current external evidence, provider data, library
+  documentation or a live system. Local-file analysis can record
+  `mcp:not-applicable:<reason>` in tracked mode without a ritual lookup.
 - Keep normal research read-only except for ignored run state and the requested report.
 - Prefer primary and authoritative sources. Open sources; do not treat search snippets as evidence.
 - Put citations next to material factual claims and separate source claims, inference, contradiction, and unknowns.
@@ -19,14 +37,22 @@ Use the graph as a small control layer around one native Codex research loop. Do
 
 Read [routing.md](references/routing.md) for depth and capability selection. Read [source-policy.md](references/source-policy.md) and [control-artifact.md](references/control-artifact.md) before writing `research.json`. Read [roles.md](references/roles.md) only when delegation or independent verification is justified.
 
-## Start or resume
+## Run skill-only research
+
+Understand the decision, use applicable sources and capabilities, stop when
+coverage is sufficient, and answer with citations next to material claims.
+Keep no graph artifacts. Escalate to `tracked` before context loss or when a
+durable report becomes part of the requested outcome.
+
+## Start or resume tracked research
 
 ```bash
 python3 scripts/research_graph.py init --question "<question>" --workspace "<workspace>" --output "<report.md>"
 python3 scripts/research_graph.py ready --run "<run-directory>"
 ```
 
-Use `--depth deep` only when the user explicitly asks for deep, exhaustive, due-diligence, or independent work. Otherwise keep the default `--depth auto` and let evidence trigger escalation.
+Use `--depth deep` only when the user explicitly asks for deep, exhaustive,
+due-diligence, or independent work. Otherwise keep `--depth auto`.
 
 The runner stores ignored, resumable state under `<workspace>/.agent-graphs/research-runs/`. `ready` returns the current durable node and the applicable source, scout, and soft-time bounds.
 
@@ -35,7 +61,10 @@ The runner stores ignored, resumable state under `<workspace>/.agent-graphs/rese
 Perform the complete research task natively inside one root turn:
 
 1. Understand the decision and freshness need without creating a separate intake artifact.
-2. Inspect exposed `mcp__*` tools/resources and make one relevant MCP call before a general native-web path. Prefer a provider-specific MCP, Context7 for official library documentation, a research MCP such as Exa/Tavily/Firecrawl, or the service MCP that owns the requested data. Do not substitute `curl` while a suitable MCP is available.
+2. When external, provider, library or live context matters, inspect exposed
+   `mcp__*` tools/resources and make one relevant MCP call before a general
+   native-web path. For local-only evidence, skip discovery and record
+   `mcp:not-applicable:<reason>`.
 3. Search and open an initial evidence set, then test coverage before crossing each source checkpoint in `ready`. Continue only for an unanswered sub-question, weak material claim, unresolved contradiction, missing source class, or meaningful new evidence in the latest batch. If every relevant MCP is unavailable or fails, continue automatically through native web/browser and finally `curl`, and record the reason.
 4. Compare evidence and write the final report directly to the requested output path. Stop early when the latest batch is redundant and remaining gaps are unlikely to change the answer.
 5. Write one small `research.json` containing mode, reason, used capabilities, optional agents, cited sources, confidence, gaps, and verification decision.
@@ -67,7 +96,9 @@ python3 scripts/research_graph.py retry --run "<run-directory>" --reason "<fallb
 - Use `deep-research` only after deep routing; never import a broad source target into fast mode or treat the deep 40-source emergency ceiling as a goal.
 - Use official documentation skills for version-sensitive technical claims.
 - Use domain skills such as market research or literature review when the question actually belongs to that domain.
-- Record each successful server as `mcp:<server>` in `capabilities`. Only when no relevant MCP succeeds, record one `mcp:fallback:<reason>` and fall back automatically to native web search, browser, local files, or `curl`. A fallback receipt is not permission to skip MCP discovery.
+- In tracked runs record exactly one MCP status: `mcp:<server>` after relevant
+  use, `mcp:fallback:<reason>` after a relevant server fails, or
+  `mcp:not-applicable:<reason>` for local-only evidence.
 
 ## Use multiple agents only on evidence
 

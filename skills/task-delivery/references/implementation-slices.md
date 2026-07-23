@@ -2,12 +2,12 @@
 
 Этот протокол живёт внутри одного узла `work`. Он добавляет проверяемые handoff-границы, но не превращает Task Delivery в длинный граф.
 
-Ниже описан v2 slice contract только для новых graph `3.4` runs. Активный `3.3.0` run сохраняет v1 packet/receipt и inline root acceptance без `slice-accept`, checkpoint, scope amendment и verifier-repair команд.
+Ниже описан v2 slice contract для graph `3.4+` runs. Активный `3.3.0` run сохраняет v1 packet/receipt и inline root acceptance без `slice-accept`, checkpoint, scope amendment и verifier-repair команд.
 
 ## Стратегии и режимы
 
 - `root-only` — `light`, маленькая или тесно связанная реализация; slice artifacts отсутствуют.
-- `delegated-sequential` — один активный write slice, максимум два normal packet за run; после verifier reject допускается ровно один дополнительный repair packet.
+- `delegated-sequential` — один активный write slice. Default budget — два normal packet; явный `init --implementation-strategy delegated-sequential --slice-budget N` допускает от 1 до 6 заранее обоснованных slices, пока профиль оставляет общий agent budget для своих reviews и возможного repair. После verifier reject допускается ровно один дополнительный repair packet.
 - `delegated-parallel` — fail-closed, пока нет доказанной изоляции отдельных worktrees.
 
 `plan` не запускает workers. `implement` переиспользует exact review сохранённого плана. `full` создаёт packet после текущего plan review. Явная просьба реализовать слайсами требует `--implementation-strategy delegated-sequential`; root-only completion тогда запрещён.
@@ -41,7 +41,7 @@ python3 scripts/task_graph.py slice-create --run <run-dir> --packet <draft.json>
   "objective": "Наблюдаемый результат слайса.",
   "owned_paths": ["src/api/", "tests/api/"],
   "excluded_paths": ["src/schema/"],
-  "must_read": ["AGENTS.md", "docs/architecture.md", "src/api/contract.ts"],
+  "must_read": ["AGENTS.md", "docs/architecture/ENGINEERING.md", "docs/architecture.md", "src/api/contract.ts"],
   "known_facts": [{"fact": "Проверенный факт.", "source": "src/api/contract.ts"}],
   "stop_questions": ["Остановиться, если требуется изменить общий schema contract."],
   "acceptance": ["Наблюдаемая проверка проходит."],
@@ -57,11 +57,16 @@ python3 scripts/task_graph.py slice-create --run <run-dir> --packet <draft.json>
     "mcp": [{"receipt": "mcp:context7", "mode": "provided", "purpose": "Использовать уже проверенную документацию."}]
   },
   "supersedes": null,
+  "retry_evidence": null,
   "repair_for_work_sha256": null
 }
 ```
 
-`test_impact` обязан классифицировать unit, integration и E2E как `reuse`, `update`, `add` или `not-applicable`. Для `update/add` test path входит в ownership и должен реально измениться. Runner добавляет canonical `check_id = SHA-256(command + purpose)`, plan/baseline digests, hashes `must_read`, предыдущий checkpoint digest и timestamp.
+`test_impact` обязан классифицировать unit, integration и E2E как `reuse`, `update`, `add` или `not-applicable`. Для `update/add` test path входит в ownership и должен реально измениться. Runner добавляет canonical `check_id = SHA-256(command + purpose)`, plan/baseline digests, hashes `must_read`, предыдущий checkpoint digest и timestamp. Если Task Delivery init связал run с Project Start engineering standard, runner сам добавляет его exact path в `must_read` и packet; удалить или подменить этот контекст draft-ом нельзя.
+
+`retry_evidence` отсутствует у обычного slice. Successor после
+`needs_context|blocked` обязан назвать новое проверенное evidence или новый
+дискриминирующий check; одна лишь переформулировка objective не допускается.
 
 Передай fresh worker только canonical packet path, packet SHA-256 и ближайшие инструкции. Worker полностью читает максимум три required skills и использует переданный MCP/research context; вся история root-сессии ему не нужна.
 
@@ -102,7 +107,7 @@ python3 scripts/task_graph.py slice-record \
 
 ## Root acceptance и checkpoint
 
-Root читает фактический diff, проверяет ownership и соседние контракты, повторяет минимум один exact `slice_check` и создаёт draft:
+Root читает фактический diff, проверяет ownership, применимые правила engineering standard и соседние контракты, повторяет минимум один exact `slice_check` и создаёт draft:
 
 ```json
 {
@@ -144,7 +149,7 @@ Reject не открывает новый этап графа: controller воз
 
 `verify reject → context-rehydrate → slice-create(repair_for_work_sha256) → task_worker → slice-record → slice-accept → новый task.json → verify`
 
-Repair packet связан с exact отклонённым `task.json`, использует тот же reviewed plan/scope и является единственным дополнительным worker packet сверх двух normal packets. Несовпадающий SHA-256, второй repair packet или `needs_context|blocked` от repair worker блокируют run; скрытый root bypass запрещён. Если второй normal packet завершился `needs_context|blocked`, run также становится явно blocked вместо бесконечного продолжения.
+Repair packet связан с exact отклонённым `task.json`, использует тот же reviewed plan/scope и является единственным дополнительным worker packet сверх normal slice budget. Несовпадающий SHA-256, второй repair packet или `needs_context|blocked` от repair worker блокируют run; скрытый root bypass запрещён. Две подряд безуспешные same-scope попытки также явно блокируют run, даже если явный общий budget больше.
 
 ## Safe scope amendment
 
@@ -177,4 +182,4 @@ Runner связывает amendment с exact reviewed base, добавляет �
 
 ## Повтор и durable facts
 
-Для same-scope correction после первого `needs_context|blocked` создай второй normal packet с новым `slice_id` и `supersedes`; общий лимит — два normal packet. Второй неуспешный normal packet является явной терминальной остановкой. Root переносит в checkpoint только проверенные discoveries. Durable факт попадает в каноническую документацию только через обычный `HANDOFF → Project Start maintenance`.
+Для same-scope correction после первого `needs_context|blocked` создай второй normal packet с новым `slice_id`, exact `supersedes` и содержательным `retry_evidence`. Второй неуспешный packet в этой цепочке является явной терминальной остановкой. Root переносит в checkpoint только проверенные discoveries. Durable факт попадает в каноническую документацию только через `HANDOFF → Project Start maintenance`, когда `documentation_impact.class` равен `factual` или `semantic`.

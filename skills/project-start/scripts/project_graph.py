@@ -56,7 +56,7 @@ IGNORED_DIRS = {
     "node_modules",
     "vendor",
 }
-BOOTSTRAP_COVERAGE = {
+LEGACY_BOOTSTRAP_COVERAGE = {
     "business",
     "documentation_map",
     "domain_context",
@@ -66,6 +66,10 @@ BOOTSTRAP_COVERAGE = {
     "plan",
     "agent_context",
     "skill_contract",
+}
+BOOTSTRAP_COVERAGE = LEGACY_BOOTSTRAP_COVERAGE | {"engineering_standard"}
+LEGACY_ACTIVE_GRAPH_IDENTITIES = {
+    ("3.4.0", "658f933cb082d2b1a5070bf35cf2f452b7353dbc2cf16d501338b9797dd020a2"),
 }
 
 
@@ -150,17 +154,49 @@ def graph_contract() -> dict[str, Any]:
         "project-start:skill-contract-fallback",
     }:
         raise GraphError("Project Start documentation contract содержит неверные skill contract providers.")
+    engineering_providers = contract.get("engineering_standard_providers")
+    if not isinstance(engineering_providers, list) or set(engineering_providers) != {
+        "coding-standards",
+        "project-start:engineering-standard-fallback",
+    }:
+        raise GraphError(
+            "Project Start documentation contract содержит неверные engineering standard providers."
+        )
     mcp_policy = graph.get("mcp_policy")
     if (
         not isinstance(mcp_policy, dict)
-        or mcp_policy.get("discovery") != "required"
+        or mcp_policy.get("discovery") != "when-relevant"
         or mcp_policy.get("relevant_use") != "required"
         or mcp_policy.get("receipt_prefix") != "mcp:"
         or mcp_policy.get("fallback_prefix") != "mcp:fallback:"
+        or mcp_policy.get("not_applicable_prefix") != "mcp:not-applicable:"
         or not isinstance(mcp_policy.get("selection_order"), list)
     ):
-        raise GraphError("Project Start graph содержит неверную MCP-first policy.")
+        raise GraphError("Project Start graph содержит неверную conditional MCP policy.")
+    if graph.get("work_policy", {}).get("fast_path") != "root-only":
+        raise GraphError("Project Start graph должен сохранять root-only fast path.")
+    execution = graph.get("execution_policy", {})
+    if (
+        execution.get("default_tier") != "tracked"
+        or set(execution.get("tiers", {})) != {"tracked", "verified"}
+    ):
+        raise GraphError("Project Start graph содержит неверные execution tiers.")
     return graph
+
+
+def supported_graph_identity(state: dict[str, Any]) -> bool:
+    graph = graph_contract()
+    identity = (state.get("graph_version"), state.get("graph_sha256"))
+    current = (graph["graph_version"], sha256_file(GRAPH_PATH))
+    return identity == current or identity in LEGACY_ACTIVE_GRAPH_IDENTITIES
+
+
+def documentation_contract_for_state(state: dict[str, Any]) -> dict[str, Any]:
+    contract = json.loads(json.dumps(graph_contract()["documentation_contract"]))
+    if state.get("graph_version") == "3.4.0":
+        contract["coverage"] = sorted(LEGACY_BOOTSTRAP_COVERAGE)
+        contract.pop("engineering_standard_providers", None)
+    return contract
 
 
 def root_path(raw: str) -> Path:
@@ -746,11 +782,10 @@ def initialize(
 
 def load_state(run_dir: Path) -> dict[str, Any]:
     state = load_json(run_dir / STATE_NAME)
-    graph = graph_contract()
     if state.get("schema_version") != 3 or state.get("graph_id") != "project-start":
         raise GraphError("Run использует неподдерживаемый контракт.")
-    if state.get("graph_version") != graph["graph_version"] or state.get("graph_sha256") != sha256_file(GRAPH_PATH):
-        raise GraphError("graph.json изменился после старта run.")
+    if not supported_graph_identity(state):
+        raise GraphError("Run связан с неподдерживаемой версией Project Start graph.")
     root = root_path(state.get("root", ""))
     expected_dir = safe_path(root, RUNTIME_REL / state.get("run_id", ""), expected="dir")
     if expected_dir != run_dir.resolve():
@@ -808,8 +843,9 @@ def ready(run_dir: Path) -> dict[str, Any]:
     data: dict[str, Any] = {"mode": state["mode"], "node": current}
     if current == "work":
         contract = graph_contract()
-        data["documentation_contract"] = contract["documentation_contract"]
+        data["documentation_contract"] = documentation_contract_for_state(state)
         data["mcp_policy"] = contract["mcp_policy"]
+        data["execution_policy"] = contract["execution_policy"]
     return result("ready", f"Готов узел {current}.", next_actions=actions, data=data)
 
 
@@ -827,14 +863,25 @@ def validate_mcp_capabilities(capabilities: list[str]) -> None:
     policy = graph_contract()["mcp_policy"]
     prefix = policy["receipt_prefix"]
     fallback_prefix = policy["fallback_prefix"]
+    not_applicable_prefix = policy["not_applicable_prefix"]
     receipts = [item for item in capabilities if item.startswith(prefix)]
     if not receipts:
         raise GraphError(
-            "capabilities требует MCP receipt: mcp:<server> либо mcp:fallback:<reason>."
+            "capabilities требует MCP receipt: mcp:<server>, mcp:fallback:<reason> "
+            "либо mcp:not-applicable:<reason>."
         )
     used: list[str] = []
     fallbacks: list[str] = []
+    not_applicable: list[str] = []
     for receipt in receipts:
+        if receipt.startswith(not_applicable_prefix):
+            reason = receipt[len(not_applicable_prefix) :]
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,}", reason):
+                raise GraphError(
+                    "MCP not-applicable требует содержательный machine-readable reason."
+                )
+            not_applicable.append(receipt)
+            continue
         if receipt.startswith(fallback_prefix):
             reason = receipt[len(fallback_prefix) :]
             if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,}", reason):
@@ -848,8 +895,10 @@ def validate_mcp_capabilities(capabilities: list[str]) -> None:
         ):
             raise GraphError(f"Некорректный MCP server receipt: {receipt}")
         used.append(receipt)
-    if used and fallbacks:
-        raise GraphError("MCP fallback нельзя записывать вместе с успешным MCP server receipt.")
+    if sum(bool(group) for group in (used, fallbacks, not_applicable)) != 1:
+        raise GraphError(
+            "MCP receipt должен быть ровно одного типа: used, fallback или not-applicable."
+        )
 
 
 def validate_root_agents(path: Path) -> None:
@@ -879,8 +928,8 @@ def validate_documentation_contract(
     root: Path,
     canonical: list[str],
     coverage: dict[str, str],
+    contract: dict[str, Any],
 ) -> None:
-    contract = graph_contract()["documentation_contract"]
     anchors = contract["anchors"]
     if coverage["agent_context"] != anchors["agent_context"]:
         raise GraphError("coverage.agent_context должен ссылаться на корневой AGENTS.md.")
@@ -920,13 +969,15 @@ def validate_skill_usage(
     capabilities: list[str],
     coverage: dict[str, str],
     changed_docs: set[str],
+    contract: dict[str, Any],
 ) -> None:
-    contract = graph_contract()["documentation_contract"]
     required: set[str] = set()
     requires_skill_contract_provider = False
+    requires_engineering_provider = False
     if state["mode"] == "bootstrap":
         required.update(contract["required_bootstrap_skills"])
         requires_skill_contract_provider = True
+        requires_engineering_provider = "engineering_standard" in coverage
     else:
         setup_paths = {"AGENTS.md", "docs/README.md", *contract["anchors"]["skill_contract"]}
         if changed_docs.intersection(setup_paths):
@@ -935,6 +986,11 @@ def validate_skill_usage(
             required.add("domain-modeling")
         if changed_docs.intersection({coverage["foundation"], coverage["codebase"]}):
             required.add("codebase-design")
+        if (
+            "engineering_standard" in coverage
+            and coverage["engineering_standard"] in changed_docs
+        ):
+            requires_engineering_provider = True
     missing = sorted(required - set(capabilities))
     if missing:
         raise GraphError("Не применены обязательные documentation skills: " + ", ".join(missing))
@@ -943,6 +999,15 @@ def validate_skill_usage(
         raise GraphError(
             "Не применён provider skill contract: setup-matt-pocock-skills либо "
             "project-start:skill-contract-fallback."
+        )
+    engineering_providers = set(contract.get("engineering_standard_providers", []))
+    if (
+        requires_engineering_provider
+        and not engineering_providers.intersection(capabilities)
+    ):
+        raise GraphError(
+            "Не применён provider engineering standard: coding-standards либо "
+            "project-start:engineering-standard-fallback."
         )
 
 
@@ -1085,16 +1150,19 @@ def validate_work(
         if not changed_set.issubset(set(resolved.get("scope", []))):
             raise GraphError("Полная document delta выходит за пределы resolved decision scope.")
     if outcome != "decision":
-        if not isinstance(coverage, dict) or set(coverage) != BOOTSTRAP_COVERAGE:
+        contract = documentation_contract_for_state(state)
+        expected_coverage = set(contract["coverage"])
+        if not isinstance(coverage, dict) or set(coverage) != expected_coverage:
             raise GraphError(
                 "Project Start coverage должен закрыть business/documentation_map/domain_context/"
-                "foundation/codebase/quality/plan/agent_context/skill_contract."
+                "foundation/engineering_standard/codebase/quality/plan/agent_context/"
+                "skill_contract для текущей версии graph."
             )
         for key, relative in coverage.items():
             if not isinstance(relative, str) or relative not in canonical:
                 raise GraphError(f"coverage.{key} должен ссылаться на canonical_docs.")
-        validate_documentation_contract(root, canonical, coverage)
-        validate_skill_usage(state, capabilities, coverage, changed_set)
+        validate_documentation_contract(root, canonical, coverage, contract)
+        validate_skill_usage(state, capabilities, coverage, changed_set, contract)
     validate_mcp_capabilities(capabilities)
     if artifact["verification"] not in {"self", "independent"}:
         raise GraphError("verification должен быть self или independent.")
@@ -1428,9 +1496,8 @@ def raw_run_state(root: Path, run_dir: Path) -> dict[str, Any]:
         raise GraphError(f"Recover обнаружил неподдерживаемый run: {run_dir}")
     if state.get("root") != str(root) or state.get("run_id") != run_dir.name:
         raise GraphError(f"Recover отклонил run с неверной identity: {run_dir}")
-    graph = graph_contract()
-    if state.get("graph_version") != graph["graph_version"] or state.get("graph_sha256") != sha256_file(GRAPH_PATH):
-        raise GraphError("Recover не мигрирует run от другой версии graph.json автоматически.")
+    if not supported_graph_identity(state):
+        raise GraphError("Recover не мигрирует неподдерживаемый run автоматически.")
     return state
 
 

@@ -25,7 +25,10 @@ Write this small artifact after the report is complete:
 Use only these required fields. Allowed modes are `fast` and `deep`; verification is `self` or `independent`; confidence is `high`, `medium`, or `low`.
 
 - `reason`: one short explanation for the chosen depth.
-- `capabilities`: installed skills, MCP/apps, native tools, or local-source paths materially used. Always include `mcp:<server>` for a successful MCP call, or `mcp:fallback:<reason>` only after every relevant MCP path is unavailable or fails. Do not combine a successful MCP receipt with fallback.
+- `capabilities`: installed skills, MCP/apps, native tools, or local-source
+  paths materially used. Include exactly one MCP status:
+  `mcp:<server>` after relevant use, `mcp:fallback:<reason>` after a relevant
+  path fails, or `mcp:not-applicable:<reason>` for local-only evidence.
 - `agents`: optional internal role names; keep empty in fast mode.
 - `sources`: only sources actually cited in the report. Use HTTP(S) URLs or absolute readable local-file paths.
 - `gaps`: only decision-relevant unknowns, not generic caveats.

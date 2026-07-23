@@ -74,7 +74,7 @@ class ContinuousImprovementGraphTests(unittest.TestCase):
             "focus": state["focus"],
             "disposition": disposition,
             "confidence": "high",
-            "capabilities": ["rg", "mcp:fallback:local-only"],
+            "capabilities": ["rg", "mcp:not-applicable:local-signal-only"],
             "agents": [],
             "scan": {
                 "sources_checked": ["fixture test evidence"],
@@ -125,6 +125,15 @@ class ContinuousImprovementGraphTests(unittest.TestCase):
         self.assertEqual(status["data"]["current"], "work")
         self.assertEqual((run / graph.STATE_NAME).read_bytes(), original)
         self.assertEqual(graph.initialize(str(self.root), "audit", "Inspect fixture regression")["data"]["run"], str(run))
+
+    def test_started_v1_0_run_remains_readable(self) -> None:
+        run = self.init()
+        state_path = run / graph.STATE_NAME
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["graph_version"] = "1.0.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["1.0.0"]
+        self.write_json(state_path, state)
+        self.assertEqual("running", graph.status(run)["status"])
 
     def test_audit_no_op_completes_and_rechecks_result(self) -> None:
         run = self.init()

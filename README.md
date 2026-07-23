@@ -2,12 +2,17 @@
 
 > Turn recurring Codex work into resumable, bounded, evidence-backed workflows — without replacing Codex with another orchestrator.
 
-**Start a project. Research a hard question. Deliver a software task.** Codex Agent Graphs packages those workflows as native Codex skills, backed by small standard-library Python controllers that preserve state, bind evidence, and verify when work is actually complete.
+**Start a project. Research a hard question. Deliver a software task.** Codex
+Agent Graphs packages those workflows as native Codex skills. Small
+standard-library Python controllers are admitted only when work needs durable
+state, evidence binding, resumability, or independent verification.
 
 - **Native to Codex:** skills, custom agents, `AGENTS.md`, MCP, and the root agent you already use.
 - **Model-first:** Codex owns judgment, planning, research, implementation, and synthesis.
 - **Deterministic where it matters:** scripts own paths, transitions, retry limits, receipts, hashes, and completion checks.
 - **Adaptive, not agent-hungry:** the fast path stays single-agent; specialist agents appear only when scope or risk justifies them.
+- **Pay only for the guarantee you need:** ordinary work can stay skill-only;
+  tracked and verified execution are optional reliability tiers.
 - **Portable:** one installer keeps WSL CLI and Codex Desktop copies in sync.
 
 This is an independent community project, not an official OpenAI repository.
@@ -23,7 +28,15 @@ work  ───────────────→  complete
   └── when risk requires it → verify ──┘
 ```
 
-The graph does not tell the model how to think. It makes lifecycle, scope, evidence, and completion explicit enough to resume and audit.
+The graph does not tell the model how to think. It makes lifecycle, scope,
+evidence, and completion explicit enough to resume and audit when those
+guarantees are actually needed.
+
+```text
+skill-only  → one root loop, no durable controller run
+tracked     → controller, scope/baseline, resumability and handoff
+verified    → tracked execution plus independent exact-candidate review
+```
 
 ## Choose your workflow
 
@@ -129,11 +142,15 @@ flowchart LR
 
 The root agent remains the sole orchestrator and final truth owner. Optional subagents receive narrow packets and stay leaf-only. The controller never calls a model API and never replaces semantic work with a state machine.
 
-All four operational graphs share the same topology — `work → optional verify → complete` — while exposing different modes:
+When the controller is admitted, all four operational graphs share the same
+topology — `work → optional verify → complete` — while exposing different
+modes:
 
 - **Project Start:** `bootstrap`, `maintenance`, or automatic routing.
-- **Research:** fast single-agent work by default, with evidence-driven deepening and conditional independent verification.
-- **Task Delivery:** `plan`, `implement`, or `full`, with `light`, `standard`, `complex`, and `critical` risk profiles.
+- **Research:** skill-only single-agent answers by default; tracked fast/deep
+  work and independent verification are opt-in by evidence.
+- **Task Delivery:** quick skill-only delivery by default; tracked
+  `plan`/`implement`/`full` modes and verified risk profiles when needed.
 - **Continuous Improvement:** `audit` or `full`, with one candidate maximum and Task Delivery owning accepted implementation.
 
 ## Artifact lifecycle
@@ -158,7 +175,10 @@ overridden per repository in `.agent-graphs/retention.json`.
 
 Codex Agent Graphs is currently distributed as a source repository with native skills and agent configuration. **It does not bundle or require a plugin package.** A plugin wrapper can become a later distribution layer; it is not part of the runtime architecture.
 
-It also does not bundle an MCP server. During a run, each operational workflow discovers the MCP surface already available to Codex and prefers the provider that owns the data — for example GitHub for repository state or a documentation MCP for current library docs. A work receipt records either `mcp:<server>` or an explicit checked fallback reason.
+It also does not bundle an MCP server. A workflow discovers MCP only when it
+needs external, provider, library, or live-system context and then prefers the
+provider that owns the data. A tracked receipt records `mcp:<server>`, a checked
+`mcp:fallback:<reason>`, or `mcp:not-applicable:<reason>` for local-only work.
 
 Dependencies and companion capabilities are intentionally visible:
 
@@ -181,13 +201,20 @@ Task Delivery completion can create a durable maintenance obligation, so the nex
 
 ### Research
 
-Research starts with one native Codex agent and a bounded evidence budget. It expands only for an unanswered sub-question, weak material claim, unresolved contradiction, missing source class, or meaningful new evidence. Deep mode can use focused scouts and a verifier, but agent count is a ceiling, not a target.
+Research starts skill-only with one native Codex agent and a bounded evidence
+budget. It creates a tracked run only for resumability, persistent reports,
+durable evidence or verification. Deep mode can use focused scouts and a
+verifier, but agent count is a ceiling, not a target.
 
 The deterministic gate binds the report to its sources and control artifact; it does not pretend to validate reasoning by re-running it in code.
 
 ### Task Delivery
 
-Task Delivery owns one software task. It finds the project's real plan owner, freezes outcome and scope, implements against that plan, runs narrow and project-level checks, and creates a handoff backed by exact digests. Review depth scales with risk instead of forcing the same ceremony onto every change.
+Task Delivery owns one software task. Small local work stays quick and
+skill-only. Tracked work finds the project's real plan owner, freezes outcome
+and scope, implements against that plan, runs narrow and project-level checks,
+and creates a handoff backed by exact digests. Review depth scales with actual
+risk instead of the profile name alone.
 
 Parallel write delegation is intentionally fail-closed until isolated worktrees can be proven.
 

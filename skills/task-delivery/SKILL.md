@@ -1,22 +1,39 @@
 ---
 name: task-delivery
 description: >-
-  Провести одну программную задачу от исследования и Markdown-плана до реализации, тестов и проверки результата. Использовать для режима только плана, реализации по уже проверенному плану, полного цикла plan-to-code, исправления или явного вызова $task-delivery. Граф удерживает scope, квитанции и лимиты, но оставляет исследование, проектирование и реализацию сильной модели.
+  Провести одну программную задачу от исследования и плана до реализации, тестов и проверки результата через быстрый skill-only, отслеживаемый или независимо проверяемый маршрут. Использовать для небольшой локальной правки, режима только плана, реализации по уже проверенному плану, полного plan-to-code цикла, исправления или явного вызова $task-delivery. Root выполняет работу; controller подключается только для resumability, durable scope/baseline, handoff, slices или повышенного риска.
 ---
 
 # Task Delivery
 
 Доведи одну задачу до доказанного результата. Граф — это короткий контроль границ, а не пошаговый заменитель инженерного мышления.
 
-## Главный маршрут
+## Сначала выбери уровень исполнения
 
-Все режимы используют один граф:
+- `quick` (`skill-only`) — default для небольшой или средней локальной,
+  обратимой и понятной задачи, которая завершится в одной сессии. Root
+  исследует, планирует внутри рабочего контекста, реализует, запускает тесты и
+  отвечает без `init`, run-каталога, `task.json`, обязательного Markdown-плана,
+  worker или reviewer.
+- `tracked` — используй controller, если задача может прерваться, имеет
+  существенный diff, требует durable Markdown-плана/handoff, точного
+  scope/baseline, реализации слайсами или продолжения в другой сессии.
+- `verified` — `tracked` плюс независимый verifier при низкой уверенности,
+  неполных тестах, необъяснённых warnings, публичном API, auth/security,
+  миграции, деньгах/данных, широком blast radius, нескольких архитектурных
+  слоях или прямом запросе независимой проверки.
+
+Явный запрос `quick`, `tracked`, `verified`, плана, resumability или slices
+имеет приоритет. Если сигналов controller нет, не создавай run «на всякий
+случай».
+
+Tracked и verified используют один граф:
 
 `work → complete` или, только когда профиль либо фактический риск требует независимости, `work → verify → complete`.
 
 Внутри `work` корневой агент сам исследует кодовую базу, выбирает навыки, создаёт и проверяет план, реализует, запускает тесты и формирует один `task.json`. Не превращай эти действия в обязательные узлы графа.
 
-## Определи режим
+## Определи режим tracked/verified
 
 - `plan` — исследовать, сохранить и проверить план, затем остановиться без изменения производственного кода.
 - `implement` — открыть точный ранее проверенный план, проверить дрейф, реализовать и проверить результат.
@@ -24,9 +41,17 @@ description: >-
 
 Если пользователь явно просит сначала обсудить план, выбери `plan`. Если он даёт готовый план или просит продолжить после `plan`, выбери `implement`. Иначе выбери `full`.
 
-## Найди владельца плана
+## Quick path
 
-Перед `init` прочитай корневой и ближайший `AGENTS.md`, карту документации и существующие соглашения проекта. План всегда должен быть Markdown-файлом внутри целевого проекта.
+Прочитай ближайшие инструкции и engineering standard, проверь dirty baseline,
+локализуй изменение, выполни минимальную правку и относящиеся тесты. Не создавай
+служебные JSON/Markdown-артефакты. Если обнаружилась потребность в durable
+handoff, delegated slice, широкой документационной дельте или независимой
+проверке, остановись до разрастания scope и начни свежий `tracked` run.
+
+## Найди владельца durable плана
+
+Перед `init` прочитай корневой и ближайший `AGENTS.md`, карту документации и существующие соглашения проекта. Если Project Start объявил `coverage.engineering_standard`, runner связывает задачу с точным path/SHA-256: прочитай этот stack-specific guide до плана и реализации. План всегда должен быть Markdown-файлом внутри целевого проекта.
 
 - Сначала используй уже установленный каталог планов: например, `docs/development/plans/active/`, `docs/plans/.../active/` или `.planning/`.
 - Передай точный путь через `--plan`.
@@ -39,7 +64,8 @@ python3 scripts/task_graph.py init \
   --task-id <id> --title "<название>" \
   --outcome "<наблюдаемый результат>" \
   --plan <relative/path/PLAN.md> --profile <light|standard|complex|critical> \
-  --implementation-strategy <auto|root-only|delegated-sequential>
+  --implementation-strategy <auto|root-only|delegated-sequential> \
+  [--slice-budget <1..6>]
 ```
 
 Относительные команды запускай из каталога установленного навыка. После `init` используй абсолютные команды, возвращённые runner.
@@ -49,36 +75,42 @@ python3 scripts/task_graph.py init \
 Оцени риск по области, обратимости, новизне, внешним контрактам и последствиям ошибки.
 
 - `light` — малая локальная обратимая правка, ясные критерии: самопроверка плана и результата, 0 независимых агентов.
-- `standard` — обычная продуктовая задача: самопроверка плана и 1 независимая проверка результата.
-- `complex` — несколько модулей, новая граница или неоднозначный план: 1 проверка плана и 1 проверка результата.
+- `standard` — обычная продуктовая задача: self plan/result; reviewer только по фактическому risk signal.
+- `complex` — несколько модулей, новая граница или неоднозначный план: 1 проверка плана; result verifier только по фактическому risk signal.
 - `critical` — безопасность, данные, миграция, деньги, необратимость или широкий blast radius: проверка плана, проверка риска и итоговая проверка, всего 3 независимых запуска.
 
-`plan` в профилях `complex/critical` использует проверяющего плана как внешний узел `verify`; проверяющий риска нужен только для реализации. Низкая уверенность всегда поднимает результат в `verify`. Подробная матрица — в [profiles-and-agents.md](references/profiles-and-agents.md).
+`plan` в профилях `complex/critical` использует проверяющего плана как внешний
+узел `verify`; проверяющий риска нужен только для critical-реализации. В
+`standard/complex` профиль сам по себе не запускает result verifier. Низкая
+уверенность всегда поднимает результат в `verify`. Подробная матрица — в
+[profiles-and-agents.md](references/profiles-and-agents.md).
 
 ## Один рабочий проход
 
 1. Выполни `git status --short`; все существующие изменения считай пользовательским baseline.
-2. Прочитай только относящиеся к задаче инструкции, текущий план и исходный код. Для неясной большой кодовой базы допустимы до двух независимых `task_explorer`; для обычной локализации работай сам.
+2. Прочитай только относящиеся к задаче инструкции, canonical engineering standard, текущий план и исходный код. Из guide вынеси в план применимые модульные границы, framework patterns, тестовые обязанности и exact quality commands; не копируй весь документ. Для неясной большой кодовой базы допустимы до двух независимых `task_explorer`; для обычной локализации работай сам.
 3. Выбери навыки и инструменты по задаче:
    - локальный поиск, LSP/AST и навыки кодовой базы — сначала для внутреннего исследования;
    - `$research` — только для внешних, текущих или смешанных фактов; его агенты входят в общий лимит Task Delivery;
-   - MCP discovery обязателен: осмотри доступные `mcp__*` tools/resources и вызови релевантный сервер до нативного внешнего пути;
+   - MCP discovery выполняй, когда задаче нужны внешние факты, официальная документация библиотек, provider data или живая система; локальная стабильная работа не делает ритуальный обход серверов;
    - provider-specific MCP используй для данных его продукта, Context7 — для официальной документации библиотек, research MCP — для внешнего поиска, Playwright или другой live MCP — для относящейся к acceptance живой системы;
-   - если задача строго локальная и подходящего сервера нет либо релевантный MCP не сработал, зафиксируй fallback и продолжай локально; не выполняй внешнюю запись без полномочий.
-4. Создай или обнови один план. В замороженной части должны быть outcome, основания, acceptance, шаги, тесты, stop conditions и точный `task-delivery:scope`. Не веди гигантский журнал снимков внутри плана.
+   - для строго локальной задачи запиши `mcp:not-applicable:<reason>`; если релевантный MCP проверен, но не сработал, запиши `mcp:fallback:<reason>` и продолжай подходящим fallback; не выполняй внешнюю запись без полномочий.
+4. Создай или обнови один план. В замороженной части должны быть outcome, основания, ссылка на exact engineering standard или честное `N/A`, применимые правила/команды, acceptance, шаги, тесты, stop conditions и точный `task-delivery:scope`. Не веди гигантский журнал снимков внутри плана.
 5. Проверь план сам. В `complex/critical` вызови `task_plan_reviewer` до реализации. В режиме `implement` повторно используй прошлый review только если runner принял неизменный план и scope.
 
-Пункты 6–7, `slice-accept`, checkpoint, scope amendment и verifier repair ниже относятся к новым graph `3.4` runs. Активный `3.3.0` run завершай по его v1 packet и inline root-acceptance contract; не вызывай для него команды `3.4`.
+Пункты 6–7, `slice-accept`, checkpoint, scope amendment и verifier repair относятся к staged graph `3.4+` runs. Активный `3.3.0` run завершай по его v1 packet и inline root-acceptance contract.
 
-6. Выбери implementation strategy один раз. `light` по умолчанию `root-only`; в `standard/complex/critical` предпочитай `delegated-sequential` и отдай fresh `task_worker` хотя бы один независимо проверяемый bounded slice. Пропускай slice только для действительно маленькой или тесно связанной работы и зафиксируй конкретную причину. Если пользователь сказал «реализуй слайсами», `slice`, `делегируй реализацию` или эквивалент, запусти `init --implementation-strategy delegated-sequential`: завершение без packet/receipt/acceptance запрещено. До spawn создай immutable packet по [implementation-slices.md](references/implementation-slices.md), передай точный path и digest, зафиксируй worker receipt, затем сам проверь diff и выполни `slice-accept`. `plan` не запускает workers; `implement` связывает packet с точным прошлым review; `full` создаёт его после валидного плана. `delegated-parallel` остаётся fail-closed без изолированных worktrees.
+6. Выбери implementation strategy один раз. Fast path для любого профиля — `root-only`. Делегируй только bounded slice, который достаточно независим, чтобы реально сэкономить root-контекст или wall time; размер задачи и свободный слот сами по себе не являются причиной. Если пользователь сказал «реализуй слайсами», `slice`, `делегируй реализацию` или эквивалент, запусти `init --implementation-strategy delegated-sequential`: завершение без packet/receipt/acceptance запрещено. Обычный budget — два normal packet; для заранее разложенной реализации передай finite `--slice-budget N`, максимум 6 и ниже для профиля, которому надо оставить общий agent budget на reviews/repair. До spawn создай immutable packet по [implementation-slices.md](references/implementation-slices.md), передай точный path и digest, зафиксируй worker receipt, затем сам проверь diff и выполни `slice-accept`. `plan` не запускает workers; `implement` связывает packet с точным прошлым review; `full` создаёт его после валидного плана. `delegated-parallel` остаётся fail-closed без изолированных worktrees.
 7. На каждом slice запускай только быстрые проверки его области. Worker обновляет или добавляет затронутые unit/integration/E2E tests согласно `test_impact`; root повторяет минимум один exact slice check. Дорогие интеграционные и E2E рубежи из `deferred_final_checks` запускай один раз после интеграции всех slices и внеси exact command/purpose в `task.json.tests`. Не утверждай успех по diff или словам агента.
 8. В `critical` отдельно вызови `task_risk_reviewer`. Создай один `task.json` по [control-artifact.md](references/control-artifact.md).
 
-В `capabilities` обязательно запиши `mcp:<server>` для реально использованного MCP либо `mcp:fallback:<reason>` после проверки доступности. Нативный web/browser и затем `curl` являются fallback, а не первым выбором при наличии подходящего MCP.
+В `capabilities` запиши ровно один тип MCP-квитанции: `mcp:<server>` для реально использованного MCP, `mcp:fallback:<reason>` после неудачи релевантного сервера либо `mcp:not-applicable:<reason>` для локальной задачи. Нативный web/browser и затем `curl` являются fallback, а не первым выбором при наличии подходящего MCP.
 
-В graph `3.4` каждый делегированный slice получает только применимые skills, ближайшие инструкции, must-read файлы и уже проверенный MCP/research-контекст. Worker обязан применить required skills и вернуть `capabilities_used`; недоступный skill или недостаточный контекст означает `needs_context`. Root самостоятельно проверяет реальный diff, ownership и тесты, фиксирует отдельный immutable acceptance до следующего packet. Итоговая delegated delta обязана состоять ровно из union root-accepted paths; скрытых root integration edits нет. В `task.json` переносится только digest acceptance, а worker report не является доказательством.
+В graph `3.4+` каждый делегированный slice получает только применимые skills, ближайшие инструкции, must-read файлы и уже проверенный MCP/research-контекст. Для новых runs runner автоматически добавляет Project Start engineering standard в `must_read` и связывает packet с его digest; root не должен полагаться на то, что worker догадается о guide по имени. Worker обязан прочитать весь `must_read`, применить required skills и вернуть `capabilities_used`; недоступный skill или недостаточный контекст означает `needs_context`. Root самостоятельно проверяет реальный diff, ownership, соответствие guide и тесты, фиксирует отдельный immutable acceptance до следующего packet. Итоговая delegated delta обязана состоять ровно из union root-accepted paths; скрытых root integration edits нет. В `task.json` переносится только digest acceptance, а worker report не является доказательством.
 
-В graph `3.4` после `slice-accept` runner создаёт компактный `context-checkpoint.json`: принятые digests и exact paths, проверенные discoveries, исходный `plan_scope`, deferred checks и следующий objective. `plan_scope` не выдаётся за вычисленный остаток directory scope. Если нужен ещё один slice, сначала выполни `context-rehydrate`; следующий packet будет связан с точным checkpoint SHA-256. Физический host compact можно использовать по ситуации, но он не является частью correctness contract и не нужен после последнего slice.
+В graph `3.4+` после `slice-accept` runner создаёт компактный `context-checkpoint.json`: принятые digests и exact paths, проверенные discoveries, исходный `plan_scope`, deferred checks и следующий objective. `plan_scope` не выдаётся за вычисленный остаток directory scope. Если нужен ещё один slice, сначала выполни `context-rehydrate`; следующий packet будет связан с точным checkpoint SHA-256. Физический host compact можно использовать по ситуации, но он не является частью correctness contract и не нужен после последнего slice.
+
+Публикуй progress только при смене состояния, blocker или появлении значимого нового evidence. Не создавай новый агент, review или artifact во время ожидания. Same-scope successor требует `retry_evidence`; две подряд безуспешные попытки терминальны, даже если общий slice budget больше.
 
 Если runtime evidence обнаружил пропущенный технический путь, не выдумывай токен подтверждения. `scope-amend` разрешён root без человека только для bounded paths, связанных с exact reviewed base, когда outcome, acceptance, публичный контракт, данные, безопасность, внешнее состояние и профиль риска не меняются. Миграции, secrets, env и CI workflows требуют нового решения и review. Подробный JSON-контракт находится в [implementation-slices.md](references/implementation-slices.md).
 
@@ -101,7 +133,7 @@ python3 scripts/task_graph.py record --run <run-dir> --node verify --outcome <su
 ```
 
 Один `reject` возвращает работу в `work`. Второй `reject` блокирует run: не создавай бесконечный цикл исправлений.
-Для delegated graph `3.4` run после первого reject возьми `verification_repair_work_sha256` из ответа runner, rehydrate latest checkpoint и создай ровно один дополнительный repair slice. Он проходит обычные worker receipt, root acceptance и повторный verify; неуспех этого repair slice блокирует run.
+Для delegated graph `3.4+` run после первого reject возьми `verification_repair_work_sha256` из ответа runner, rehydrate latest checkpoint и создай ровно один дополнительный repair slice. Он проходит обычные worker receipt, root acceptance и повторный verify; неуспех этого repair slice блокирует run.
 
 ## Паузы и человеческий контроль
 
@@ -124,15 +156,15 @@ python3 scripts/task_graph.py status --run <run-dir>
 python3 scripts/task_graph.py retry --run <run-dir> --node <work|verify>
 ```
 
-`complete` повторно проверяет immutable receipts, digest плана, фактическую дельту и тестовую квитанцию. Для `plan` он сохраняет reviewed plan и останавливается. Для `implement/full` он автоматически создаёт совместимый `HANDOFF.md`, закрывает задачу и, если Project Start активен, атомарно открывает обязательную документационную maintenance.
+`complete` повторно проверяет immutable receipts, digest плана, фактическую дельту и тестовую квитанцию. Для `plan` он сохраняет reviewed plan и останавливается. Для `implement/full` он автоматически создаёт совместимый `HANDOFF.md` и закрывает задачу. В `task.json.documentation_impact` укажи `{class: none|factual|semantic, summary: ...}`. Только `factual|semantic` атомарно открывают Project Start maintenance; `none` не создаёт лишнее обязательство.
 
 После успешного `implement/full complete` сохрани plan и handoff на их канонических путях и упакуй только terminal run через `<CODEX_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root <repo> --run <run-dir>`. `plan` со статусом `awaiting_implementation`, active, blocked и unresolved legacy state не упаковывай: runtime сам отклонит их. Pruning остаётся отдельной dry-run-first командой и никогда не запускается hook.
 
 Глобальный hook не является источником истины этого протокола. Не меняй hooks для запуска Task Delivery: checkpoint создаёт и проверяет сам skill. После отдельного внедрения hook может только повторно вызвать `context-rehydrate` на `SessionStart(source=compact)`; изменение hook во время активных задач требует отдельной безопасной активации.
 
-Не редактируй канонические документы Project Start внутри Task Delivery: передай фактическую документационную дельту через handoff.
+Не редактируй канонические документы Project Start внутри Task Delivery: передай фактическую документационную дельту через handoff. Если реализация доказала устойчивое новое coding rule, команду качества или framework boundary, укажи `documentation_impact=factual|semantic`; одноразовый workaround не превращай в правило.
 
-Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Активные graph `3.3.0` runs завершаются по своему v1 slice contract; новые runs используют `3.4.0`. Все новые задачи запускай через `task_graph.py`.
+Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Активные graph `3.3.0` runs завершаются по своему v1 slice contract; `3.4.0` продолжает staged v2 packet contract; новые runs используют `3.5.0`. Все новые задачи запускай через `task_graph.py`.
 
 ## Служебные ресурсы
 

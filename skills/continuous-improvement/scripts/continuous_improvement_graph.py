@@ -30,6 +30,9 @@ LOCK_NAME = ".state.lock"
 IGNORED_TOP_LEVEL = {".git", ".agent-graphs", ".codex", ".project-start", "__pycache__", ".pytest_cache"}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 RUN_ID = re.compile(r"^[0-9a-f]{16}$")
+LEGACY_ACTIVE_GRAPH_IDENTITIES = {
+    ("1.0.0", "15e94e081ba7ee94f14f6e530b7075c4d4b542c8284c6105fdfde59797d36c2c"),
+}
 
 
 class GraphError(RuntimeError):
@@ -125,6 +128,20 @@ def graph_contract() -> dict[str, Any]:
     limits = graph.get("limits")
     if not isinstance(limits, dict) or any(not isinstance(limits.get(key), int) for key in ("max_node_retries", "max_verification_repairs", "max_changed_files")):
         raise GraphError("graph.json limits are invalid.")
+    if graph.get("work_policy", {}).get("fast_path") != "root-only":
+        raise GraphError("Continuous Improvement must keep a root-only fast path.")
+    execution = graph.get("execution_policy", {})
+    if (
+        execution.get("default_tier") != "tracked"
+        or set(execution.get("tiers", {})) != {"tracked", "verified"}
+    ):
+        raise GraphError("Continuous Improvement execution tiers are invalid.")
+    mcp = graph.get("mcp_policy", {})
+    if (
+        mcp.get("discovery") != "when-relevant"
+        or mcp.get("not_applicable_prefix") != "mcp:not-applicable:"
+    ):
+        raise GraphError("Continuous Improvement conditional MCP policy is invalid.")
     return graph
 
 
@@ -208,7 +225,9 @@ def load_state(run_dir: Path) -> dict[str, Any]:
     graph = graph_contract()
     if state.get("schema_version") != 1 or state.get("graph_id") != "continuous-improvement":
         raise GraphError("Run is not a Continuous Improvement v1 state.")
-    if state.get("graph_version") != graph["graph_version"] or state.get("graph_sha256") != sha256_file(GRAPH_PATH):
+    identity = (state.get("graph_version"), state.get("graph_sha256"))
+    current = (graph["graph_version"], sha256_file(GRAPH_PATH))
+    if identity != current and identity not in LEGACY_ACTIVE_GRAPH_IDENTITIES:
         raise GraphError("graph.json changed after run initialization.")
     root = root_path(str(state.get("root", "")))
     if run_directory(root, str(state.get("run_id", ""))).resolve() != run_dir.resolve():
@@ -277,7 +296,18 @@ def ready(run_dir: Path) -> dict[str, Any]:
     current = state["current"]
     artifact = WORK_NAME if current == "work" else VERIFY_NAME if current == "verify" else None
     actions = [f"{runner_command()} complete --run {shlex.quote(str(run_dir))}"] if artifact is None else [f"Create {run_dir / artifact}", f"{runner_command()} record --run {shlex.quote(str(run_dir))} --node {current} --outcome <...>"]
-    return result("ready", f"Ready for {current}.", actions=actions, artifacts=[str(run_dir)], data={"run": str(run_dir), "mode": state["mode"], "current": current})
+    return result(
+        "ready",
+        f"Ready for {current}.",
+        actions=actions,
+        artifacts=[str(run_dir)],
+        data={
+            "run": str(run_dir),
+            "mode": state["mode"],
+            "current": current,
+            "execution_policy": graph_contract()["execution_policy"],
+        },
+    )
 
 
 def strings(value: Any, field: str, *, nonempty: bool = False) -> list[str]:
@@ -311,7 +341,10 @@ def mcp_capability(capabilities: Any) -> list[str]:
     if len(mcp) != 1:
         raise GraphError("capabilities requires exactly one MCP receipt.")
     receipt = mcp[0]
-    if receipt.startswith("mcp:fallback:"):
+    if receipt.startswith("mcp:not-applicable:"):
+        if not re.fullmatch(r"mcp:not-applicable:[A-Za-z0-9][A-Za-z0-9._-]{7,}", receipt):
+            raise GraphError("MCP not-applicable receipt is invalid.")
+    elif receipt.startswith("mcp:fallback:"):
         if not re.fullmatch(r"mcp:fallback:[A-Za-z0-9][A-Za-z0-9._-]{7,}", receipt):
             raise GraphError("MCP fallback reason is invalid.")
     elif not re.fullmatch(r"mcp:[A-Za-z0-9][A-Za-z0-9._-]*", receipt) or receipt in {"mcp:none", "mcp:discovery"}:

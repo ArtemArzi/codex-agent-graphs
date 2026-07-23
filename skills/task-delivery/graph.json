@@ -1,16 +1,17 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.4.0",
+  "graph_version": "3.5.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
     "max_verification_repairs": 1,
-    "max_agents_per_run": 5,
+    "max_agents_per_run": 8,
     "max_parallel_agents": 2,
     "max_parallel_explorers": 2,
     "max_parallel_workers": 2,
     "max_slices_per_run": 2,
+    "max_explicit_slices_per_run": 6,
     "max_verification_repair_slices": 1,
     "max_selected_skills_per_slice": 3,
     "max_root_technical_amendments": 2,
@@ -18,9 +19,45 @@
   },
   "profiles": {
     "light": {"plan_reviewers": 0, "result_reviewers": 0},
-    "standard": {"plan_reviewers": 0, "result_reviewers": 1},
-    "complex": {"plan_reviewers": 1, "result_reviewers": 1},
-    "critical": {"plan_reviewers": 1, "result_reviewers": 2}
+    "standard": {"plan_reviewers": 0, "result_reviewers": 0},
+    "complex": {"plan_reviewers": 1, "result_reviewers": 0},
+    "critical": {"plan_reviewers": 1, "result_reviewers": 1}
+  },
+  "work_policy": {
+    "schema_version": 1,
+    "fast_path": "root-only",
+    "capability_discovery": "need-based",
+    "agent_admission": "independent-work-only",
+    "review_admission": "risk-or-uncertainty-only",
+    "progress_updates": "state-change-only",
+    "documentation_followup": "impact-gated",
+    "explicit_user_override": "bounded",
+    "budgets": {
+      "max_agent_starts": 8,
+      "max_review_starts": 3,
+      "max_repair_cycles": 1,
+      "max_no_new_evidence_iterations": 2,
+      "max_artifacts_per_work_unit": 3
+    },
+    "loop_guards": {
+      "duplicate_agent_scope": "forbidden",
+      "same_scope_retry": "new-evidence-required",
+      "repair_start": "first-false-assumption-required",
+      "no_new_evidence": "stop-at-budget"
+    }
+  },
+  "execution_policy": {
+    "schema_version": 1,
+    "default_tier": "skill-only",
+    "tiers": {
+      "skill-only": {"controller": false, "verification": "self"},
+      "tracked": {"controller": true, "verification": "conditional"},
+      "verified": {"controller": true, "verification": "required"}
+    },
+    "admission": {
+      "controller": "resumability-or-durable-evidence",
+      "verification": "risk-or-uncertainty"
+    }
   },
   "optional_agents": [
     "task_explorer",
@@ -30,10 +67,11 @@
     "task_risk_reviewer"
   ],
   "mcp_policy": {
-    "discovery": "required",
+    "discovery": "when-relevant",
     "relevant_use": "required",
     "receipt_prefix": "mcp:",
     "fallback_prefix": "mcp:fallback:",
+    "not_applicable_prefix": "mcp:not-applicable:",
     "selection_order": [
       "provider-specific-mcp",
       "context7-for-library-docs",
@@ -46,9 +84,9 @@
     "default_strategy": "adaptive",
     "profile_preference": {
       "light": "root-only",
-      "standard": "delegated-sequential",
-      "complex": "delegated-sequential",
-      "critical": "delegated-sequential"
+      "standard": "root-only",
+      "complex": "root-only",
+      "critical": "root-only"
     },
     "explicit_slice_request": "required",
     "strategies": [

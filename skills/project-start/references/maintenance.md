@@ -13,10 +13,12 @@ Maintenance отвечает на один вопрос: расходятся л
 1. Проверь change receipt, если он есть, и затронутый путь выполнения.
 2. Прочитай только канонические документы и ближайшие `AGENTS.md`, связанные с изменением.
 3. Сравни утверждения с репозиторием. Не проводи внешний research, если факты полностью внутренние.
-4. Сохрани полный coverage из [documentation-contract.md](documentation-contract.md). Если проект пришёл из старой версии, добавь недостающие anchors и mapping как factual migration.
-5. При изменении `AGENTS.md`/`docs/agents/` используй доступный `setup-matt-pocock-skills` либо `project-start:skill-contract-fallback`; при изменении domain context или foundation/codebase загрузи соответственно `domain-modeling` или `codebase-design`. Укажи реально применённые возможности в `capabilities`.
+4. Сохрани полный coverage из [documentation-contract.md](documentation-contract.md). Если проект пришёл из старой версии, добавь недостающие anchors и mapping, включая `engineering_standard`, как factual migration.
+5. При изменении `AGENTS.md`/`docs/agents/` используй доступный `setup-matt-pocock-skills` либо `project-start:skill-contract-fallback`; при изменении domain context или foundation/codebase загрузи соответственно `domain-modeling` или `codebase-design`; при изменении engineering standard — `coding-standards` либо `project-start:engineering-standard-fallback` и относящуюся официальную документацию стека. Укажи реально применённые возможности в `capabilities`.
 6. Исправь минимальный связный набор. Если дельты нет, не «улучшай стиль» ради активности.
 7. Выбери self-проверку по умолчанию. Независимая проверка нужна при широкой дельте, security/compliance, изменении публичного договора, низкой уверенности или конфликтующих доказательствах.
+
+Engineering standard меняй только при устойчивом изменении стека, модульной границы, framework policy, тестовой обязанности или команды качества. Обычная реализация, одноразовый workaround и task progress не должны раздувать guide. Если Task Delivery обнаружил новую повторяемую норму, сначала проверь её на реальном коде и инструменте, затем обнови guide минимальной factual/semantic дельтой.
 
 Runner отдельно сравнивает канонические документы и все `AGENTS.md` с последним operational snapshot. Поэтому внешний дрейф нельзя выдать за `no-change`, а новый вложенный `AGENTS.md` проходит те же содержательные проверки, даже если появился до `init`. Изменения неканонических заметок между runs сами по себе не расширяют authority set.
 

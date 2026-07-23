@@ -47,6 +47,7 @@ class TaskGraphTests(unittest.TestCase):
         task_id: str = "TD-1",
         plan: str | None = None,
         implementation_strategy: str = "auto",
+        slice_budget: int | None = None,
     ) -> Path:
         payload = graph.initialize(
             str(self.root),
@@ -57,11 +58,53 @@ class TaskGraphTests(unittest.TestCase):
             plan,
             profile,
             implementation_strategy,
+            slice_budget,
         )
         return Path(payload["data"]["run"])
 
+    def initialize_with_engineering_standard(
+        self,
+        *,
+        implementation_strategy: str = "auto",
+    ) -> tuple[Path, str]:
+        standard = "docs/architecture/ENGINEERING.md"
+        self.write(
+            standard,
+            "# Engineering\n\nUse the module public interface, update focused tests, "
+            "and run the exact project quality command.\n",
+        )
+        self.write(
+            ".project-start/state.json",
+            json.dumps(
+                {
+                    "graph_v3": {
+                        "status": "operational",
+                        "canonical_docs": [standard],
+                        "coverage": {"engineering_standard": standard},
+                    }
+                },
+                indent=2,
+            )
+            + "\n",
+        )
+        with mock.patch.object(graph.legacy, "reject_pending_project_reopen"):
+            run = self.initialize(
+                implementation_strategy=implementation_strategy,
+            )
+        return run, standard
+
     def plan(self, task_id: str = "TD-1", path: str | None = None, scope: str = "src/app.py") -> Path:
         relative = path or f"docs/tasks/{task_id}/PLAN.md"
+        state_path = next(
+            (
+                candidate
+                for candidate in (self.root / graph.RUNS_REL).glob(f"*/{graph.STATE_NAME}")
+                if self.read(candidate).get("task_id") == task_id
+            ),
+            None,
+        )
+        standard = self.read(state_path).get("engineering_standard") if state_path else None
+        standard_path = standard["path"] if isinstance(standard, dict) else "N/A: no canonical Project Start engineering standard"
         return self.write(
             relative,
             f"""# Deliver behavior
@@ -78,6 +121,11 @@ Deliver one verified observable behavior.
 
 - Internal repository path and current tests inspected.
 - External research is not needed because the change is local and version-stable.
+
+## Engineering standard
+
+- Canonical guide: {standard_path}
+- Applicable rules and commands: use the owned public seam and run the narrow project check.
 
 ## Acceptance
 
@@ -159,6 +207,13 @@ Recorded in the Task Delivery receipt.
                 "mcp": [{"receipt": "mcp:context7", "mode": "provided", "purpose": "Use the already verified library context."}],
             },
             "supersedes": supersedes,
+            **(
+                {
+                    "retry_evidence": "The previous worker receipt exposed a concrete missing context gap."
+                }
+                if supersedes is not None
+                else {}
+            ),
             **(
                 {"repair_for_work_sha256": repair_for_work_sha256}
                 if repair_for_work_sha256 is not None
@@ -353,7 +408,7 @@ Recorded in the Task Delivery receipt.
             {"command": "python3 -m unittest", "purpose": "narrow behavior", "exit_code": 0, "status": "passed"},
             {"command": "python3 -m unittest discover", "purpose": "integrated final behavior", "exit_code": 0, "status": "passed"},
         ]
-        return {
+        payload = {
             "schema_version": 3,
             "task_id": state["task_id"],
             "mode": state["mode"],
@@ -363,7 +418,7 @@ Recorded in the Task Delivery receipt.
             "capabilities": capabilities or [
                 "repository search",
                 "project test command",
-                "mcp:fallback:local-only-task",
+                "mcp:not-applicable:local-only-task",
             ],
             "agents": agents or [],
             "research": {
@@ -377,11 +432,21 @@ Recorded in the Task Delivery receipt.
             },
             "implementation": implementation,
             "tests": tests,
-            "documentation_impact": "Synchronize the canonical project docs with the delivered behavior.",
+            "documentation_impact": {
+                "class": "none",
+                "summary": "No canonical documentation truth changed in this local fixture.",
+            },
             "rollback": "Restore src/app.py to the exact baseline content and rerun the narrow test.",
             "residual_risks": [],
             "decision": decision,
         }
+        if isinstance(state.get("engineering_standard"), dict):
+            payload["engineering_standard"] = {
+                **state["engineering_standard"],
+                "status": "applied",
+                "exceptions": [],
+            }
+        return payload
 
     def write_work(self, run: Path, payload: dict) -> None:
         (run / graph.WORK_NAME).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -443,9 +508,13 @@ Recorded in the Task Delivery receipt.
             self.assertEqual({"work", "verify", "complete"}, set(contract["routes"][mode]["nodes"]))
         self.assertEqual("adaptive", contract["delegation_policy"]["default_strategy"])
         self.assertEqual(
-            "delegated-sequential",
+            "root-only",
             contract["delegation_policy"]["profile_preference"]["standard"],
         )
+        self.assertEqual("root-only", contract["work_policy"]["fast_path"])
+        self.assertEqual("skill-only", contract["execution_policy"]["default_tier"])
+        self.assertEqual(0, contract["profiles"]["standard"]["result_reviewers"])
+        self.assertEqual(0, contract["profiles"]["complex"]["result_reviewers"])
         self.assertFalse(contract["delegation_policy"]["parallel_write_enabled"])
         self.assertEqual("slice-accept", contract["context_policy"]["checkpoint_after"])
         self.assertFalse(contract["context_policy"]["global_hook_required"])
@@ -483,9 +552,12 @@ Recorded in the Task Delivery receipt.
                 "Deliver behavior",
                 "--implementation-strategy",
                 "delegated-sequential",
+                "--slice-budget",
+                "4",
             ]
         )
         self.assertEqual("delegated-sequential", initialized.implementation_strategy)
+        self.assertEqual(4, initialized.slice_budget)
 
     def test_explicit_slice_request_rejects_root_only_completion(self) -> None:
         run = self.initialize(implementation_strategy="delegated-sequential")
@@ -495,26 +567,103 @@ Recorded in the Task Delivery receipt.
         with self.assertRaisesRegex(graph.GraphError, "запрос на реализацию слайсами"):
             graph.record(run, "work", "verify")
 
-    def test_adaptive_standard_root_only_requires_reason(self) -> None:
+    def test_slice_budget_requires_explicit_delegation_and_is_bounded(self) -> None:
+        with self.assertRaisesRegex(graph.GraphError, "explicit delegated-sequential"):
+            self.initialize(slice_budget=3)
+        with self.assertRaisesRegex(graph.GraphError, "bounded explicit slice limit"):
+            self.initialize(
+                implementation_strategy="delegated-sequential",
+                slice_budget=7,
+            )
+        with self.assertRaisesRegex(graph.GraphError, "critical review/repair; максимум 4"):
+            self.initialize(
+                profile="critical",
+                implementation_strategy="delegated-sequential",
+                slice_budget=5,
+            )
+
+    def test_explicit_slice_budget_allows_third_sequential_slice(self) -> None:
+        run = self.initialize(
+            implementation_strategy="delegated-sequential",
+            slice_budget=3,
+        )
+        self.plan()
+        for index in range(1, 4):
+            identifier = f"implementation-app-{index}"
+            graph.register_slice(run, self.slice_draft(run, identifier))
+            self.write("src/app.py", f"VALUE = {index + 1}\n")
+            graph.record_slice(run, identifier, self.slice_receipt(run, identifier))
+            graph.accept_slice(run, identifier, self.acceptance_draft(run, identifier))
+            if index < 3:
+                graph.rehydrate_context(run)
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual(3, state["slice_budget"])
+        self.assertEqual(3, len(state["slices"]))
+
+    def test_adaptive_standard_uses_root_only_fast_path_without_ritual_reason(self) -> None:
         run = self.initialize()
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
         payload = self.work_payload(run)
         payload["implementation"].pop("delegation_reason")
         self.write_work(run, payload)
-        with self.assertRaisesRegex(graph.GraphError, "delegation_reason"):
-            graph.record(run, "work", "verify")
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
 
-    def test_ready_prefers_slice_for_standard_but_not_light(self) -> None:
+    def test_ready_keeps_root_only_fast_path_for_standard_and_light(self) -> None:
         standard = self.initialize(task_id="TD-STANDARD")
         standard_ready = graph.ready(standard)
-        self.assertEqual("delegated-sequential", standard_ready["data"]["implementation_strategy_preferred"])
-        self.assertIn("slice-create", standard_ready["next_actions"][0])
+        self.assertEqual("root-only", standard_ready["data"]["implementation_strategy_preferred"])
+        self.assertNotIn("slice-create", " ".join(standard_ready["next_actions"]))
 
         light = self.initialize(profile="light", task_id="TD-LIGHT")
         light_ready = graph.ready(light)
         self.assertEqual("root-only", light_ready["data"]["implementation_strategy_preferred"])
         self.assertNotIn("slice-create", " ".join(light_ready["next_actions"]))
+
+    def test_init_binds_project_start_engineering_standard(self) -> None:
+        run, standard = self.initialize_with_engineering_standard()
+        state = self.read(run / graph.STATE_NAME)
+        expected = {
+            "path": standard,
+            "sha256": graph.sha256_file(self.root / standard),
+        }
+        self.assertEqual(expected, state["engineering_standard"])
+        self.assertEqual(expected, graph.ready(run)["data"]["engineering_standard"])
+
+    def test_work_requires_exact_engineering_standard_receipt_and_plan_reference(self) -> None:
+        run, standard = self.initialize_with_engineering_standard()
+        plan = self.plan()
+        self.assertIn(standard, plan.read_text(encoding="utf-8"))
+        self.write("src/app.py", "VALUE = 2\n")
+        payload = self.work_payload(run)
+        payload.pop("engineering_standard")
+        self.write_work(run, payload)
+        with mock.patch.object(graph.legacy, "reject_pending_project_reopen"):
+            with self.assertRaisesRegex(graph.GraphError, "engineering_standard receipt"):
+                graph.record(run, "work", "verify")
+
+    def test_slice_packet_auto_includes_engineering_standard(self) -> None:
+        run, standard = self.initialize_with_engineering_standard(
+            implementation_strategy="delegated-sequential"
+        )
+        self.plan()
+        with mock.patch.object(graph.legacy, "reject_pending_project_reopen"):
+            registered = graph.register_slice(run, self.slice_draft(run))
+        packet = self.read(Path(registered["artifacts"][0]))
+        must_read = {item["path"] for item in packet["must_read"]}
+        self.assertIn(standard, must_read)
+        self.assertEqual(self.read(run / graph.STATE_NAME)["engineering_standard"], packet["engineering_standard"])
+
+    def test_engineering_standard_drift_requires_fresh_run(self) -> None:
+        run, standard = self.initialize_with_engineering_standard()
+        self.plan()
+        self.write(standard, "# Engineering\n\nThe canonical rules changed after planning.\n")
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run))
+        with mock.patch.object(graph.legacy, "reject_pending_project_reopen"):
+            with self.assertRaisesRegex(graph.GraphError, "изменился после init"):
+                graph.record(run, "work", "verify")
 
     def test_slice_contract_is_progressively_disclosed(self) -> None:
         skill = (graph.SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
@@ -743,6 +892,26 @@ Recorded in the Task Delivery receipt.
             graph.register_slice(run, self.slice_draft(run, "implementation-other"))
         state = self.read(run / graph.STATE_NAME)
         self.assertEqual(["implementation-app"], sorted(state["slices"]))
+
+    def test_same_scope_successor_requires_new_evidence(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        graph.record_slice(
+            run,
+            "implementation-app",
+            self.slice_receipt(run, status="needs_context"),
+        )
+        draft = self.slice_draft(
+            run,
+            "implementation-app-v2",
+            supersedes="implementation-app",
+        )
+        payload = self.read(draft)
+        payload.pop("retry_evidence")
+        draft.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "retry_evidence"):
+            graph.register_slice(run, draft)
 
     def test_ready_routes_unresolved_slice_to_exact_successor(self) -> None:
         run = self.initialize(profile="standard")
@@ -1306,10 +1475,10 @@ Recorded in the Task Delivery receipt.
         self.assertNotIn("repair_for_work_sha256", " ".join(rejected["next_actions"]))
         self.assertIsNone(graph.status(run)["data"]["verification_repair_work_sha256"])
 
-    def test_ready_exposes_mcp_first_policy(self) -> None:
+    def test_ready_exposes_conditional_mcp_policy(self) -> None:
         run = self.initialize(profile="light")
         ready = graph.ready(run)
-        self.assertEqual("required", ready["data"]["mcp_policy"]["discovery"])
+        self.assertEqual("when-relevant", ready["data"]["mcp_policy"]["discovery"])
 
     def test_work_requires_an_mcp_receipt(self) -> None:
         run = self.initialize(profile="light")
@@ -1338,16 +1507,31 @@ Recorded in the Task Delivery receipt.
         self.assertTrue(handoff.is_file())
         self.assertTrue(callable(receipt))
 
-    def test_standard_full_requires_result_verifier_and_receipt_is_legacy_compatible(self) -> None:
+    def test_no_documentation_impact_skips_project_start_maintenance(self) -> None:
+        run = self.initialize(profile="light")
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run))
+        graph.record(run, "work", "succeeded")
+        with mock.patch.object(
+            graph.legacy, "mark_project_start_maintenance_required"
+        ) as maintenance:
+            completed = graph.complete(run)
+        maintenance.assert_not_called()
+        self.assertFalse(completed["data"]["documentation_maintenance_required"])
+        self.assertFalse(
+            (
+                self.root
+                / ".codex/task-delivery/TD-1/project-start-obligation.pending.json"
+            ).exists()
+        )
+
+    def test_standard_full_completes_without_ritual_result_verifier(self) -> None:
         run = self.initialize(profile="standard")
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
         self.write_work(run, self.work_payload(run))
-        with self.assertRaisesRegex(graph.GraphError, "требует независимый verify"):
-            graph.record(run, "work", "succeeded")
-        graph.record(run, "work", "verify")
-        self.write_verify(run, self.verify_payload(run))
-        graph.record(run, "verify", "succeeded")
+        graph.record(run, "work", "succeeded")
         graph.complete(run)
         handoff = self.root / ".agent-graphs/task-delivery-handoffs/TD-1/HANDOFF.md"
         receipt = {"path": handoff.relative_to(self.root).as_posix(), "sha256": graph.sha256_file(handoff)}
@@ -1356,6 +1540,16 @@ Recorded in the Task Delivery receipt.
         task = self.read(self.root / ".codex/task-delivery/TD-1/state.json")
         graph.legacy._MANIFEST_CACHE.clear()
         self.assertEqual(validated["implementation_sha256"], graph.legacy.implementation_repo_state(self.root, task)[1])
+
+    def test_standard_root_can_escalate_to_independent_verify(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run))
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+        self.write_verify(run, self.verify_payload(run))
+        graph.record(run, "verify", "succeeded")
 
     def test_plan_mode_stops_then_implement_reuses_exact_reviewed_plan(self) -> None:
         plan_run = self.initialize(mode="plan", profile="complex")
@@ -1467,7 +1661,12 @@ Recorded in the Task Delivery receipt.
         run = self.initialize(profile="light")
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
-        self.write_work(run, self.work_payload(run))
+        payload = self.work_payload(run)
+        payload["documentation_impact"] = {
+            "class": "factual",
+            "summary": "Canonical project documentation must record the delivered behavior.",
+        }
+        self.write_work(run, payload)
         graph.record(run, "work", "succeeded")
         with mock.patch.object(graph.legacy, "mark_project_start_maintenance_required", side_effect=graph.legacy.TaskError("injected crash")):
             with self.assertRaisesRegex(graph.GraphError, "injected crash"):
@@ -1484,7 +1683,12 @@ Recorded in the Task Delivery receipt.
         run = self.initialize(profile="light")
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
-        self.write_work(run, self.work_payload(run))
+        payload = self.work_payload(run)
+        payload["documentation_impact"] = {
+            "class": "factual",
+            "summary": "Canonical project documentation must record the delivered behavior.",
+        }
+        self.write_work(run, payload)
         graph.record(run, "work", "succeeded")
         with mock.patch.object(graph.legacy, "mark_project_start_maintenance_required", side_effect=graph.legacy.TaskError("injected crash")):
             with self.assertRaises(graph.GraphError):
@@ -1497,7 +1701,12 @@ Recorded in the Task Delivery receipt.
         run = self.initialize(profile="light")
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
-        self.write_work(run, self.work_payload(run))
+        payload = self.work_payload(run)
+        payload["documentation_impact"] = {
+            "class": "factual",
+            "summary": "Canonical project documentation must record the delivered behavior.",
+        }
+        self.write_work(run, payload)
         graph.record(run, "work", "succeeded")
         with mock.patch.object(graph.legacy, "mark_project_start_maintenance_required", side_effect=graph.legacy.TaskError("injected crash")):
             with self.assertRaises(graph.GraphError):
@@ -1675,6 +1884,17 @@ Recorded in the Task Delivery receipt.
         self.write_work(run, payload)
         ready = graph.record(run, "work", "succeeded")
         self.assertEqual("complete", ready["data"]["current"])
+
+    def test_started_v3_4_run_keeps_staged_slice_commands(self) -> None:
+        run = self.initialize(profile="standard")
+        state_path = run / graph.STATE_NAME
+        state = self.read(state_path)
+        state["graph_version"] = "3.4.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.4.0"]
+        state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        ready = graph.ready(run)
+        self.assertEqual("3.4.0", self.read(state_path)["graph_version"])
+        self.assertEqual("work", ready["data"]["current"])
 
     def test_slice_receipt_tampering_blocks_complete(self) -> None:
         run = self.initialize(profile="standard")

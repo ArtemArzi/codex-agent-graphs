@@ -1,6 +1,6 @@
 interface:
   display_name: "Project Start"
   short_description: "Normalize project docs and keep them current"
-  default_prompt: "Use $project-start to normalize this repository under the shared documentation contract, use relevant MCP context first, and keep canonical documentation current with minimal ceremony."
+  default_prompt: "Use $project-start to normalize this repository under the shared documentation contract, use external MCP context only when relevant, and keep canonical documentation current with minimal ceremony."
 policy:
   allow_implicit_invocation: true

@@ -62,6 +62,7 @@ class ProjectGraphTests(unittest.TestCase):
             "- [Business](project/PROJECT.md)\n"
             "- [Domain context](../CONTEXT.md)\n"
             "- [Foundation](project/FOUNDATION.md)\n"
+            "- [Engineering standard](project/ENGINEERING.md)\n"
             "- [Codebase](project/CODEBASE.md)\n"
             "- [Quality](project/QUALITY.md)\n"
             "- [Plan](project/PLAN.md)\n"
@@ -79,6 +80,11 @@ class ProjectGraphTests(unittest.TestCase):
         )
         self.write("docs/project/PROJECT.md", "# Product\n\nOutcome and business invariants are explicit.\n")
         self.write("docs/project/FOUNDATION.md", "# Foundation\n\nArchitecture and ownership are explicit.\n")
+        self.write(
+            "docs/project/ENGINEERING.md",
+            "# Engineering standard\n\nProject-specific module boundaries, framework patterns, "
+            "test obligations, and exact quality commands are explicit.\n",
+        )
         self.write("docs/project/CODEBASE.md", "# Codebase\n\nModules, interfaces, seams, and paths are explicit.\n")
         self.write("docs/project/QUALITY.md", "# Quality\n\nRisks and verification commands are explicit.\n")
         self.write("docs/project/PLAN.md", "# Plan\n\nThe next observable delivery slice is explicit.\n")
@@ -89,6 +95,7 @@ class ProjectGraphTests(unittest.TestCase):
             "docs/agents/domain.md",
             "docs/agents/issue-tracker.md",
             "docs/project/CODEBASE.md",
+            "docs/project/ENGINEERING.md",
             "docs/project/FOUNDATION.md",
             "docs/project/PLAN.md",
             "docs/project/PROJECT.md",
@@ -115,6 +122,7 @@ class ProjectGraphTests(unittest.TestCase):
             "documentation_map": "docs/README.md",
             "domain_context": "CONTEXT.md",
             "foundation": "docs/project/FOUNDATION.md",
+            "engineering_standard": "docs/project/ENGINEERING.md",
             "codebase": "docs/project/CODEBASE.md",
             "quality": "docs/project/QUALITY.md",
             "plan": "docs/project/PLAN.md",
@@ -127,6 +135,7 @@ class ProjectGraphTests(unittest.TestCase):
                 [
                     "mcp:context7",
                     "project-start:skill-contract-fallback",
+                    "coding-standards",
                     "domain-modeling",
                     "codebase-design",
                 ]
@@ -145,6 +154,8 @@ class ProjectGraphTests(unittest.TestCase):
                 default_capabilities.append("domain-modeling")
             if changed_set & {"docs/project/FOUNDATION.md", "docs/project/CODEBASE.md"}:
                 default_capabilities.append("codebase-design")
+            if "docs/project/ENGINEERING.md" in changed_set:
+                default_capabilities.append("coding-standards")
         pending_decision = isinstance(decision, dict) and isinstance(decision.get("question"), str)
         return {
             "schema_version": 3,
@@ -268,7 +279,16 @@ class ProjectGraphTests(unittest.TestCase):
             {"setup-matt-pocock-skills", "project-start:skill-contract-fallback"},
             set(contract["skill_contract_providers"]),
         )
+        self.assertEqual(
+            {"coding-standards", "project-start:engineering-standard-fallback"},
+            set(contract["engineering_standard_providers"]),
+        )
+        self.assertEqual("when-relevant", ready["data"]["mcp_policy"]["discovery"])
         self.assertEqual("required", ready["data"]["mcp_policy"]["relevant_use"])
+        self.assertEqual(
+            {"tracked", "verified"},
+            set(graph.graph_contract()["execution_policy"]["tiers"]),
+        )
 
     def test_bootstrap_requires_an_mcp_receipt(self) -> None:
         run = self.init("bootstrap")
@@ -281,6 +301,7 @@ class ProjectGraphTests(unittest.TestCase):
             capabilities=[
                 "rg",
                 "project-start:skill-contract-fallback",
+                "coding-standards",
                 "domain-modeling",
                 "codebase-design",
             ],
@@ -288,6 +309,27 @@ class ProjectGraphTests(unittest.TestCase):
         self.write_work(run, payload)
         with self.assertRaisesRegex(graph.GraphError, "MCP receipt"):
             graph.record(run, "work", "succeeded")
+
+    def test_local_bootstrap_accepts_not_applicable_mcp_receipt(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        payload = self.work_payload(
+            "bootstrap",
+            docs,
+            classification="bootstrap-ready",
+            created=docs,
+            capabilities=[
+                "rg",
+                "mcp:not-applicable:local-repository-only",
+                "project-start:skill-contract-fallback",
+                "coding-standards",
+                "domain-modeling",
+                "codebase-design",
+            ],
+        )
+        self.write_work(run, payload)
+        response = graph.record(run, "work", "succeeded")
+        self.assertEqual("complete", response["data"]["node"])
 
     def test_bootstrap_requires_matt_pocock_documentation_skills(self) -> None:
         run = self.init("bootstrap")
@@ -329,12 +371,33 @@ class ProjectGraphTests(unittest.TestCase):
                 "rg",
                 "mcp:context7",
                 "setup-matt-pocock-skills",
+                "coding-standards",
                 "domain-modeling",
                 "codebase-design",
             ],
         )
         self.write_work(run, payload)
         graph.record(run, "work", "succeeded")
+
+    def test_bootstrap_requires_engineering_standard_provider(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        payload = self.work_payload(
+            "bootstrap",
+            docs,
+            classification="bootstrap-ready",
+            created=docs,
+            capabilities=[
+                "rg",
+                "mcp:context7",
+                "project-start:skill-contract-fallback",
+                "domain-modeling",
+                "codebase-design",
+            ],
+        )
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "provider engineering standard"):
+            graph.record(run, "work", "succeeded")
 
     def test_large_repo_instruction_guidance_is_part_of_the_contract(self) -> None:
         skill = (graph.SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
@@ -723,6 +786,7 @@ class ProjectGraphTests(unittest.TestCase):
             "docs/agents/domain.md",
             "docs/agents/issue-tracker.md",
             "docs/project/CODEBASE.md",
+            "docs/project/ENGINEERING.md",
             "docs/project/FOUNDATION.md",
             "docs/project/PLAN.md",
             "docs/project/PROJECT.md",
@@ -1009,8 +1073,38 @@ class ProjectGraphTests(unittest.TestCase):
         state = self.read_json(run / graph.STATE_NAME)
         state["graph_sha256"] = "0" * 64
         (run / graph.STATE_NAME).write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
-        with self.assertRaisesRegex(graph.GraphError, "другой версии"):
+        with self.assertRaisesRegex(graph.GraphError, "неподдерживаем"):
             graph.recover(str(self.root))
+
+    def test_started_v3_4_run_keeps_legacy_coverage_contract(self) -> None:
+        run = self.init("bootstrap")
+        state_path = run / graph.STATE_NAME
+        state = self.read_json(state_path)
+        state["graph_version"] = "3.4.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.4.0"]
+        state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        contract = graph.ready(run)["data"]["documentation_contract"]
+        self.assertEqual(graph.LEGACY_BOOTSTRAP_COVERAGE, set(contract["coverage"]))
+        self.assertNotIn("engineering_standard_providers", contract)
+        docs = self.bootstrap_docs()
+        (self.root / "docs/project/ENGINEERING.md").unlink()
+        docs.remove("docs/project/ENGINEERING.md")
+        map_path = self.root / "docs/README.md"
+        map_path.write_text(
+            map_path.read_text(encoding="utf-8").replace(
+                "- [Engineering standard](project/ENGINEERING.md)\n", ""
+            ),
+            encoding="utf-8",
+        )
+        payload = self.work_payload(
+            "bootstrap",
+            docs,
+            classification="bootstrap-ready",
+            created=docs,
+        )
+        payload["coverage"].pop("engineering_standard")
+        self.write_work(run, payload)
+        graph.record(run, "work", "succeeded")
 
     def test_init_reclaims_only_empty_unreferenced_orphan(self) -> None:
         contract = graph.graph_contract()

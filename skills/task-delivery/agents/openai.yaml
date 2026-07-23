@@ -1,4 +1,4 @@
 interface:
   display_name: "Task Delivery"
-  short_description: "Deliver planned changes through a compact adaptive graph"
-  default_prompt: "Use $task-delivery to plan, implement, test, review, and hand off this task with proportionate controls."
+  short_description: "Quick, tracked, or verified software delivery"
+  default_prompt: "Use $task-delivery to implement and test this task through the cheapest safe tier, admitting durable tracking, slices, handoff, or independent verification only when needed."

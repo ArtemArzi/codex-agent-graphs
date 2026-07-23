@@ -15,6 +15,37 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 ASSETS = SKILL_ROOT / "assets"
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
+WORK_POLICY_VALUES = {
+    "fast_path": "root-only",
+    "capability_discovery": "need-based",
+    "agent_admission": "independent-work-only",
+    "review_admission": "risk-or-uncertainty-only",
+    "progress_updates": "state-change-only",
+    "documentation_followup": "impact-gated",
+    "explicit_user_override": "bounded",
+}
+WORK_POLICY_BUDGETS = {
+    "max_agent_starts": (0, 8),
+    "max_review_starts": (0, 4),
+    "max_repair_cycles": (0, 2),
+    "max_no_new_evidence_iterations": (1, 2),
+    "max_artifacts_per_work_unit": (1, 5),
+}
+WORK_POLICY_LOOP_GUARDS = {
+    "duplicate_agent_scope": "forbidden",
+    "same_scope_retry": "new-evidence-required",
+    "repair_start": "first-false-assumption-required",
+    "no_new_evidence": "stop-at-budget",
+}
+EXECUTION_TIERS = {
+    "skill-only": {"controller": False, "verification": "self"},
+    "tracked": {"controller": True, "verification": "conditional"},
+    "verified": {"controller": True, "verification": "required"},
+}
+EXECUTION_ADMISSION = {
+    "controller": "resumability-or-durable-evidence",
+    "verification": "risk-or-uncertainty",
+}
 
 
 class ContractError(RuntimeError):
@@ -89,7 +120,92 @@ def find_forbidden_model_key(value: Any, path: str = "graph") -> str | None:
     return None
 
 
-def validate_graph_skill(skill_dir_raw: str | Path) -> dict[str, Any]:
+def validate_work_policy(graph: dict[str, Any], *, required: bool) -> str:
+    policy = graph.get("work_policy")
+    if policy is None:
+        if required:
+            raise ContractError(
+                "graph.json requires work_policy for the current efficiency contract."
+            )
+        return "legacy"
+    if not isinstance(policy, dict) or policy.get("schema_version") != 1:
+        raise ContractError("work_policy must be an object with schema_version 1.")
+    for key, expected in WORK_POLICY_VALUES.items():
+        if policy.get(key) != expected:
+            raise ContractError(f"work_policy.{key} must be {expected!r}.")
+
+    budgets = policy.get("budgets")
+    if not isinstance(budgets, dict) or set(budgets) != set(WORK_POLICY_BUDGETS):
+        raise ContractError(
+            "work_policy.budgets must contain exactly the shared efficiency budgets."
+        )
+    for key, (minimum, maximum) in WORK_POLICY_BUDGETS.items():
+        value = budgets.get(key)
+        if (
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or not minimum <= value <= maximum
+        ):
+            raise ContractError(
+                f"work_policy.budgets.{key} must be an integer from {minimum} to {maximum}."
+            )
+    if budgets["max_review_starts"] > budgets["max_agent_starts"]:
+        raise ContractError(
+            "work_policy max_review_starts cannot exceed max_agent_starts."
+        )
+
+    loop_guards = policy.get("loop_guards")
+    if not isinstance(loop_guards, dict) or set(loop_guards) != set(
+        WORK_POLICY_LOOP_GUARDS
+    ):
+        raise ContractError(
+            "work_policy.loop_guards must contain exactly the shared loop guards."
+        )
+    for key, expected in WORK_POLICY_LOOP_GUARDS.items():
+        if loop_guards.get(key) != expected:
+            raise ContractError(f"work_policy.loop_guards.{key} must be {expected!r}.")
+    return "current"
+
+
+def validate_execution_policy(graph: dict[str, Any], *, required: bool) -> str:
+    policy = graph.get("execution_policy")
+    if policy is None:
+        if required:
+            raise ContractError(
+                "graph.json requires execution_policy for adaptive execution tiers."
+            )
+        return "legacy"
+    if not isinstance(policy, dict) or policy.get("schema_version") != 1:
+        raise ContractError("execution_policy must be an object with schema_version 1.")
+    tiers = policy.get("tiers")
+    if not isinstance(tiers, dict) or not tiers:
+        raise ContractError("execution_policy.tiers must be a non-empty object.")
+    if not {"tracked", "verified"}.issubset(tiers):
+        raise ContractError("execution_policy must expose tracked and verified tiers.")
+    unknown = set(tiers).difference(EXECUTION_TIERS)
+    if unknown:
+        raise ContractError(
+            "execution_policy contains unknown tiers: " + ", ".join(sorted(unknown))
+        )
+    for name, value in tiers.items():
+        if value != EXECUTION_TIERS[name]:
+            raise ContractError(
+                f"execution_policy.tiers.{name} must equal the shared tier contract."
+            )
+    default = policy.get("default_tier")
+    if default not in tiers:
+        raise ContractError("execution_policy.default_tier must name an exposed tier.")
+    admission = policy.get("admission")
+    if admission != EXECUTION_ADMISSION:
+        raise ContractError(
+            "execution_policy.admission must use the shared controller and verification signals."
+        )
+    return "current"
+
+
+def validate_graph_skill(
+    skill_dir_raw: str | Path, *, require_work_policy: bool = False
+) -> dict[str, Any]:
     skill_dir = Path(skill_dir_raw).expanduser().resolve()
     if not skill_dir.is_dir():
         raise ContractError(f"Graph skill directory not found: {skill_dir}")
@@ -122,17 +238,33 @@ def validate_graph_skill(skill_dir_raw: str | Path) -> dict[str, Any]:
         if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 2:
             raise ContractError(f"{key} must be an integer from 0 to 2.")
 
+    work_policy = validate_work_policy(graph, required=require_work_policy)
+    execution_policy = validate_execution_policy(
+        graph, required=require_work_policy
+    )
+
     mcp = graph.get("mcp_policy")
+    if not isinstance(mcp, dict):
+        raise ContractError("graph.json requires the shared conditional MCP policy.")
+    mcp_discovery = mcp.get("discovery")
+    if mcp_discovery not in {"required", "when-relevant"}:
+        raise ContractError("mcp_policy.discovery must be required or when-relevant.")
     if (
-        not isinstance(mcp, dict)
-        or mcp.get("discovery") != "required"
-        or mcp.get("relevant_use") != "required"
+        mcp.get("relevant_use") != "required"
         or mcp.get("receipt_prefix") != "mcp:"
         or mcp.get("fallback_prefix") != "mcp:fallback:"
         or not isinstance(mcp.get("selection_order"), list)
         or not mcp["selection_order"]
     ):
-        raise ContractError("graph.json requires the shared MCP-first receipt policy.")
+        raise ContractError("graph.json requires the shared conditional MCP receipt policy.")
+    if mcp_discovery == "when-relevant" and mcp.get("not_applicable_prefix") != "mcp:not-applicable:":
+        raise ContractError(
+            "Conditional MCP discovery requires not_applicable_prefix mcp:not-applicable:."
+        )
+    if work_policy == "current" and mcp_discovery != "when-relevant":
+        raise ContractError(
+            "The current work_policy requires need-based MCP discovery."
+        )
 
     optional_agents = graph.get("optional_agents", [])
     if not isinstance(optional_agents, list) or any(not isinstance(item, str) or not item for item in optional_agents):
@@ -184,6 +316,8 @@ def validate_graph_skill(skill_dir_raw: str | Path) -> dict[str, Any]:
         "status": "ok",
         "skill": name,
         "graph_version": graph["graph_version"],
+        "work_policy": work_policy,
+        "execution_policy": execution_policy,
         "routes": sorted(routes),
         "controller": str(controllers[0]),
         "tests": [str(path) for path in tests],
@@ -268,6 +402,7 @@ def parser() -> argparse.ArgumentParser:
     sub = command.add_subparsers(dest="command", required=True)
     validate = sub.add_parser("validate")
     validate.add_argument("--skill-dir", required=True)
+    validate.add_argument("--require-work-policy", action="store_true")
     create = sub.add_parser("scaffold")
     create.add_argument("--skill-dir", required=True)
     create.add_argument("--mode", default="full")
@@ -281,7 +416,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         if args.command == "validate":
-            result = validate_graph_skill(args.skill_dir)
+            result = validate_graph_skill(
+                args.skill_dir, require_work_policy=args.require_work_policy
+            )
         else:
             result = scaffold(
                 args.skill_dir,

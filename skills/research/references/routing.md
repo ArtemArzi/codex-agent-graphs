@@ -1,6 +1,14 @@
 # Adaptive routing
 
-## Default: fast
+## Default execution: skill-only
+
+Use one root agent without controller state for a normal one-session answer.
+The source checkpoints below are proportionality guidance, not a requirement to
+create a tracked run. Admit the controller only for resumability, a persistent
+report/source ledger, durable handoff, explicit tracking, or independent
+verification.
+
+## Tracked depth default: fast
 
 Use one root agent, usually 4-6 opened sources, no internal agents, and no independent verifier. Expand toward 10 only when the coverage check below finds a concrete gap. Treat every source checkpoint as a decision point, the maximum as a hard ceiling, and the time value as a soft stop; none is a quota to consume.
 
@@ -17,7 +25,11 @@ The root may use any relevant installed skill or exposed tool. Capability use do
 | Market or company decision | `market-research` plus Exa/company sources | filings, first-party data, reputable analysis |
 | Repository or local-product truth | local files, tests, CLI help, MCP for the live system | report the unavailable proof path |
 
-Inspect exact MCP/tool names at runtime and call the best relevant server before a native external path. Record success as `mcp:<server>`. If no relevant server succeeds, record `mcp:fallback:<reason>` and use the next safe path; do not fail the research merely because a preferred server is absent. Never use fallback as a reason to ignore an exposed relevant MCP.
+When the question needs external, provider, library or live context, inspect
+exact MCP/tool names and call the best relevant server before a native external
+path. Record success as `mcp:<server>`. If a relevant server fails, record
+`mcp:fallback:<reason>` and continue safely. For local-file evidence record
+`mcp:not-applicable:<reason>` in tracked mode without discovery.
 
 ## Expand by coverage, not count
 

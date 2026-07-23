@@ -12,6 +12,11 @@ description: >-
 
 Оба режима используют `work → complete` либо при сомнительном доказательстве `work → verify → complete`.
 
+Continuous Improvement по умолчанию остаётся `tracked`: отбор автономного
+кандидата, clean baseline и передача в Task Delivery должны быть
+возобновляемыми и проверяемыми. Отдельного skill-only пути нет; для обычного
+известного исправления используй quick Task Delivery напрямую.
+
 - `full` — режим по умолчанию: найти одного кандидата, исправить только доказанный низкорисковый дефект через Task Delivery и подготовить отдельный commit; иначе завершить `no-op` или `issue-ready`.
 - `audit` — только исследование: не менять код и не создавать commit; вернуть `no-op` или `issue-ready`.
 
@@ -33,7 +38,12 @@ python3 scripts/continuous_improvement_graph.py init \
 
 1. Ищи по сильным сигналам в порядке полезности: failing CI/test, воспроизводимый issue, недавняя регрессия, type/lint/static-analysis error, доказуемый broken contract или documentation defect. Не ищи эстетическое «что-нибудь улучшить».
 2. Выбери максимум одного кандидата. Для большой неясной области допустим один bounded read-only `explorer`; дождись его и сам сверь доказательства.
-3. Проведи MCP discovery. Используй GitHub MCP для относящихся issue/CI/PR, Context7 для текущей документации библиотеки и другой provider MCP для его данных. Если задача строго локальная или подходящий MCP не вызывается, запиши `mcp:fallback:<reason>`. Не добавляй MCP node.
+3. Используй MCP только когда кандидат зависит от внешнего или живого
+   состояния: GitHub MCP для issue/CI/PR, Context7 для текущей документации
+   библиотеки и owning provider MCP для его данных. Для строго локального
+   сигнала запиши `mcp:not-applicable:<reason>` без ритуального discovery; при
+   сбое релевантного сервера запиши `mcp:fallback:<reason>`. Не добавляй MCP
+   node.
 4. Подключай только применимые skills. `$research` нужен для внешнего меняющегося факта; локальный поиск и тесты — для кода. `$development-recovery` срабатывает при расхождении спецификации и наблюдений. Project Start обновится через handoff Task Delivery, а не отдельный вложенный цикл.
 5. Воспроизведи проблему командой или наблюдением, сформулируй acceptance и минимальный scope. Если доказательства недостаточны — `no-op` либо `issue-ready`, но не код.
 6. Классифицируй риск. Автономная доставка разрешена только для `low` без protected domains. Данные и миграции, auth/permissions/security, billing/payments, secrets, deployment/infrastructure, публичные контракты и широкая бизнес-семантика всегда становятся `issue-ready`.

@@ -62,8 +62,10 @@ LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.1.0", "a9d10724ff236fe787540d4f8c0e3dcb18f66e989e4d57bfc0a0683bff999d46"),
     ("3.2.0", "4317362f02d843470cfa3bc063cb861577bec09c9b98bd78126dd12bb8bb2bb1"),
     ("3.3.0", "07b19482bca36d54ace9a3cc470e76e421b2b1c14f0ee123c90a7792af79b7e8"),
+    ("3.4.0", "208d0b08c4b4e3298add4802414d18ee97cb71f8f7bcfdb9dd97c1ab67894d1d"),
 }
-SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0"}
+SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0"}
+STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0"}
 
 
 class GraphError(RuntimeError):
@@ -140,22 +142,55 @@ def graph_contract() -> dict[str, Any]:
         raise GraphError("Task Delivery graph должен содержать plan, implement и full.")
     if set(graph.get("profiles", {})) != PROFILES:
         raise GraphError("Task Delivery graph должен содержать четыре профиля риска.")
+    if graph["profiles"] != {
+        "light": {"plan_reviewers": 0, "result_reviewers": 0},
+        "standard": {"plan_reviewers": 0, "result_reviewers": 0},
+        "complex": {"plan_reviewers": 1, "result_reviewers": 0},
+        "critical": {"plan_reviewers": 1, "result_reviewers": 1},
+    }:
+        raise GraphError("Task Delivery profile review policy должна быть risk-triggered.")
     for mode in MODES:
         route = graph["routes"][mode]
         if route.get("entry") != "work" or route.get("terminal") != "complete":
             raise GraphError(f"Некорректные entry/terminal для {mode}.")
         if set(route.get("nodes", {})) != {"work", "verify", "complete"}:
             raise GraphError(f"Маршрут {mode} должен иметь только work, verify, complete.")
+    work_policy = graph.get("work_policy")
+    if (
+        not isinstance(work_policy, dict)
+        or work_policy.get("schema_version") != 1
+        or work_policy.get("fast_path") != "root-only"
+        or work_policy.get("capability_discovery") != "need-based"
+        or work_policy.get("agent_admission") != "independent-work-only"
+        or work_policy.get("review_admission") != "risk-or-uncertainty-only"
+        or work_policy.get("progress_updates") != "state-change-only"
+        or work_policy.get("documentation_followup") != "impact-gated"
+        or work_policy.get("explicit_user_override") != "bounded"
+        or work_policy.get("loop_guards", {}).get("duplicate_agent_scope") != "forbidden"
+        or work_policy.get("loop_guards", {}).get("same_scope_retry") != "new-evidence-required"
+        or work_policy.get("loop_guards", {}).get("repair_start") != "first-false-assumption-required"
+        or work_policy.get("loop_guards", {}).get("no_new_evidence") != "stop-at-budget"
+        or work_policy.get("budgets", {}).get("max_no_new_evidence_iterations") != 2
+    ):
+        raise GraphError("Task Delivery graph содержит неверную work efficiency policy.")
+    execution = graph.get("execution_policy", {})
+    if (
+        execution.get("default_tier") != "skill-only"
+        or set(execution.get("tiers", {}))
+        != {"skill-only", "tracked", "verified"}
+    ):
+        raise GraphError("Task Delivery graph содержит неверные adaptive execution tiers.")
     mcp_policy = graph.get("mcp_policy")
     if (
         not isinstance(mcp_policy, dict)
-        or mcp_policy.get("discovery") != "required"
+        or mcp_policy.get("discovery") != "when-relevant"
         or mcp_policy.get("relevant_use") != "required"
         or mcp_policy.get("receipt_prefix") != "mcp:"
         or mcp_policy.get("fallback_prefix") != "mcp:fallback:"
+        or mcp_policy.get("not_applicable_prefix") != "mcp:not-applicable:"
         or not isinstance(mcp_policy.get("selection_order"), list)
     ):
-        raise GraphError("Task Delivery graph содержит неверную MCP-first policy.")
+        raise GraphError("Task Delivery graph содержит неверную conditional MCP policy.")
     delegation = graph.get("delegation_policy")
     limits = graph.get("limits", {})
     if (
@@ -164,9 +199,9 @@ def graph_contract() -> dict[str, Any]:
         or delegation.get("profile_preference")
         != {
             "light": "root-only",
-            "standard": "delegated-sequential",
-            "complex": "delegated-sequential",
-            "critical": "delegated-sequential",
+            "standard": "root-only",
+            "complex": "root-only",
+            "critical": "root-only",
         }
         or delegation.get("explicit_slice_request") != "required"
         or set(delegation.get("strategies", [])) != IMPLEMENTATION_STRATEGIES
@@ -175,6 +210,8 @@ def graph_contract() -> dict[str, Any]:
         or delegation.get("parallel_write_enabled") is not False
         or not isinstance(limits.get("max_slices_per_run"), int)
         or limits["max_slices_per_run"] < 1
+        or not isinstance(limits.get("max_explicit_slices_per_run"), int)
+        or limits["max_explicit_slices_per_run"] < limits["max_slices_per_run"]
         or limits.get("max_verification_repair_slices") != 1
         or not isinstance(limits.get("max_selected_skills_per_slice"), int)
         or limits["max_selected_skills_per_slice"] < 1
@@ -315,6 +352,11 @@ Task ID: {task_id}
 - Internal: PENDING
 - External: PENDING or NOT NEEDED with reason
 
+## Engineering standard
+
+- Canonical guide: PENDING or N/A with reason
+- Applicable rules and commands: PENDING
+
 ## Acceptance
 
 - PENDING
@@ -396,7 +438,7 @@ def profile_requires_verify(mode: str, profile: str, confidence: str = "high") -
         return True
     if mode == "plan":
         return profile in {"complex", "critical"}
-    return profile in {"standard", "complex", "critical"}
+    return profile == "critical"
 
 
 def strings(value: Any, name: str, *, allow_empty: bool = True) -> list[str]:
@@ -453,6 +495,82 @@ def normalize_repo_paths(
     if len(set(normalized)) != len(normalized):
         raise GraphError(f"{name} не должен содержать дубликаты.")
     return normalized
+
+
+def project_engineering_standard(root: Path) -> dict[str, str] | None:
+    state_path = root / ".project-start/state.json"
+    if not state_path.is_file():
+        return None
+    value = load_json(state_path)
+    graph_v3 = value.get("graph_v3")
+    if not isinstance(graph_v3, dict) or graph_v3.get("status") != "operational":
+        return None
+    coverage = graph_v3.get("coverage")
+    if not isinstance(coverage, dict):
+        return None
+    raw = coverage.get("engineering_standard")
+    if raw is None:
+        return None
+    relative = normalize_repo_paths(
+        root,
+        [raw],
+        "Project Start coverage.engineering_standard",
+        allow_empty=False,
+        require_files=True,
+    )[0]
+    canonical = graph_v3.get("canonical_docs")
+    if not isinstance(canonical, list) or relative not in canonical:
+        raise GraphError(
+            "Project Start engineering standard отсутствует в canonical_docs."
+        )
+    return {
+        "path": relative,
+        "sha256": sha256_file(snapshots.safe_join_no_symlinks(root, relative)),
+    }
+
+
+def validate_engineering_standard(
+    state: dict[str, Any],
+    artifact: dict[str, Any],
+    plan_path: Path,
+) -> dict[str, Any] | None:
+    expected = state.get("engineering_standard")
+    if not isinstance(expected, dict):
+        return None
+    path = expected.get("path")
+    digest = expected.get("sha256")
+    if not isinstance(path, str) or not isinstance(digest, str):
+        raise GraphError("Task Delivery state содержит повреждённый engineering standard.")
+    actual_path = snapshots.safe_join_no_symlinks(Path(state["root"]), path)
+    if not actual_path.is_file() or sha256_file(actual_path) != digest:
+        raise GraphError(
+            "Canonical engineering standard изменился после init; нужен свежий plan/run."
+        )
+    if path not in plan_contract_text(plan_path):
+        raise GraphError(
+            "План должен явно сослаться на canonical engineering standard."
+        )
+    receipt = artifact.get("engineering_standard")
+    if not isinstance(receipt, dict):
+        raise GraphError("task.json требует engineering_standard receipt.")
+    if (
+        receipt.get("path") != path
+        or receipt.get("sha256") != digest
+        or receipt.get("status") != "applied"
+    ):
+        raise GraphError(
+            "task.json engineering_standard должен быть applied и связан с exact path/digest."
+        )
+    exceptions = strings(
+        receipt.get("exceptions", []),
+        "engineering_standard.exceptions",
+    )
+    return {
+        "path": path,
+        "sha256": digest,
+        "status": "applied",
+        "exceptions": exceptions,
+    }
 
 
 def path_allowed(path: str, allowed: list[str]) -> bool:
@@ -776,25 +894,32 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
     with legacy.mutation_guard(root, task_id, True):
         with state_lock(run_dir):
             state = load_run_state(run_dir)
-            current_contract = state.get("graph_version") == graph_contract()["graph_version"]
-            if not current_contract and state.get("graph_version") != "3.3.0":
+            staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
+            efficiency_contract = (
+                state.get("graph_version") == graph_contract()["graph_version"]
+            )
+            if not staged_contract and state.get("graph_version") != "3.3.0":
                 raise GraphError("Slice delegation недоступен для этой legacy Task Delivery версии.")
             if state["status"] != "running" or state["current"] != "work":
                 raise GraphError("Slice можно зарегистрировать только внутри готового work.")
             if state["mode"] == "plan":
                 raise GraphError("Режим plan не запускает implementation workers.")
-            if state["profile"] == "light":
+            if (
+                state["profile"] == "light"
+                and state.get("implementation_strategy_request")
+                != "delegated-sequential"
+            ):
                 raise GraphError("Профиль light использует root-only implementation.")
             if state.get("implementation_strategy_request") == "root-only":
                 raise GraphError("Run явно закреплён за root-only implementation.")
-            if current_contract:
+            if staged_contract:
                 accepted = [item for item in state.get("slices", {}).values() if item.get("status") == "accepted"]
                 if accepted:
                     _, checkpoint_sha = load_context_checkpoint(state, run_dir)
                     if state.get("context", {}).get("rehydrated_checkpoint_sha256") != checkpoint_sha:
                         raise GraphError("Перед следующим slice выполни context-rehydrate для latest checkpoint.")
             draft = load_json(draft_path.resolve())
-            expected_schema = graph_contract()["test_policy"]["packet_schema_version"] if current_contract else 1
+            expected_schema = graph_contract()["test_policy"]["packet_schema_version"] if staged_contract else 1
             if draft.get("schema_version") != expected_schema:
                 raise GraphError(f"Slice draft требует schema_version {expected_schema}.")
             identifier = slice_id(draft.get("slice_id"))
@@ -813,12 +938,12 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                 if item.get("worker_status") in {"done", "done_with_concerns"}
                 and item.get("status") != "accepted"
             ]
-            if current_contract and successful_unaccepted:
+            if staged_contract and successful_unaccepted:
                 raise GraphError(
                     "Перед следующим slice root обязан выполнить slice-accept: "
                     + ", ".join(sorted(successful_unaccepted))
                 )
-            repair_work_sha = verification_repair_work_sha(state) if current_contract else None
+            repair_work_sha = verification_repair_work_sha(state) if staged_contract else None
             repair_for = draft.get("repair_for_work_sha256")
             repair_records = [
                 item for item in records.values() if item.get("repair_for_work_sha256") is not None
@@ -850,12 +975,14 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                         for successor in records.values()
                     )
                 ]
-                if current_contract and unresolved and draft.get("supersedes") != unresolved[-1]:
+                if staged_contract and unresolved and draft.get("supersedes") != unresolved[-1]:
                     raise GraphError(
                         "Следующий normal slice обязан supersedes exact unresolved slice: "
                         + unresolved[-1]
                     )
-                if len(normal_records) >= int(graph_contract()["limits"]["max_slices_per_run"]):
+                if len(normal_records) >= int(
+                    state.get("slice_budget", graph_contract()["limits"]["max_slices_per_run"])
+                ):
                     raise GraphError("Превышен лимит normal slice packets для одного run.")
             current_strategy = state.get("implementation_strategy", "root-only")
             if current_strategy not in {"root-only", strategy}:
@@ -912,6 +1039,19 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             if overlap:
                 raise GraphError("owned_paths пересекаются с excluded_paths: " + ", ".join(overlap))
             must_read = normalize_repo_paths(root, draft.get("must_read"), "must_read", allow_empty=False, require_files=True)
+            engineering_standard = state.get("engineering_standard")
+            if isinstance(engineering_standard, dict):
+                standard_path = str(engineering_standard.get("path") or "")
+                standard_file = snapshots.safe_join_no_symlinks(root, standard_path)
+                if (
+                    not standard_file.is_file()
+                    or sha256_file(standard_file) != engineering_standard.get("sha256")
+                ):
+                    raise GraphError(
+                        "Canonical engineering standard изменился до slice-create."
+                    )
+                if standard_path not in must_read:
+                    must_read.append(standard_path)
             snapshots_read = [
                 {"path": relative, "sha256": sha256_file(snapshots.safe_join_no_symlinks(root, relative))}
                 for relative in must_read
@@ -925,7 +1065,7 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                 )
             stop_questions = strings(draft.get("stop_questions", []), "stop_questions")
             acceptance = strings(draft.get("acceptance"), "acceptance", allow_empty=False)
-            if current_contract:
+            if staged_contract:
                 test_impact = validate_test_impact(root, draft.get("test_impact"), owned)
                 slice_checks = normalize_checks(draft.get("slice_checks"), "slice_checks", allow_empty=False)
                 deferred_final_checks = normalize_checks(
@@ -945,11 +1085,18 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             objective = meaningful(draft.get("objective"), "slice objective", 12)
             capability_context = validate_capability_context(draft.get("capability_context", {}))
             supersedes = draft.get("supersedes")
+            retry_evidence: str | None = None
             if supersedes is not None:
                 supersedes = slice_id(supersedes)
                 previous = records.get(supersedes)
                 if not previous or previous.get("worker_status") not in {"needs_context", "blocked"}:
                     raise GraphError("supersedes должен ссылаться на needs_context или blocked slice.")
+                if efficiency_contract:
+                    retry_evidence = meaningful(
+                        draft.get("retry_evidence"),
+                        "retry_evidence для same-scope successor",
+                        12,
+                    )
             baseline = manifest(root, state["plan_path"])
             target_dir = slice_directory(run_dir, identifier)
             baseline_path = target_dir / SLICE_BASELINE_NAME
@@ -964,6 +1111,7 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                 "owned_paths": owned,
                 "excluded_paths": excluded,
                 "must_read": snapshots_read,
+                "engineering_standard": engineering_standard,
                 "known_facts": normalized_facts,
                 "stop_questions": stop_questions,
                 "acceptance": acceptance,
@@ -981,11 +1129,12 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                             else None
                         ),
                     }
-                    if current_contract
+                    if staged_contract
                     else {"verification_commands": slice_checks}
                 ),
                 "capability_context": capability_context,
                 "supersedes": supersedes,
+                **({"retry_evidence": retry_evidence} if retry_evidence else {}),
                 **({"repair_for_work_sha256": repair_work_sha} if repair_work_sha else {}),
                 "created_at": now(),
             }
@@ -1075,8 +1224,8 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
     with legacy.mutation_guard(root, task_id, True):
         with state_lock(run_dir):
             state = load_run_state(run_dir)
-            current_contract = state.get("graph_version") == graph_contract()["graph_version"]
-            if not current_contract and state.get("graph_version") != "3.3.0":
+            staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
+            if not staged_contract and state.get("graph_version") != "3.3.0":
                 raise GraphError("Worker receipts недоступны для этой legacy Task Delivery версии.")
             if state["status"] != "running" or state["current"] != "work":
                 raise GraphError("Worker receipt можно записать только внутри work.")
@@ -1095,7 +1244,7 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
             if plan_digest(current_plan) != packet["plan_digest"]:
                 raise GraphError("План изменился после выдачи slice packet; создай новый packet.")
             receipt = load_json(receipt_path.resolve())
-            expected_schema = graph_contract()["test_policy"]["packet_schema_version"] if current_contract else 1
+            expected_schema = graph_contract()["test_policy"]["packet_schema_version"] if staged_contract else 1
             if receipt.get("schema_version") != expected_schema or slice_id(receipt.get("slice_id")) != identifier:
                 raise GraphError(f"Worker receipt требует schema_version {expected_schema} и точный slice_id.")
             if receipt.get("packet_sha256") != record["packet_sha256"]:
@@ -1113,7 +1262,7 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
                 raise GraphError("Worker изменил пути вне slice ownership: " + ", ".join(outside[:20]))
             if status in {"done", "done_with_concerns"} and not changed:
                 raise GraphError("Завершённый implementation slice требует фактическую дельту.")
-            if current_contract and status in {"needs_context", "blocked"} and changed:
+            if staged_contract and status in {"needs_context", "blocked"} and changed:
                 raise GraphError(
                     "needs_context/blocked slice не может оставлять непринятую дельту; "
                     "worker должен откатить только собственные edits по pre-edit patch, сохранив user baseline."
@@ -1122,11 +1271,11 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
                 receipt.get("tests", []),
                 "worker tests",
                 require_pass=status in {"done", "done_with_concerns"},
-                include_check_id=current_contract,
+                include_check_id=staged_contract,
             )
             if status in {"done", "done_with_concerns"}:
-                assigned = packet["slice_checks"] if current_contract else packet["verification_commands"]
-                if current_contract:
+                assigned = packet["slice_checks"] if staged_contract else packet["verification_commands"]
+                if staged_contract:
                     expected = {item["check_id"] for item in assigned}
                     actual = {item["check_id"] for item in tests if item["status"] == "passed"}
                 else:
@@ -1165,14 +1314,14 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
                     {"fact": meaningful(discovery.get("fact"), "discovery fact"), "source": source}
                 )
             test_changes = (
-                validate_worker_test_changes(root, packet, receipt, changed, status) if current_contract else []
+                validate_worker_test_changes(root, packet, receipt, changed, status) if staged_contract else []
             )
             deferred = (
                 normalize_checks(receipt.get("deferred_final_checks", []), "worker deferred_final_checks")
-                if current_contract
+                if staged_contract
                 else []
             )
-            if current_contract and deferred != packet["deferred_final_checks"]:
+            if staged_contract and deferred != packet["deferred_final_checks"]:
                 raise GraphError("Worker deferred_final_checks не совпадают с packet.")
             canonical = {
                 "schema_version": expected_schema,
@@ -1185,7 +1334,7 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
                 "tests": tests,
                 **(
                     {"test_changes": test_changes, "deferred_final_checks": deferred}
-                    if current_contract
+                    if staged_contract
                     else {}
                 ),
                 "artifacts": artifacts,
@@ -1211,14 +1360,38 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
                 }
             )
             terminal_unsuccessful = False
-            if current_contract and status in {"needs_context", "blocked"}:
+            if staged_contract and status in {"needs_context", "blocked"}:
                 normal_count = sum(
                     item.get("repair_for_work_sha256") is None
                     for item in state.get("slices", {}).values()
                 )
+                failure_chain = 1
+                predecessor = packet.get("supersedes")
+                while predecessor:
+                    previous = state.get("slices", {}).get(predecessor)
+                    if not previous or previous.get("worker_status") not in {
+                        "needs_context",
+                        "blocked",
+                    }:
+                        break
+                    failure_chain += 1
+                    previous_packet = load_json(Path(previous["packet_path"]))
+                    predecessor = previous_packet.get("supersedes")
                 terminal_unsuccessful = (
                     record.get("repair_for_work_sha256") is not None
-                    or normal_count >= int(graph_contract()["limits"]["max_slices_per_run"])
+                    or failure_chain
+                    >= int(
+                        graph_contract()["work_policy"]["budgets"][
+                            "max_no_new_evidence_iterations"
+                        ]
+                    )
+                    or normal_count
+                    >= int(
+                        state.get(
+                            "slice_budget",
+                            graph_contract()["limits"]["max_slices_per_run"],
+                        )
+                    )
                 )
                 if terminal_unsuccessful:
                     state["status"] = "blocked"
@@ -1332,8 +1505,8 @@ def accept_slice(run_dir: Path, identifier: str, acceptance_path: Path) -> dict[
     with legacy.mutation_guard(root, task_id, True):
         with state_lock(run_dir):
             state = load_run_state(run_dir)
-            if state.get("graph_version") != graph_contract()["graph_version"]:
-                raise GraphError("slice-accept доступен только для Task Delivery 3.4 runs.")
+            if state.get("graph_version") not in STAGED_SLICE_CONTRACT_VERSIONS:
+                raise GraphError("slice-accept доступен только для staged Task Delivery runs.")
             if state["status"] != "running" or state["current"] != "work":
                 raise GraphError("Slice acceptance можно записать только внутри work.")
             record = state.get("slices", {}).get(identifier)
@@ -1455,8 +1628,8 @@ def rehydrate_context(run_dir: Path) -> dict[str, Any]:
     with legacy.mutation_guard(root, task_id, True):
         with state_lock(run_dir):
             state = load_run_state(run_dir)
-            if state.get("graph_version") != graph_contract()["graph_version"]:
-                raise GraphError("context-rehydrate доступен только для Task Delivery 3.4 runs.")
+            if state.get("graph_version") not in STAGED_SLICE_CONTRACT_VERSIONS:
+                raise GraphError("context-rehydrate доступен только для staged Task Delivery runs.")
             if state["status"] != "running" or state["current"] != "work":
                 raise GraphError("Context можно rehydrate только внутри work.")
             checkpoint, digest_value = load_context_checkpoint(state, run_dir)
@@ -1485,8 +1658,8 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
     with legacy.mutation_guard(root, task_id, True):
         with state_lock(run_dir):
             state = load_run_state(run_dir)
-            if state.get("graph_version") != graph_contract()["graph_version"]:
-                raise GraphError("scope-amend доступен только для Task Delivery 3.4 runs.")
+            if state.get("graph_version") not in STAGED_SLICE_CONTRACT_VERSIONS:
+                raise GraphError("scope-amend доступен только для staged Task Delivery runs.")
             if state["status"] != "running" or state["current"] != "work" or state["mode"] == "plan":
                 raise GraphError("Technical scope amendment доступен только внутри implementation work.")
             if any(
@@ -1720,14 +1893,23 @@ def validate_mcp_capabilities(capabilities: list[str]) -> None:
     policy = graph_contract()["mcp_policy"]
     prefix = policy["receipt_prefix"]
     fallback_prefix = policy["fallback_prefix"]
+    not_applicable_prefix = policy["not_applicable_prefix"]
     receipts = [item for item in capabilities if item.startswith(prefix)]
     if not receipts:
         raise GraphError(
-            "capabilities требует MCP receipt: mcp:<server> либо mcp:fallback:<reason>."
+            "capabilities требует MCP receipt: mcp:<server>, mcp:fallback:<reason> "
+            "либо mcp:not-applicable:<reason>."
         )
     used: list[str] = []
     fallbacks: list[str] = []
+    not_applicable: list[str] = []
     for receipt in receipts:
+        if receipt.startswith(not_applicable_prefix):
+            reason = receipt[len(not_applicable_prefix) :]
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,}", reason):
+                raise GraphError("MCP not-applicable требует содержательный machine-readable reason.")
+            not_applicable.append(receipt)
+            continue
         if receipt.startswith(fallback_prefix):
             reason = receipt[len(fallback_prefix) :]
             if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,}", reason):
@@ -1743,13 +1925,23 @@ def validate_mcp_capabilities(capabilities: list[str]) -> None:
         used.append(receipt)
     if used and fallbacks:
         raise GraphError("MCP fallback нельзя записывать вместе с успешным MCP server receipt.")
+    if not_applicable and (used or fallbacks):
+        raise GraphError("MCP not-applicable нельзя смешивать с MCP use или fallback.")
+    if len(not_applicable) > 1:
+        raise GraphError("Локальная задача требует только одну MCP not-applicable квитанцию.")
 
 
-def validate_agents(value: Any, profile: str, *, slice_contract: bool) -> list[dict[str, Any]]:
+def validate_agents(
+    value: Any,
+    *,
+    slice_contract: bool,
+    worker_limit: int,
+    efficiency_contract: bool,
+    max_agents: int,
+) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise GraphError("agents должен быть списком.")
-    graph = graph_contract()
-    if len(value) > int(graph["limits"]["max_agents_per_run"]):
+    if len(value) > max_agents:
         raise GraphError("Превышен общий лимит агентов Task Delivery.")
     normalized: list[dict[str, Any]] = []
     receipts: set[str] = set()
@@ -1782,19 +1974,36 @@ def validate_agents(value: Any, profile: str, *, slice_contract: bool) -> list[d
         )
     workers = sum(item["role"] == "task_worker" for item in normalized)
     explorers = sum(item["role"] == "task_explorer" for item in normalized)
-    worker_limit = int(graph["limits"]["max_slices_per_run"]) + int(
-        graph["limits"]["max_verification_repair_slices"]
-    )
     if workers > worker_limit or explorers > 2:
         raise GraphError(
-            "Task Delivery допускает не более двух normal workers, одного verifier-repair worker и двух explorers."
+            "Task Delivery превысил bounded worker/explorer budget этого run."
         )
-    required = set()
-    if profile in {"complex", "critical"}:
-        required.add("task_plan_reviewer")
-    if profile == "critical":
-        required.add("task_risk_reviewer")
+    if efficiency_contract:
+        for role in (
+            "task_plan_reviewer",
+            "task_result_reviewer",
+            "task_risk_reviewer",
+        ):
+            if sum(item["role"] == role for item in normalized) > 1:
+                raise GraphError(
+                    f"Efficiency contract допускает не более одного {role} без отдельного deep-review режима."
+                )
     return normalized
+
+
+def validate_documentation_impact(value: Any, *, current_contract: bool) -> dict[str, str]:
+    if not current_contract:
+        summary = meaningful(value, "documentation_impact", 8)
+        return {"class": "semantic", "summary": summary}
+    if not isinstance(value, dict):
+        raise GraphError(
+            "documentation_impact требует object с class none|factual|semantic и summary."
+        )
+    impact_class = value.get("class")
+    if impact_class not in {"none", "factual", "semantic"}:
+        raise GraphError("documentation_impact.class должен быть none, factual или semantic.")
+    summary = meaningful(value.get("summary"), "documentation_impact.summary", 8)
+    return {"class": impact_class, "summary": summary}
 
 
 def validate_research(value: Any) -> None:
@@ -1871,16 +2080,16 @@ def validate_slice_acceptance(
         raise GraphError("delegated-parallel остаётся fail-closed до проверяемой worktree isolation.")
     if state.get("implementation_strategy") != strategy:
         raise GraphError("task.json strategy не совпадает с зарегистрированной strategy run.")
-    current_contract = state.get("graph_version") == graph_contract()["graph_version"]
-    allowed_record_statuses = {"recorded", "accepted"} if current_contract else {"recorded"}
+    staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
+    allowed_record_statuses = {"recorded", "accepted"} if staged_contract else {"recorded"}
     if any(item.get("status") not in allowed_record_statuses for item in records.values()):
         raise GraphError("Все зарегистрированные slices должны иметь immutable worker receipt.")
-    if current_contract and any(
+    if staged_contract and any(
         item.get("worker_status") in {"done", "done_with_concerns"}
         and item.get("status") != "accepted"
         for item in records.values()
     ):
-        raise GraphError("Каждый successful 3.4 slice требует immutable root acceptance до final work.")
+        raise GraphError("Каждый successful staged slice требует immutable root acceptance до final work.")
     by_slice = {item["slice_id"]: item for item in workers}
     if len(by_slice) != len(workers):
         raise GraphError("Каждый task_worker должен ссылаться на уникальный slice_id.")
@@ -1910,7 +2119,7 @@ def validate_slice_acceptance(
             agents, "task_plan_reviewer"
         ):
             raise GraphError(f"Slice plan-review receipt отсутствует в task.json agents: {identifier}")
-    if current_contract:
+    if staged_contract:
         for identifier, record in records.items():
             if record.get("worker_status") not in {"needs_context", "blocked"}:
                 continue
@@ -1938,9 +2147,9 @@ def validate_slice_acceptance(
             raise GraphError("Root может принять только done или done_with_concerns slice.")
         if item.get("packet_sha256") != record["packet_sha256"] or item.get("receipt_sha256") != record["receipt_sha256"]:
             raise GraphError("Root acceptance связан с другим packet или worker receipt.")
-        if current_contract:
+        if staged_contract:
             if record.get("status") != "accepted":
-                raise GraphError("Task Delivery 3.4 требует отдельный slice-accept до итогового task.json.")
+                raise GraphError("Staged Task Delivery требует отдельный slice-accept до итогового task.json.")
             if item.get("acceptance_sha256") != record.get("acceptance_sha256"):
                 raise GraphError("task.json связан с другим root acceptance receipt.")
             acceptance_path = Path(str(record.get("acceptance_path", "")))
@@ -1969,11 +2178,11 @@ def validate_slice_acceptance(
             acceptance.get("tests"),
             "root acceptance tests",
             require_pass=True,
-            include_check_id=current_contract,
+            include_check_id=staged_contract,
         )
         if not root_tests:
             raise GraphError("Root acceptance требует хотя бы одну независимо проверенную команду.")
-        if current_contract:
+        if staged_contract:
             packet = load_json(Path(record["packet_path"]))
             assigned_ids = {check["check_id"] for check in packet["slice_checks"]}
             if not assigned_ids.intersection(check["check_id"] for check in root_tests):
@@ -1992,7 +2201,7 @@ def validate_slice_acceptance(
                 "slice_id": identifier,
                 "packet_sha256": record["packet_sha256"],
                 "receipt_sha256": record["receipt_sha256"],
-                **({"acceptance_sha256": record["acceptance_sha256"]} if current_contract else {}),
+                **({"acceptance_sha256": record["acceptance_sha256"]} if staged_contract else {}),
                 "root_acceptance": {
                     "verdict": verdict,
                     "verified_changed_paths": verified_paths,
@@ -2004,14 +2213,14 @@ def validate_slice_acceptance(
     expected_accepted = {
         identifier
         for identifier, record in records.items()
-        if record.get("status") == ("accepted" if current_contract else "recorded")
+        if record.get("status") == ("accepted" if staged_contract else "recorded")
         and record.get("worker_status") in {"done", "done_with_concerns"}
     }
     if accepted_ids != expected_accepted:
         raise GraphError("implementation.slices должен покрывать все и только root-accepted slices.")
     if not accepted_ids:
         raise GraphError("Delegated implementation требует хотя бы один root-accepted slice.")
-    if current_contract:
+    if staged_contract:
         accepted_path_union = {
             path
             for item in accepted
@@ -2053,8 +2262,22 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         raise GraphError("confidence должен быть high, medium или low.")
     capabilities = strings(artifact.get("capabilities"), "capabilities", allow_empty=False)
     current_contract = state.get("graph_version") == graph_contract()["graph_version"]
+    staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
     slice_contract = state.get("graph_version") in SLICE_CONTRACT_VERSIONS
-    agents = validate_agents(artifact.get("agents"), profile, slice_contract=slice_contract)
+    worker_limit = int(
+        state.get("slice_budget", graph_contract()["limits"]["max_slices_per_run"])
+    ) + int(graph_contract()["limits"]["max_verification_repair_slices"])
+    agents = validate_agents(
+        artifact.get("agents"),
+        slice_contract=slice_contract,
+        worker_limit=worker_limit,
+        efficiency_contract=current_contract,
+        max_agents=(
+            int(graph_contract()["limits"]["max_agents_per_run"])
+            if current_contract
+            else 5
+        ),
+    )
     validate_research(artifact.get("research"))
     if state.get("graph_version") in {"3.3.0", graph_contract()["graph_version"]}:
         validate_mcp_capabilities(capabilities)
@@ -2066,6 +2289,7 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     plan_review = plan.get("review")
     if not isinstance(plan_review, dict) or plan_review.get("verdict") != "pass":
         raise GraphError("План должен иметь review.verdict=pass.")
+    engineering_standard = validate_engineering_standard(state, artifact, plan_path)
     review_mode = plan_review.get("mode")
     if review_mode not in {"self", "independent", "reused"}:
         raise GraphError("Plan review mode должен быть self, independent или reused.")
@@ -2087,7 +2311,7 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         raise GraphError("Complex/critical нельзя переиспользовать self-review лёгкого плана.")
     if review_mode == "independent" and not independent_plan:
         raise GraphError("Independent plan review требует task_plan_reviewer receipt.")
-    if current_contract and state.get("scope_amendments"):
+    if staged_contract and state.get("scope_amendments"):
         amendment_review_receipts: list[str] = []
         for item in state["scope_amendments"]:
             amendment_path = Path(str(item.get("path", "")))
@@ -2134,14 +2358,15 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         outside = snapshots.outside_scope(changed, scope)
         if outside:
             raise GraphError("Изменения вышли за область плана: " + ", ".join(outside[:20]))
-    task_tests = validate_tests(artifact.get("tests"), mode, staged_contract=current_contract)
+    task_tests = validate_tests(artifact.get("tests"), mode, staged_contract=staged_contract)
     delegation = (
         validate_slice_acceptance(state, run_dir, implementation, agents, changed, task_tests)
         if slice_contract
         else {"strategy": implementation.get("strategy", "root-only"), "accepted_slices": []}
     )
-    if len(str(artifact.get("documentation_impact", "")).strip()) < 8:
-        raise GraphError("documentation_impact должен быть содержательным.")
+    documentation_impact = validate_documentation_impact(
+        artifact.get("documentation_impact"), current_contract=current_contract
+    )
     if len(str(artifact.get("rollback", "")).strip()) < 8:
         raise GraphError("rollback должен быть содержательным.")
     strings(artifact.get("residual_risks"), "residual_risks")
@@ -2182,6 +2407,8 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         "confidence": confidence,
         "verification_required": required_verify,
         "summary": summary,
+        "engineering_standard": engineering_standard,
+        "documentation_impact": documentation_impact,
     }
 
 
@@ -2270,6 +2497,7 @@ def initialize(
     plan_raw: str | None,
     profile: str,
     implementation_strategy: str = "auto",
+    slice_budget: int | None = None,
 ) -> dict[str, Any]:
     if mode not in MODES or profile not in PROFILES:
         raise GraphError("Режим или профиль Task Delivery неизвестен.")
@@ -2282,6 +2510,35 @@ def initialize(
     root = root_path(root_raw)
     task_id = legacy.validate_task_id(task_id)
     graph = graph_contract()
+    if slice_budget is None:
+        effective_slice_budget = int(graph["limits"]["max_slices_per_run"])
+    else:
+        if implementation_strategy != "delegated-sequential":
+            raise GraphError("--slice-budget требует explicit delegated-sequential strategy.")
+        if (
+            isinstance(slice_budget, bool)
+            or not 1 <= slice_budget <= int(graph["limits"]["max_explicit_slices_per_run"])
+        ):
+            raise GraphError("--slice-budget вышел за bounded explicit slice limit.")
+        effective_slice_budget = slice_budget
+    profile_review_reserve = (
+        int(graph["profiles"][profile]["plan_reviewers"])
+        + int(graph["profiles"][profile]["result_reviewers"])
+        + (1 if profile == "critical" else 0)
+    )
+    repair_reserve = 0 if profile == "light" else int(
+        graph["limits"]["max_verification_repair_slices"]
+    )
+    profile_slice_ceiling = (
+        int(graph["limits"]["max_agents_per_run"])
+        - profile_review_reserve
+        - repair_reserve
+    )
+    if effective_slice_budget > profile_slice_ceiling:
+        raise GraphError(
+            f"--slice-budget {effective_slice_budget} не оставляет agent budget для "
+            f"{profile} review/repair; максимум {profile_slice_ceiling}."
+        )
     policy = graph["delegation_policy"]
     strategy_request = "root-only" if mode == "plan" else implementation_strategy
     strategy_preferred = (
@@ -2293,6 +2550,7 @@ def initialize(
     task_path = task_state_path(root, task_id)
     with legacy.mutation_guard(root, task_id, True):
         existing: dict[str, Any] | None = None
+        engineering_standard = project_engineering_standard(root)
         if task_path.is_file():
             existing = load_json(task_path)
             if existing.get("schema_version") == 2:
@@ -2312,12 +2570,22 @@ def initialize(
                 raise GraphError("Область реализации изменилась после plan review; нужен новый план.")
             if PROFILE_RANK[profile] < PROFILE_RANK[existing["profile"]]:
                 raise GraphError("Implement не может понизить уже выбранный профиль риска.")
+            if "engineering_standard" in existing:
+                if existing.get("engineering_standard") != engineering_standard:
+                    raise GraphError(
+                        "Canonical engineering standard изменился после plan review; нужен новый plan run."
+                    )
+            else:
+                engineering_standard = None
         plan_path = snapshots.safe_join_no_symlinks(root, plan)
         if not plan_path.exists():
             atomic_text(plan_path, plan_template(task_id, title.strip(), outcome.strip()))
         baseline = manifest(root, plan)
         run_number = len(existing.get("runs", [])) + 1 if existing else 1
-        raw_id = f"{task_id}:{mode}:{profile}:{strategy_request}:{graph['graph_version']}:{run_number}"
+        raw_id = (
+            f"{task_id}:{mode}:{profile}:{strategy_request}:{effective_slice_budget}:"
+            f"{graph['graph_version']}:{run_number}"
+        )
         run_id = hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:16]
         run_dir = snapshots.safe_join_no_symlinks(root, RUNS_REL / run_id)
         if run_dir.exists():
@@ -2350,12 +2618,14 @@ def initialize(
         task["baseline_manifest"] = baseline_rel
         task["baseline_repo_digest"] = snapshots.manifest_digest(baseline)
         task["current_run"] = run_id
+        task["engineering_standard"] = engineering_standard
         task.setdefault("runs", []).append(
             {
                 "run_id": run_id,
                 "mode": mode,
                 "profile": profile,
                 "implementation_strategy_request": strategy_request,
+                "slice_budget": effective_slice_budget,
                 "started_at": stamp,
             }
         )
@@ -2383,6 +2653,8 @@ def initialize(
             "implementation_strategy": "root-only",
             "implementation_strategy_request": strategy_request,
             "implementation_strategy_preferred": strategy_preferred,
+            "slice_budget": effective_slice_budget,
+            "engineering_standard": engineering_standard,
             "slices": {},
             "context": {
                 "latest_checkpoint_path": None,
@@ -2405,8 +2677,8 @@ def initialize(
 def ready(run_dir: Path) -> dict[str, Any]:
     state = load_run_state(run_dir)
     current = state["current"]
-    current_contract = state.get("graph_version") == graph_contract()["graph_version"]
-    rejected_work_sha = verification_repair_work_sha(state) if current_contract else None
+    staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
+    rejected_work_sha = verification_repair_work_sha(state) if staged_contract else None
     delegated_repair_sha = (
         rejected_work_sha
         if state.get("implementation_strategy") == "delegated-sequential"
@@ -2445,26 +2717,26 @@ def ready(run_dir: Path) -> dict[str, Any]:
             for item in records.values()
             if item.get("repair_for_work_sha256") == delegated_repair_sha
         ]
-        if current_contract and current == "work" and successful_unaccepted:
+        if staged_contract and current == "work" and successful_unaccepted:
             identifier = successful_unaccepted[0]
             actions = [
                 "Проверь exact diff и хотя бы один assigned slice check, затем выполни: "
                 f"{runner_command()} slice-accept --run {shlex.quote(str(run_dir))} "
                 f"--slice-id {shlex.quote(identifier)} --acceptance <acceptance.json>"
             ]
-        elif current_contract and current == "work" and unresolved:
+        elif staged_contract and current == "work" and unresolved:
             identifier = unresolved[-1]
             actions = [
                 "Создай bounded successor slice с "
                 f"supersedes={identifier}; если нужен новый technical file path, "
                 "снача выполни bounded scope-amend."
             ]
-        elif current_contract and current == "work" and delegated_repair_sha and not matching_repairs:
+        elif staged_contract and current == "work" and delegated_repair_sha and not matching_repairs:
             actions = [
                 "Создай ровно один verifier repair slice с "
                 f"repair_for_work_sha256={delegated_repair_sha} и снова проведи root acceptance."
             ]
-        elif current_contract and current == "work" and rejected_work_sha and not delegated_repair_sha:
+        elif staged_contract and current == "work" and rejected_work_sha and not delegated_repair_sha:
             actions.insert(0, "Исправь отклонённый root-owned candidate и снова запиши task.json для verify.")
         elif (
             current == "work"
@@ -2477,7 +2749,7 @@ def ready(run_dir: Path) -> dict[str, Any]:
         context = state.get("context", {})
         checkpoint_sha = context.get("latest_checkpoint_sha256") if isinstance(context, dict) else None
         if (
-            current_contract
+            staged_contract
             and current == "work"
             and checkpoint_sha
             and context.get("rehydrated_checkpoint_sha256") != checkpoint_sha
@@ -2502,9 +2774,16 @@ def ready(run_dir: Path) -> dict[str, Any]:
             "current": current,
             "artifact": str(run_dir / (WORK_NAME if current == "work" else VERIFY_NAME)) if current in {"work", "verify"} else None,
             "mcp_policy": graph_contract()["mcp_policy"] if current == "work" else None,
+            "execution_policy": (
+                graph_contract()["execution_policy"] if current == "work" else None
+            ),
             "implementation_strategy": state.get("implementation_strategy", "root-only"),
             "implementation_strategy_request": state.get("implementation_strategy_request", "auto"),
             "implementation_strategy_preferred": state.get("implementation_strategy_preferred", "root-only"),
+            "slice_budget": state.get(
+                "slice_budget", graph_contract()["limits"]["max_slices_per_run"]
+            ),
+            "engineering_standard": state.get("engineering_standard"),
             "context": state.get("context", {}),
             "scope_amendment_count": len(state.get("scope_amendments", [])),
             "verification_repair_work_sha256": delegated_repair_sha,
@@ -2652,7 +2931,7 @@ def retry(run_dir: Path, node: str) -> dict[str, Any]:
 def verify_slices_integrity(state: dict[str, Any], run_dir: Path) -> None:
     if state.get("graph_version") not in SLICE_CONTRACT_VERSIONS:
         return
-    current_contract = state.get("graph_version") == graph_contract()["graph_version"]
+    staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
     records = state.get("slices", {})
     if not isinstance(records, dict):
         raise GraphError("Run slice registry повреждён.")
@@ -2676,13 +2955,13 @@ def verify_slices_integrity(state: dict[str, Any], run_dir: Path) -> None:
                 raise GraphError(f"Worker receipt имеет неожиданный путь: {identifier}")
             if not receipt.is_file() or sha256_file(receipt) != record.get("receipt_sha256"):
                 raise GraphError(f"Worker receipt изменился: {identifier}")
-        if current_contract and record.get("status") == "accepted":
+        if staged_contract and record.get("status") == "accepted":
             acceptance = Path(str(record.get("acceptance_path", "")))
             if acceptance.resolve(strict=False) != (expected / SLICE_ACCEPTANCE_NAME).resolve(strict=False):
                 raise GraphError(f"Root acceptance имеет неожиданный путь: {identifier}")
             if not acceptance.is_file() or sha256_file(acceptance) != record.get("acceptance_sha256"):
                 raise GraphError(f"Root acceptance изменился: {identifier}")
-    if current_contract:
+    if staged_contract:
         validate_amendment_chain(state, run_dir)
         accepted_ids = {
             identifier for identifier, record in records.items() if record.get("status") == "accepted"
@@ -2762,10 +3041,16 @@ def complete(run_dir: Path) -> dict[str, Any]:
                     or recovered_integrity["implementation_digest"] != handoff_checkpoint.get("implementation_repo_digest")
                 ):
                     raise GraphError("Прерванное завершение имеет дрейф реализации или handoff; сначала восстанови точный receipt.")
-                try:
-                    legacy.mark_project_start_maintenance_required(root, task_path, persisted_task)
-                except legacy.TaskError as exc:
-                    raise GraphError(str(exc)) from exc
+                documentation_required = (
+                    handoff_checkpoint.get("documentation_impact_class", "semantic") != "none"
+                )
+                if documentation_required:
+                    try:
+                        legacy.mark_project_start_maintenance_required(
+                            root, task_path, persisted_task
+                        )
+                    except legacy.TaskError as exc:
+                        raise GraphError(str(exc)) from exc
                 legacy.obligation_marker(root, task_id).unlink(missing_ok=True)
                 state["nodes"]["complete"]["status"] = "completed"
                 state["status"] = "completed"
@@ -2774,7 +3059,11 @@ def complete(run_dir: Path) -> dict[str, Any]:
                     "completed",
                     "Прерванное завершение согласовано без изменения Task Delivery receipt.",
                     artifacts=[str(root / HANDOFFS_REL / task_id / "HANDOFF.md"), str(run_dir)],
-                    data={"phase": "completed", "task_id": task_id},
+                    data={
+                        "phase": "completed",
+                        "task_id": task_id,
+                        "documentation_maintenance_required": documentation_required,
+                    },
                 )
             integrity = verify_integrity(state)
             task = integrity["task"]
@@ -2830,7 +3119,15 @@ def complete(run_dir: Path) -> dict[str, Any]:
             work_artifact = load_json(Path(work["source"]))
             handoff_rel = (HANDOFFS_REL / task_id / "HANDOFF.md").as_posix()
             handoff = snapshots.safe_join_no_symlinks(root, handoff_rel)
-            proposal = str(work_artifact["documentation_impact"]).strip()
+            documentation_impact = work.get("documentation_impact")
+            if not isinstance(documentation_impact, dict):
+                documentation_impact = validate_documentation_impact(
+                    work_artifact.get("documentation_impact"),
+                    current_contract=state.get("graph_version")
+                    == graph_contract()["graph_version"],
+                )
+            documentation_required = documentation_impact["class"] != "none"
+            proposal = documentation_impact["summary"]
             risks = work_artifact["residual_risks"] or ["No known residual risks after the recorded checks."]
             handoff_text = (
                 f"# Task Delivery handoff: {task_id}\n\n"
@@ -2839,6 +3136,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
                 "Rollback documented: YES\n"
                 "Residual risks documented: YES\n"
                 "Canonical docs changed: NO\n"
+                f"Documentation impact: {documentation_impact['class']}\n"
                 f"Implementation SHA-256: {integrity['implementation_digest']}\n"
                 f"Proposed documentation maintenance: {proposal}\n\n"
                 f"## Summary\n\n{work_artifact['summary']}\n\n"
@@ -2850,16 +3148,28 @@ def complete(run_dir: Path) -> dict[str, Any]:
                 "path": handoff_rel,
                 "sha256": sha256_file(handoff),
                 "implementation_repo_digest": integrity["implementation_digest"],
+                "documentation_impact_class": documentation_impact["class"],
                 "recorded_at": now(),
             }
             marker = legacy.obligation_marker(root, task_id)
-            atomic_json(marker, {"schema_version": 1, "task_id": task_id, "handoff_path": handoff_rel, "handoff_sha256": sha256_file(handoff), "created_at": now()})
+            if documentation_required:
+                atomic_json(
+                    marker,
+                    {
+                        "schema_version": 1,
+                        "task_id": task_id,
+                        "handoff_path": handoff_rel,
+                        "handoff_sha256": sha256_file(handoff),
+                        "created_at": now(),
+                    },
+                )
             task["phase"] = "completed"
             save_task(task_path, task)
-            try:
-                legacy.mark_project_start_maintenance_required(root, task_path, task)
-            except legacy.TaskError as exc:
-                raise GraphError(str(exc)) from exc
+            if documentation_required:
+                try:
+                    legacy.mark_project_start_maintenance_required(root, task_path, task)
+                except legacy.TaskError as exc:
+                    raise GraphError(str(exc)) from exc
             marker.unlink(missing_ok=True)
             state["nodes"]["complete"]["status"] = "completed"
             state["status"] = "completed"
@@ -2868,7 +3178,11 @@ def complete(run_dir: Path) -> dict[str, Any]:
         "completed",
         "Реализация, тесты и проверка завершены; handoff создан автоматически.",
         artifacts=[str(root / HANDOFFS_REL / task_id / "HANDOFF.md"), str(run_dir)],
-        data={"phase": "completed", "task_id": task_id},
+        data={
+            "phase": "completed",
+            "task_id": task_id,
+            "documentation_maintenance_required": documentation_required,
+        },
     )
 
 
@@ -2893,9 +3207,13 @@ def status(run_dir: Path) -> dict[str, Any]:
             "current": state["current"],
             "status": state["status"],
             "verification_repairs": state["verification_repairs"],
+            "execution_policy": graph_contract()["execution_policy"],
             "implementation_strategy": state.get("implementation_strategy", "root-only"),
             "implementation_strategy_request": state.get("implementation_strategy_request", "auto"),
             "implementation_strategy_preferred": state.get("implementation_strategy_preferred", "root-only"),
+            "slice_budget": state.get(
+                "slice_budget", graph_contract()["limits"]["max_slices_per_run"]
+            ),
             "context": state.get("context", {}),
             "scope_amendment_count": len(state.get("scope_amendments", [])),
             "verification_repair_work_sha256": repair_work_sha,
@@ -2927,6 +3245,7 @@ def parser() -> argparse.ArgumentParser:
         choices=sorted(IMPLEMENTATION_STRATEGY_REQUESTS),
         default="auto",
     )
+    init.add_argument("--slice-budget", type=int)
     ready_parser = sub.add_parser("ready")
     ready_parser.add_argument("--run", required=True)
     slice_create = sub.add_parser("slice-create")
@@ -2975,6 +3294,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.plan,
                 args.profile,
                 args.implementation_strategy,
+                args.slice_budget,
             )
         elif args.command == "ready":
             payload = ready(run_path(args.run))

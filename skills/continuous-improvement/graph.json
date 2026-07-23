@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "continuous-improvement",
-  "graph_version": "1.0.0",
+  "graph_version": "1.1.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
@@ -10,12 +10,48 @@
     "max_changed_files": 8,
     "max_parallel_explorers": 1
   },
+  "work_policy": {
+    "schema_version": 1,
+    "fast_path": "root-only",
+    "capability_discovery": "need-based",
+    "agent_admission": "independent-work-only",
+    "review_admission": "risk-or-uncertainty-only",
+    "progress_updates": "state-change-only",
+    "documentation_followup": "impact-gated",
+    "explicit_user_override": "bounded",
+    "budgets": {
+      "max_agent_starts": 2,
+      "max_review_starts": 1,
+      "max_repair_cycles": 1,
+      "max_no_new_evidence_iterations": 2,
+      "max_artifacts_per_work_unit": 3
+    },
+    "loop_guards": {
+      "duplicate_agent_scope": "forbidden",
+      "same_scope_retry": "new-evidence-required",
+      "repair_start": "first-false-assumption-required",
+      "no_new_evidence": "stop-at-budget"
+    }
+  },
+  "execution_policy": {
+    "schema_version": 1,
+    "default_tier": "tracked",
+    "tiers": {
+      "tracked": {"controller": true, "verification": "conditional"},
+      "verified": {"controller": true, "verification": "required"}
+    },
+    "admission": {
+      "controller": "resumability-or-durable-evidence",
+      "verification": "risk-or-uncertainty"
+    }
+  },
   "optional_agents": ["explorer", "improvement_verifier"],
   "mcp_policy": {
-    "discovery": "required",
+    "discovery": "when-relevant",
     "relevant_use": "required",
     "receipt_prefix": "mcp:",
     "fallback_prefix": "mcp:fallback:",
+    "not_applicable_prefix": "mcp:not-applicable:",
     "selection_order": [
       "provider-specific-mcp",
       "context7-for-library-docs",

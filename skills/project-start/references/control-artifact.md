@@ -12,8 +12,9 @@
   "classification": "bootstrap-ready",
   "capabilities": [
     "rg",
-    "mcp:context7",
+    "mcp:not-applicable:local-repository-only",
     "project-start:skill-contract-fallback",
+    "coding-standards",
     "domain-modeling",
     "codebase-design"
   ],
@@ -25,6 +26,7 @@
     "docs/agents/domain.md",
     "docs/agents/issue-tracker.md",
     "docs/project/CODEBASE.md",
+    "docs/project/ENGINEERING.md",
     "docs/project/FOUNDATION.md",
     "docs/project/PLAN.md",
     "docs/project/PROJECT.md",
@@ -38,6 +40,7 @@
     "docs/agents/domain.md",
     "docs/agents/issue-tracker.md",
     "docs/project/CODEBASE.md",
+    "docs/project/ENGINEERING.md",
     "docs/project/FOUNDATION.md",
     "docs/project/PLAN.md",
     "docs/project/PROJECT.md",
@@ -49,6 +52,7 @@
     "documentation_map": "docs/README.md",
     "domain_context": "CONTEXT.md",
     "foundation": "docs/project/FOUNDATION.md",
+    "engineering_standard": "docs/project/ENGINEERING.md",
     "codebase": "docs/project/CODEBASE.md",
     "quality": "docs/project/QUALITY.md",
     "plan": "docs/project/PLAN.md",
@@ -64,7 +68,19 @@
 
 Maintenance использует `classification: no-change|factual|semantic` и сохраняет тот же полный `coverage`; пустой mapping допустим только в decision-квитанции до правок. Для bootstrap дельта считается от `init`. Для maintenance `changed_docs` и `created_docs` включают дрейф канонических документов и `AGENTS.md` от последнего verified operational snapshot, а также документационные правки текущего run. Обычный внешний `CHANGELOG.md` или README не становится каноническим только из-за существования. Первый v3-проход над legacy state без точного operational snapshot всегда требует independent verify. Массивы должны точно совпасть с этой дельтой, а все затронутые документы входить в `canonical_docs`.
 
-`agents` содержит только квитанции `explorer` или `explorer:<id>`, максимум две. `capabilities` перечисляет реально использованные навыки и инструменты, а не весь доступный каталог. Оно обязано содержать `mcp:<server>` после успешного вызова либо один `mcp:fallback:<reason>` после проверки доступности; успешный receipt и fallback вместе недопустимы. Bootstrap обязан включать `domain-modeling`, `codebase-design` и ровно применимый provider skill contract: доступный `setup-matt-pocock-skills` либо `project-start:skill-contract-fallback`. Maintenance требует provider только при изменении `AGENTS.md`, документационной карты или `docs/agents/`. `evidence` содержит существующие пути внутри репозитория.
+`agents` содержит только квитанции `explorer` или `explorer:<id>`, максимум
+две. `capabilities` перечисляет реально использованные навыки и инструменты, а
+не весь доступный каталог. Оно содержит ровно один MCP-статус:
+`mcp:<server>` после успешного относящегося вызова,
+`mcp:fallback:<reason>` после сбоя релевантного MCP либо
+`mcp:not-applicable:<reason>` для локального прохода. Bootstrap обязан включать
+`domain-modeling`, `codebase-design`, ровно применимый provider skill contract
+(`setup-matt-pocock-skills` либо
+`project-start:skill-contract-fallback`) и provider engineering standard
+(`coding-standards` либо
+`project-start:engineering-standard-fallback`). Maintenance требует
+соответствующий provider только при изменении принадлежащего ему слоя.
+`evidence` содержит существующие пути внутри репозитория.
 
 Для запроса существенного решения в maintenance:
 
@@ -98,6 +114,7 @@ Bootstrap decision использует `classification: bootstrap-ready`, а д
     "docs/agents/domain.md",
     "docs/agents/issue-tracker.md",
     "docs/project/CODEBASE.md",
+    "docs/project/ENGINEERING.md",
     "docs/project/FOUNDATION.md",
     "docs/project/PLAN.md",
     "docs/project/PROJECT.md",

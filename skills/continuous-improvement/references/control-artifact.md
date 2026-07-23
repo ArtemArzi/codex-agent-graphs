@@ -12,7 +12,7 @@
   "focus": "User question or scan focus.",
   "disposition": "delivered",
   "confidence": "high",
-  "capabilities": ["rg", "project-test", "mcp:fallback:local-only"],
+  "capabilities": ["rg", "project-test", "mcp:not-applicable:local-signal-only"],
   "agents": [],
   "scan": {
     "sources_checked": ["failing tests", "recent changes"],
@@ -52,7 +52,11 @@
 - `issue-ready`: candidate evidence and an `issue` object with `title`, `body` and `reason` are required. No Task Delivery receipt or commit is allowed. Repository content must match baseline.
 - `delivered`: allowed only in `full`; candidate risk is `low`, protected domains are empty and source kind is allowlisted. A completed Task Delivery v3 run, exact handoff, tests, changed paths and one non-default-branch commit are required.
 
-Every receipt contains exactly one MCP capability: a successful `mcp:<server>` or an explicit `mcp:fallback:<reason>`. The verifier binds `work_sha256` and, for delivered work, the exact Task Delivery and commit identities.
+Every receipt contains exactly one MCP capability: `mcp:<server>` after
+relevant use, `mcp:fallback:<reason>` after a relevant server fails, or
+`mcp:not-applicable:<reason>` for a local-only signal. The verifier binds
+`work_sha256` and, for delivered work, the exact Task Delivery and commit
+identities.
 
 ## Verification receipt
 

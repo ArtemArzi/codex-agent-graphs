@@ -8,6 +8,8 @@
 - [Ownership boundary](#ownership-boundary)
 - [Artifacts and state](#artifacts-and-state)
 - [Agents and capabilities](#agents-and-capabilities)
+- [Work efficiency](#work-efficiency)
+- [Execution tiers](#execution-tiers)
 - [Modes and profiles](#modes-and-profiles)
 - [Compatibility](#compatibility)
 - [Lessons from the current graphs](#lessons-from-the-current-graphs)
@@ -76,6 +78,40 @@ The deterministic controller owns:
 
 Do not encode model reasoning as dozens of mandatory flags. Do not let model prose substitute for controller-verifiable evidence.
 
+## Work efficiency
+
+Every new or materially refactored graph declares the shared `work_policy`.
+It makes the root-only fast path, need-based capability discovery, independent
+agent admission, risk-based review, state-change-only progress, impact-gated
+documentation and bounded user overrides machine-checkable.
+
+Budgets bound agent starts, review starts, repair cycles, consecutive
+no-new-evidence iterations and logical receipts per work unit. Loop guards reject
+duplicate agent scopes, evidence-free retries and repairs that do not identify
+the first false assumption. See
+[efficiency-contract.md](efficiency-contract.md).
+
+The validator still reads released graphs without `work_policy` for compatibility,
+but `--require-work-policy` is the release gate for new or migrated graphs.
+
+## Execution tiers
+
+The skill is the interface; the controller is an admitted reliability layer.
+Declare `execution_policy` with the shared tiers:
+
+- `skill-only`: one root loop, no durable run and self-verification;
+- `tracked`: controller state, baseline/scope/evidence and conditional review;
+- `verified`: tracked execution plus required independent exact-candidate review.
+
+Use `skill-only` only when the work is bounded to one session, reversible, clear
+and does not need durable handoff. Admit `tracked` for resumability, multi-session
+work, durable artifacts, baseline/scope binding or an explicit user request.
+Admit `verified` for risk, uncertainty or an explicit independent-review request.
+
+Project Start-like workflows whose purpose is a durable canonical foundation may
+default to `tracked` and omit `skill-only`. Do not create an empty controller run
+for ordinary work and do not pretend a self-review is independent verification.
+
 ## Artifacts and state
 
 Each route defines one work artifact, one verification artifact and one completion artifact. The work artifact is a receipt, not a second plan or reasoning log.
@@ -113,11 +149,11 @@ Agent requirements:
 - no commits or external writes unless explicitly authorized;
 - no hard-coded model names in the skill or graph contract.
 
-Skills and MCP are capabilities inside `work`. Select only applicable skills, read their complete `SKILL.md`, call relevant MCP before generic fallbacks, and preserve receipts. Do not load every installed skill or create a capability-selection graph node.
+Skills and MCP are capabilities inside `work`. Select only applicable skills and read their complete `SKILL.md`. Discover and call relevant MCP before generic fallbacks when external, provider, library or live-system context matters; local-only work records `mcp:not-applicable:<reason>`. Preserve receipts without loading every installed skill or creating a capability-selection graph node.
 
 ## Modes and profiles
 
-Use modes when the same stable workflow has different terminal outcomes, such as plan-only, implement-only and full delivery. Use profiles when risk changes review depth or limits without changing the fundamental route.
+Use modes when the same stable workflow has different terminal outcomes, such as plan-only, implement-only and full delivery. Use profiles when risk changes review depth or limits without changing the fundamental route. Execution tiers decide whether the controller or verifier is admitted at all; modes and profiles do not automatically justify extra agents.
 
 Do not duplicate routes merely to restate identical nodes. Keep per-mode differences in artifacts, guards and conditional policies. Auto-routing should be explainable and explicit user commands should override heuristics where safe.
 

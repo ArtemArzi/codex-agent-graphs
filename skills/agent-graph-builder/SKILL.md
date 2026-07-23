@@ -25,7 +25,7 @@ Do not create one graph per task. Prefer a small stable family of graphs with mo
 ## Build the graph
 
 1. Inspect the target repository, nearest `AGENTS.md`, existing skills, controllers, tests and installer. Preserve dirty user work and active-run compatibility.
-2. Write the behavioral contract before controller code: trigger, modes, artifacts, evidence, stop decisions, verification conditions and completion truth.
+2. Write the behavioral contract before controller code: trigger, modes, artifacts, evidence, stop decisions, verification conditions, completion truth, adaptive `execution_policy` and the bounded `work_policy`.
 3. For a new skill, initialize the generic folder with `$skill-creator`, replace every generated TODO and generate the final `agents/openai.yaml`. Only then optionally run:
 
 ```bash
@@ -39,11 +39,13 @@ The scaffold refuses to overwrite existing graph or control-artifact files. It d
 
 4. Keep the default control topology `work → optional verify → complete`. Planning, research, capability selection, implementation and synthesis normally stay inside `work`; they are not graph nodes merely because they occur in sequence.
 5. Put judgment in the root model. Put path safety, state transitions, retry bounds, immutable receipts, SHA-256 binding, compatibility and completion checks in standard-library code.
-6. Make agents conditional capabilities, not mandatory stages. Root owns synthesis and final truth; subagents receive bounded packets and remain leaf workers. Never hard-code model names in the graph skill.
-7. Route installed skills and relevant MCP context inside `work`. Record actual capability receipts or an explicit checked fallback; never add a separate MCP node.
-8. Version `graph.json` and the durable state schema. Pin active runs to the graph identity and add an explicit compatibility or migration path before changing a released contract.
-9. Classify run material by [artifact-lifecycle.md](references/artifact-lifecycle.md). Canonical outputs remain project history; active state remains resumable; safely terminal raw state uses the shared runtime for verified compaction and explicit TTL pruning. Do not add a cleanup node or destructive hook.
-10. Read [graph-contract.md](references/graph-contract.md) while designing fields and [evaluation.md](references/evaluation.md) before claiming completion.
+6. Apply [efficiency-contract.md](references/efficiency-contract.md). Start root-only; admit an agent or reviewer only for a concrete independent evidence gap; stop duplicate scopes and no-new-evidence retries at their declared budgets. An explicit user override must remain finite.
+7. Declare `execution_policy`: `skill-only` does not initialize durable state, `tracked` uses the controller without mandatory review, and `verified` adds exact-candidate independent verification. A graph whose core purpose is durable lifecycle may expose only `tracked` and `verified`; do not invent a fake quick path.
+8. Make agents conditional capabilities, not mandatory stages. Root owns synthesis and final truth; subagents receive bounded packets and remain leaf workers. Never hard-code model names in the graph skill.
+9. Route applicable installed skills and relevant MCP context inside `work`. Discover MCP only when the task can benefit from external, provider, library or live-system context. Record an actual receipt, a checked fallback or `mcp:not-applicable:<reason>` for local-only work; never add a separate MCP node.
+10. Version `graph.json` and the durable state schema. Pin active runs to the graph identity and add an explicit compatibility or migration path before changing a released contract.
+11. Classify run material by [artifact-lifecycle.md](references/artifact-lifecycle.md). Canonical outputs remain project history; active state remains resumable; safely terminal raw state uses the shared runtime for verified compaction and explicit TTL pruning. Do not add a cleanup node or destructive hook.
+12. Read [graph-contract.md](references/graph-contract.md) while designing fields and [evaluation.md](references/evaluation.md) before claiming completion.
 
 ## Validate
 
@@ -51,7 +53,8 @@ Run both layers:
 
 ```bash
 python3 <skill-creator>/scripts/quick_validate.py <graph-skill>
-python3 scripts/graph_contract.py validate --skill-dir <graph-skill>
+python3 scripts/graph_contract.py validate \
+  --skill-dir <graph-skill> --require-work-policy
 ```
 
 Then run the graph's focused controller tests and the repository-wide gate. Forward-test a complex new graph from a fresh agent against a disposable fixture; provide the skill and task, not the intended answer.
@@ -66,6 +69,8 @@ Return:
 - route and mode summary;
 - deterministic versus model-owned responsibilities;
 - optional agents and capability routing;
+- fast path, admission rules, budgets and loop guards;
+- skill-only, tracked and verified routing plus the controller admission signal;
 - state, receipt and compatibility contract;
 - artifact retention, compaction and cleanup impact;
 - exact validation commands and results;

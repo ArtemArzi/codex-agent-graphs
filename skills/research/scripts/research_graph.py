@@ -27,6 +27,7 @@ WORK_ARTIFACT = "research.json"
 VERIFICATION_ARTIFACT = "verification.json"
 LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("2.1.0", "b3c872a1b1b673cc545a8c0ae16a687333d8d3aaa19ae2362861c61f0d6ef5a2"),
+    ("2.2.0", "41458f1adc556e6fcc87979af1e1d5fefeb8340f15bd49a153e8ee305ed620e6"),
 }
 
 
@@ -99,6 +100,8 @@ def graph_contract() -> dict[str, Any]:
         "terminal",
         "default_depth",
         "limits",
+        "work_policy",
+        "execution_policy",
         "optional_agents",
         "mcp_policy",
         "nodes",
@@ -118,13 +121,23 @@ def graph_contract() -> dict[str, Any]:
     mcp_policy = graph.get("mcp_policy")
     if (
         not isinstance(mcp_policy, dict)
-        or mcp_policy.get("discovery") != "required"
+        or mcp_policy.get("discovery") != "when-relevant"
         or mcp_policy.get("relevant_use") != "required"
         or mcp_policy.get("receipt_prefix") != "mcp:"
         or mcp_policy.get("fallback_prefix") != "mcp:fallback:"
+        or mcp_policy.get("not_applicable_prefix") != "mcp:not-applicable:"
         or not isinstance(mcp_policy.get("selection_order"), list)
     ):
-        raise GraphError("Research graph MCP-first policy is invalid")
+        raise GraphError("Research graph conditional MCP policy is invalid")
+    if graph.get("work_policy", {}).get("fast_path") != "root-only":
+        raise GraphError("Research graph fast path must remain root-only")
+    execution = graph.get("execution_policy", {})
+    if (
+        execution.get("default_tier") != "skill-only"
+        or set(execution.get("tiers", {}))
+        != {"skill-only", "tracked", "verified"}
+    ):
+        raise GraphError("Research graph execution tiers are invalid")
     for profile in ("fast", "deep"):
         if profile not in graph["limits"]:
             raise GraphError(f"Research graph is missing {profile} limits")
@@ -385,6 +398,7 @@ def ready_node(run_dir: Path) -> dict[str, Any]:
                     profile: graph["limits"][profile] for profile in ("fast", "deep")
                 },
                 "mcp_policy": graph["mcp_policy"],
+                "execution_policy": graph["execution_policy"],
                 "allowed_outcomes": ["succeeded", "verify", "failed"],
             }
         )
@@ -569,12 +583,23 @@ def validate_mcp_capabilities(capabilities: list[Any]) -> list[str]:
     policy = graph_contract()["mcp_policy"]
     prefix = policy["receipt_prefix"]
     fallback_prefix = policy["fallback_prefix"]
+    not_applicable_prefix = policy["not_applicable_prefix"]
     receipts = [item for item in capabilities if isinstance(item, str) and item.startswith(prefix)]
     if not receipts:
-        return ["capabilities must record mcp:<server> or mcp:fallback:<reason>"]
+        return [
+            "capabilities must record mcp:<server>, mcp:fallback:<reason>, "
+            "or mcp:not-applicable:<reason>"
+        ]
     used: list[str] = []
     fallbacks: list[str] = []
+    not_applicable: list[str] = []
     for receipt in receipts:
+        if receipt.startswith(not_applicable_prefix):
+            reason = receipt[len(not_applicable_prefix) :]
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,}", reason):
+                return ["MCP not-applicable requires a substantive machine-readable reason"]
+            not_applicable.append(receipt)
+            continue
         if receipt.startswith(fallback_prefix):
             reason = receipt[len(fallback_prefix) :]
             if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{7,}", reason):
@@ -588,8 +613,8 @@ def validate_mcp_capabilities(capabilities: list[Any]) -> list[str]:
         ):
             return [f"Invalid MCP server receipt: {receipt}"]
         used.append(receipt)
-    if used and fallbacks:
-        return ["Do not record MCP fallback together with a successful MCP server receipt"]
+    if sum(bool(group) for group in (used, fallbacks, not_applicable)) != 1:
+        return ["Record exactly one MCP receipt type: used, fallback, or not-applicable"]
     return []
 
 
