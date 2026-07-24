@@ -1,11 +1,14 @@
 # Codex Agent Graphs
 
+[English](README.md) | [Русский](README.ru.md)
+
 > Turn recurring Codex work into resumable, bounded, evidence-backed workflows — without replacing Codex with another orchestrator.
 
-**Start a project. Research a hard question. Deliver a software task.** Codex
-Agent Graphs packages those workflows as native Codex skills. Small
-standard-library Python controllers are admitted only when work needs durable
-state, evidence binding, resumability, or independent verification.
+**Start a project. Research a hard question. Deliver a software task. Improve a
+repository.** Codex Agent Graphs packages those workflows as native Codex
+skills. Small standard-library Python controllers are admitted only when work
+needs durable state, evidence binding, resumability, or independent
+verification.
 
 - **Native to Codex:** skills, custom agents, `AGENTS.md`, MCP, and the root agent you already use.
 - **Model-first:** Codex owns judgment, planning, research, implementation, and synthesis.
@@ -16,6 +19,24 @@ state, evidence binding, resumability, or independent verification.
 - **Portable:** one installer keeps WSL CLI and Codex Desktop copies in sync.
 
 This is an independent community project, not an official OpenAI repository.
+
+## What is included today
+
+- **Adaptive execution tiers:** use a direct model-first loop for ordinary work,
+  add durable tracking for long or delegated tasks, and admit independent
+  verification only when the risk justifies it.
+- **Context-safe Task Delivery:** persistent Markdown plans, bounded slice
+  packets, worker receipts, root-owned diff and test verification, and compact
+  checkpoints for work that crosses context windows.
+- **Project foundation and maintenance:** canonical project maps, stack-specific
+  engineering guidance, root and nested `AGENTS.md`, and focused documentation
+  synchronization after implementation.
+- **Autonomous bounded improvement:** inspect one evidence-backed candidate,
+  return an honest no-op or issue-ready result, or hand accepted implementation
+  to Task Delivery.
+- **Shared artifact lifecycle:** preserve canonical outputs, compact terminal
+  run state into verified archives and receipts, and prune only through an
+  explicit dry-run-first retention policy.
 
 ## Why this exists
 
@@ -106,6 +127,8 @@ $project-start prepare this existing repository for reliable agent development
 $research compare the current approaches to local-first agent memory and give me a cited recommendation
 
 $task-delivery add rate limiting to this API and prove the behavior with tests
+
+$continuous-improvement inspect this repository and fix one proven low-risk issue
 
 $agent-graph-builder turn our release checklist into a resumable graph-backed skill
 ```
@@ -232,7 +255,10 @@ The repository gate uses only the Python standard library:
 python3 scripts/check_all.py
 ```
 
-It compiles controllers, validates TOML and skill structure, checks every operational graph against the shared contract, and runs the focused test suites for installation, Project Start, Research, Task Delivery, and Agent Graph Builder.
+It compiles controllers, validates TOML and skill structure, checks every
+operational graph against the shared contract, and runs focused test suites for
+installation, the shared artifact runtime, every operational graph, and Agent
+Graph Builder.
 
 For a release or local modification, run the complete gate:
 
