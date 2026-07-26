@@ -1,0 +1,24 @@
+{
+  "name": "codex-agent-graphs",
+  "owner": {
+    "name": "ArtemArzi"
+  },
+  "metadata": {
+    "description": "Marketplace for the codex-agent-graphs dual-harness workflow suite"
+  },
+  "plugins": [
+    {
+      "name": "cag",
+      "source": "./",
+      "description": "Agent-graph workflow suite (project-start, task-delivery, research, continuous-improvement, development-recovery, agent-graph-builder) shared byte-for-byte with the Codex CLI install",
+      "version": "0.1.0",
+      "author": {
+        "name": "ArtemArzi"
+      },
+      "repository": "https://github.com/ArtemArzi/codex-agent-graphs",
+      "license": "MIT",
+      "category": "workflow",
+      "strict": false
+    }
+  ]
+}
