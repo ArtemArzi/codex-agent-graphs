@@ -61,8 +61,10 @@ It leaves the raw run intact. Cleanup remains a separate explicit operation.
 ## Commands
 
 The installer places the shared standard-library runtime at
-`<CODEX_HOME>/agent-graph-runtime/artifact_lifecycle.py`. In the source
-repository the same relative directory exists at the repository root.
+`<HARNESS_HOME>/agent-graph-runtime/artifact_lifecycle.py` (`~/.codex` under
+the Codex installer, `${CLAUDE_PLUGIN_ROOT}` under the Claude Code plugin).
+In the source repository the same relative directory exists at the
+repository root.
 
 ```bash
 python3 <artifact-lifecycle.py> inventory --root <project>

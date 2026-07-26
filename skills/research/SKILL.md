@@ -5,6 +5,8 @@ description: Run fast, adaptive, evidence-backed research with native Codex tool
 
 # Research
 
+Host invocation: `$research` in Codex, `/cag:research` in Claude Code.
+
 Use one native Codex research loop. Add the graph only when durable state or
 independent verification closes a real need. Do not turn planning, searching,
 evidence capture, reconciliation, or drafting into separate graph nodes.
@@ -123,7 +125,9 @@ The deterministic gate checks receipt and report hashes, the small control artif
 
 After successful completion, preserve the requested report at its canonical
 output path and compact only the terminal run through
-`<CODEX_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root
-<workspace> --run <run-directory>`. Never compact a running or blocked run.
+`<HARNESS_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root
+<workspace> --run <run-directory>` (harness home: `~/.codex` under Codex,
+`${CLAUDE_PLUGIN_ROOT}` under the Claude Code plugin). Never compact a
+running or blocked run.
 Artifact pruning remains a separate dry-run-first command and is not a graph
 node or hook.

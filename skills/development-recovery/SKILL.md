@@ -5,6 +5,8 @@ description: Recover implementation work when code, tests, scope, or observed be
 
 # Development Recovery
 
+Host invocation: `$development-recovery` in Codex, `/cag:development-recovery` in Claude Code.
+
 Treat recovery as a conditional development control, not as a graph or a mandatory stage. Keep the current root model as the judgment owner. Do not add agents or ceremony unless evidence localization or independent verification genuinely needs them.
 
 ## Establish the divergence
