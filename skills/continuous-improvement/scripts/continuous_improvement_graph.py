@@ -194,15 +194,39 @@ def git_dirty(root: Path) -> bool:
     return any(not entry[3:].startswith((".agent-graphs/", ".codex/", ".project-start/")) for entry in entries)
 
 
+def _pid_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except (PermissionError, OSError):
+        return True
+
+
 @contextlib.contextmanager
-def state_lock(run_dir: Path) -> Iterator[None]:
+def state_lock(run_dir: Path, wait_seconds: float = 5.0, stale_seconds: int = 120) -> Iterator[None]:
     lock = run_dir / LOCK_NAME
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + wait_seconds
     while True:
         try:
             descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             break
         except FileExistsError:
+            try:
+                raw = lock.read_text(encoding="utf-8")
+                match = re.search(r"pid=(\d+)", raw)
+                pid = int(match.group(1)) if match else -1
+                age = time.time() - lock.stat().st_mtime
+            except (FileNotFoundError, OSError, ValueError):
+                continue
+            # Без взятия протухшего лока мёртвого процесса SIGKILL владельца
+            # навсегда блокировал бы все будущие раны этого run-dir.
+            if age > stale_seconds and not _pid_is_alive(pid):
+                lock.unlink(missing_ok=True)
+                continue
             if time.monotonic() >= deadline:
                 raise GraphError(f"Run is busy: {run_dir}")
             time.sleep(0.05)

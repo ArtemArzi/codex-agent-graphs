@@ -201,6 +201,18 @@ def run_path(value: str | Path) -> Path:
     return path
 
 
+def _pid_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except (PermissionError, OSError):
+        return True
+
+
 @contextlib.contextmanager
 def state_lock(
     run_dir: Path, stale_after_seconds: int = 120, wait_seconds: float = 5.0
@@ -213,10 +225,15 @@ def state_lock(
             break
         except FileExistsError:
             try:
+                raw = lock_path.read_text(encoding="utf-8")
+                match = re.search(r"pid=(\d+)", raw)
+                pid = int(match.group(1)) if match else -1
                 age = time.time() - lock_path.stat().st_mtime
-            except FileNotFoundError:
+            except (FileNotFoundError, OSError, ValueError):
                 continue
-            if age > stale_after_seconds:
+            # Возраст сам по себе не даёт права забирать лок: владелец может
+            # быть жив (долгий узел). Забираем только протухший лок мёртвого PID.
+            if age > stale_after_seconds and not _pid_is_alive(pid):
                 lock_path.unlink(missing_ok=True)
                 continue
             if time.monotonic() >= deadline:

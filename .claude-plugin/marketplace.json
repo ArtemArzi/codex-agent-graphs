@@ -11,7 +11,7 @@
       "name": "cag",
       "source": "./",
       "description": "Agent-graph workflow suite (project-start, task-delivery, research, continuous-improvement, development-recovery, agent-graph-builder) shared byte-for-byte with the Codex CLI install",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "ArtemArzi"
       },
