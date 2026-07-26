@@ -261,6 +261,7 @@ def main() -> int:
         for skill in (
             "agent-graph-builder",
             "continuous-improvement",
+            "dev-policies",
             "development-recovery",
             "project-start",
             "research",

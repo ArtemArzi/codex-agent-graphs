@@ -99,6 +99,43 @@ python3 scripts/install.py install --wsl
 python3 scripts/install.py verify --wsl
 ```
 
+### Claude Code (plugin install)
+
+The same repository is a native Claude Code plugin — one shared source tree,
+nothing generated at install time, nothing written outside the plugin cache:
+
+```bash
+claude plugin marketplace add ArtemArzi/codex-agent-graphs
+# then inside a session:
+#   /plugin install cag@codex-agent-graphs
+#   /reload-plugins
+# smoke test: /cag:research on a scratch repository
+```
+
+Skills arrive as `/cag:project-start`, `/cag:task-delivery`, `/cag:research`,
+`/cag:continuous-improvement`, `/cag:development-recovery`,
+`/cag:agent-graph-builder`, `/cag:dev-policies`. Agent roles arrive as
+`cag:`-namespaced subagents generated from the canonical `agents/*.toml`
+(`scripts/claude_agents_sync.py`; `check_all.py` fails if the projection ever
+drifts). Uninstall with `/plugin uninstall cag` plus
+`claude plugin marketplace remove codex-agent-graphs` — no other trace remains.
+
+**Honest parity notes.**
+
+- Codex enforces reviewer read-only mode at the OS sandbox level. Claude Code
+  reviewers get `disallowedTools: Write, Edit, NotebookEdit` and an explicit
+  tool allowlist — a reviewer keeping Bash can technically still write.
+  Hash-linked receipts in the run state remain the post-hoc control; treat the
+  verified tier accordingly.
+- `web_search = disabled` maps to omitting WebSearch/WebFetch — a tool-level
+  block, not a network-level one.
+- **Lockstep rule:** the two hosts update through independent channels
+  (`install.py` vs the plugin marketplace). After changing skills or graphs,
+  refresh both installs before resuming a shared run; version skew fails loudly
+  (`state.json` pins the graph version and hash) and corrupts nothing.
+- **One harness per run directory at a time.** Shared state uses a lock file
+  with liveness detection; a concurrent second harness fails loudly.
+
 If you use Codex in WSL and Codex Desktop on Windows, install and verify both copies together:
 
 ```bash
@@ -295,7 +332,8 @@ Start with [`AGENTS.md`](AGENTS.md) for repository invariants, then read the rel
 
 - Installation is built and tested for WSL CLI plus Codex Desktop homes; other host layouts may need an explicit path or installer adaptation.
 - Companion skills named above are not vendored here.
-- No plugin or marketplace manifest is included yet.
+- A Claude Code plugin/marketplace manifest is included (`.claude-plugin/`);
+  Codex installation remains `scripts/install.py` and ignores it entirely.
 - This repository currently has no declared open-source license. Public visibility lets you inspect and evaluate the work, but it is not an open-source grant.
 
 Issues and focused pull requests are welcome, especially when they include a reproducible workflow failure, a controller test, or a concrete portability improvement.
