@@ -423,6 +423,28 @@ def resolve_receipt(root: Path, raw: str | None, trigger: str) -> dict[str, str]
     return validate_task_delivery_receipt(root, receipt) if trigger == "task-delivery" else receipt
 
 
+def claude_host_skill_roots(explicit_given: bool) -> list[Path]:
+    """Дополнительные корни навыков для запуска под Claude Code.
+
+    Добавляются только когда (а) явного skills-root не передано и (б) процесс
+    запущен из Claude Code (маркеры CLAUDECODE / CLAUDE_PLUGIN_ROOT) либо
+    ~/.codex отсутствует вовсе. Приоритет существующих кандидатов не меняется:
+    добавка идёт строго в хвост списка.
+    """
+    if explicit_given:
+        return []
+    claude_marker = os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if not claude_marker and (Path.home() / ".codex").is_dir():
+        return []
+    roots: list[Path] = []
+    for ancestor in Path(__file__).resolve().parents:
+        if ancestor.name == "skills":
+            roots.append(ancestor)
+            break
+    roots.append(Path.home() / ".claude" / "skills")
+    return roots
+
+
 def skill_roots(explicit: str | None = None) -> list[Path]:
     roots: list[Path] = []
     if explicit:
@@ -434,6 +456,7 @@ def skill_roots(explicit: str | None = None) -> list[Path]:
     desktop = Path("/mnt/c/Users")
     if desktop.is_dir():
         roots.extend(desktop.glob("*/.codex/skills"))
+    roots.extend(claude_host_skill_roots(explicit is not None))
     unique: list[Path] = []
     for root in roots:
         resolved = root.resolve()

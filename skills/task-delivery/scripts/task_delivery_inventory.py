@@ -101,12 +101,36 @@ def _serializable(result: dict[str, Any]) -> dict[str, Any]:
     return {key: sorted(value) if isinstance(value, set) else value for key, value in result.items()}
 
 
+def _claude_host_homes(explicit_given: bool) -> list[Path]:
+    """Дополнительные дома харнеса для запуска под Claude Code.
+
+    Добавляются только когда (а) явных --codex-home не передано и (б) процесс
+    запущен из Claude Code (маркеры CLAUDECODE / CLAUDE_PLUGIN_ROOT) либо
+    ~/.codex отсутствует вовсе. Безусловное добавление подмешивало бы
+    поверхности ~/.claude в инвентарь Codex-ранов на машине с двумя CLI.
+    """
+    if explicit_given:
+        return []
+    claude_marker = os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if not claude_marker and (Path.home() / ".codex").is_dir():
+        return []
+    homes: list[Path] = []
+    for ancestor in Path(__file__).resolve().parents:
+        if ancestor.name == "skills":
+            homes.append(ancestor.parent)
+            break
+    homes.append(Path.home() / ".claude")
+    return homes
+
+
 def codex_homes(explicit: Iterable[str]) -> list[Path]:
+    explicit_paths = [Path(raw).expanduser() for raw in explicit]
     candidates: list[Path] = []
     if os.environ.get("CODEX_HOME"):
         candidates.append(Path(os.environ["CODEX_HOME"]))
     candidates.append(Path.home() / ".codex")
-    candidates.extend(Path(raw).expanduser() for raw in explicit)
+    candidates.extend(explicit_paths)
+    candidates.extend(_claude_host_homes(bool(explicit_paths)))
     unique: list[Path] = []
     seen: set[str] = set()
     for candidate in candidates:
