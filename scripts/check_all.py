@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import py_compile
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -275,6 +276,20 @@ def main() -> int:
     run([sys.executable, "-m", "unittest", "skills/project-start/scripts/test_project_graph.py", "-v"])
     run([sys.executable, "skills/task-delivery/scripts/test_task_delivery.py"])
     run([sys.executable, "-m", "unittest", "skills/task-delivery/scripts/test_task_graph.py", "-v"])
+    # Claude-слой: проекция agents/*.toml -> claude/agents/*.md обязана быть в синхроне.
+    run([sys.executable, "scripts/claude_agents_sync.py", "--check"])
+    # Advisory-проба: не роняет гейт — иначе Codex-обслуживание репо зависело бы
+    # от поведения установленного Claude CLI между релизами.
+    claude_cli = shutil.which("claude")
+    if claude_cli:
+        probe = subprocess.run(
+            [claude_cli, "plugin", "validate", "--strict", "."],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+        )
+        verdict = "passed" if probe.returncode == 0 else "FAILED (advisory, not blocking)"
+        print(f"claude plugin validate (advisory): {verdict}")
     print("All workflow checks passed.")
     return 0
 
