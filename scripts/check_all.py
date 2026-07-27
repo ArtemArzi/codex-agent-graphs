@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import py_compile
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -275,6 +276,7 @@ def main() -> int:
         for skill in (
             "agent-graph-builder",
             "continuous-improvement",
+            "dev-policies",
             "development-recovery",
             "project-start",
             "research",
@@ -290,6 +292,28 @@ def main() -> int:
     run([sys.executable, "-m", "unittest", "skills/project-start/scripts/test_project_graph.py", "-v"])
     run([sys.executable, "skills/task-delivery/scripts/test_task_delivery.py"])
     run([sys.executable, "-m", "unittest", "skills/task-delivery/scripts/test_task_graph.py", "-v"])
+    # Claude-слой: проекция agents/*.toml -> agents/*.md обязана быть в синхроне.
+    run([sys.executable, "scripts/claude_agents_sync.py", "--check"])
+    # Бан одностороннего плейсхолдера: формулировка обязана быть двуххостовой.
+    # Скоуп — ровно SKILL.md навыков и исправленный reference-файл (не шире).
+    placeholder_scope = sorted((ROOT / "skills").glob("*/SKILL.md")) + [
+        ROOT / "skills" / "agent-graph-builder" / "references" / "artifact-lifecycle.md"
+    ]
+    for doc in placeholder_scope:
+        if "<CODEX_HOME>" in doc.read_text(encoding="utf-8"):
+            raise RuntimeError(f"Односторонний плейсхолдер <CODEX_HOME> в {doc}; нужна двуххостовая формулировка")
+    # Advisory-проба: не роняет гейт — иначе Codex-обслуживание репо зависело бы
+    # от поведения установленного Claude CLI между релизами.
+    claude_cli = shutil.which("claude")
+    if claude_cli:
+        probe = subprocess.run(
+            [claude_cli, "plugin", "validate", "--strict", "."],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+        )
+        verdict = "passed" if probe.returncode == 0 else "FAILED (advisory, not blocking)"
+        print(f"claude plugin validate (advisory): {verdict}")
     print("All workflow checks passed.")
     return 0
 

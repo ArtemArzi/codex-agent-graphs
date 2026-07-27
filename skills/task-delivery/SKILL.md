@@ -6,6 +6,8 @@ description: >-
 
 # Task Delivery
 
+Вызов по хосту: `$task-delivery` в Codex, `/cag:task-delivery` в Claude Code.
+
 Доведи одну задачу до доказанного результата. Граф — это короткий контроль границ, а не пошаговый заменитель инженерного мышления.
 
 ## Project first, controller second
@@ -231,7 +233,7 @@ python3 scripts/task_graph.py retry --run <run-dir> --node <work|verify>
 
 `complete` повторно проверяет immutable receipts, digest плана, фактическую дельту и тестовую квитанцию. Для `plan` он сохраняет reviewed plan и останавливается. Для `implement/full` он автоматически создаёт совместимый `HANDOFF.md` и закрывает задачу. В `task.json.documentation_impact` укажи `{class: none|factual|semantic, summary: ...}`. Только `factual|semantic` атомарно открывают Project Start maintenance; `none` не создаёт лишнее обязательство.
 
-После успешного `implement/full complete` сохрани plan и handoff на их канонических путях и упакуй только terminal run через `<CODEX_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root <repo> --run <run-dir>`. `plan` со статусом `awaiting_implementation`, active, blocked и unresolved legacy state не упаковывай: runtime сам отклонит их. Pruning остаётся отдельной dry-run-first командой и никогда не запускается hook.
+После успешного `implement/full complete` сохрани plan и handoff на их канонических путях и упакуй только terminal run через `<HARNESS_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root <repo> --run <run-dir>` (дом харнеса: `~/.codex` под Codex, `${CLAUDE_PLUGIN_ROOT}` под плагином Claude Code). `plan` со статусом `awaiting_implementation`, active, blocked и unresolved legacy state не упаковывай: runtime сам отклонит их. Pruning остаётся отдельной dry-run-first командой и никогда не запускается hook.
 
 Глобальный hook не является источником истины этого протокола. Не меняй hooks для запуска Task Delivery: checkpoint создаёт и проверяет сам skill. После отдельного внедрения hook может только повторно вызвать `context-rehydrate` на `SessionStart(source=compact)`; изменение hook во время активных задач требует отдельной безопасной активации.
 

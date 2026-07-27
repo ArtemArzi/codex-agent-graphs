@@ -520,6 +520,28 @@ def reject_legacy_mutation_of_v3(state: dict[str, Any]) -> None:
         raise ValueError("Состоянием владеет Project Start v3; используй project_graph.py, а не legacy-команду.")
 
 
+def claude_host_skill_roots(explicit_given: bool) -> list[Path]:
+    """Дополнительные корни навыков для запуска под Claude Code.
+
+    Добавляются только когда (а) явного --skills-root не передано и (б) процесс
+    запущен из Claude Code (маркеры CLAUDECODE / CLAUDE_PLUGIN_ROOT) либо
+    ~/.codex отсутствует вовсе. Приоритет существующих кандидатов не меняется:
+    добавка идёт строго в хвост списка.
+    """
+    if explicit_given:
+        return []
+    claude_marker = os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if not claude_marker and (Path.home() / ".codex").is_dir():
+        return []
+    roots: list[Path] = []
+    for ancestor in Path(__file__).resolve().parents:
+        if ancestor.name == "skills":
+            roots.append(ancestor)
+            break
+    roots.append(Path.home() / ".claude" / "skills")
+    return roots
+
+
 def cmd_dependencies(args: argparse.Namespace) -> int:
     roots: list[Path] = []
     if args.skills_root:
@@ -528,6 +550,7 @@ def cmd_dependencies(args: argparse.Namespace) -> int:
     if codex_home:
         roots.append(Path(codex_home).expanduser() / "skills")
     roots.append(Path.home() / ".codex" / "skills")
+    roots.extend(claude_host_skill_roots(bool(args.skills_root)))
 
     unique_roots: list[Path] = []
     for item in roots:

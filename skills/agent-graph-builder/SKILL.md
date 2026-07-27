@@ -5,6 +5,8 @@ description: Create, refactor, or standardize Codex-native agent graph skills wi
 
 # Agent Graph Builder
 
+Host invocation: `$agent-graph-builder` in Codex, `/cag:agent-graph-builder` in Claude Code.
+
 Create a skill-backed control graph that constrains evidence and lifecycle while leaving semantic work to the model.
 
 ## Mandatory dependency
