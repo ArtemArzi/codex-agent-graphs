@@ -1540,6 +1540,9 @@ src/app.py
         self.assertEqual("complete", ready["data"]["current"])
         completed = graph.complete(run)
         self.assertEqual("completed", completed["status"])
+        self.assertEqual("completed", completed["data"]["task_status"])
+        run_state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("completed", run_state["task_status"])
         task = self.read(self.root / ".codex/task-delivery/TD-1/state.json")
         self.assertEqual("completed", task["phase"])
         handoff = self.root / ".agent-graphs/task-delivery-handoffs/TD-1/HANDOFF.md"
@@ -1604,6 +1607,9 @@ src/app.py
         graph.record(plan_run, "verify", "succeeded")
         result = graph.complete(plan_run)
         self.assertEqual("awaiting_implementation", result["data"]["phase"])
+        self.assertEqual("awaiting_implementation", result["data"]["task_status"])
+        plan_state = self.read(plan_run / graph.STATE_NAME)
+        self.assertEqual("awaiting_implementation", plan_state["task_status"])
 
         implement_run = self.initialize(mode="implement", profile="complex", plan="docs/tasks/TD-1/PLAN.md")
         self.write("src/app.py", "VALUE = 3\n")

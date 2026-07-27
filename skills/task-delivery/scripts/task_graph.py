@@ -3264,6 +3264,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
                 legacy.obligation_marker(root, task_id).unlink(missing_ok=True)
                 state["nodes"]["complete"]["status"] = "completed"
                 state["status"] = "completed"
+                state["task_status"] = "completed"
                 save_run(run_dir, state)
                 return result(
                     "completed",
@@ -3271,6 +3272,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
                     artifacts=[str(root / HANDOFFS_REL / task_id / "HANDOFF.md"), str(run_dir)],
                     data={
                         "phase": "completed",
+                        "task_status": "completed",
                         "task_id": task_id,
                         "documentation_maintenance_required": documentation_required,
                     },
@@ -3296,13 +3298,18 @@ def complete(run_dir: Path) -> dict[str, Any]:
                 save_task(task_path, task)
                 state["nodes"]["complete"]["status"] = "completed"
                 state["status"] = "completed"
+                state["task_status"] = "awaiting_implementation"
                 save_run(run_dir, state)
                 return result(
                     "completed",
                     "План проверен; реализация не запускалась.",
                     next_actions=[f"Запусти implement с task-id {task_id} и тем же --plan."],
                     artifacts=[str(root / state["plan_path"]), str(run_dir)],
-                    data={"phase": "awaiting_implementation", "task_id": task_id},
+                    data={
+                        "phase": "awaiting_implementation",
+                        "task_status": "awaiting_implementation",
+                        "task_id": task_id,
+                    },
                 )
             task["phase"] = "ready_to_complete"
             task["current_run"] = None
@@ -3383,6 +3390,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
             marker.unlink(missing_ok=True)
             state["nodes"]["complete"]["status"] = "completed"
             state["status"] = "completed"
+            state["task_status"] = "completed"
             save_run(run_dir, state)
     return result(
         "completed",
@@ -3390,6 +3398,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
         artifacts=[str(root / HANDOFFS_REL / task_id / "HANDOFF.md"), str(run_dir)],
         data={
             "phase": "completed",
+            "task_status": "completed",
             "task_id": task_id,
             "documentation_maintenance_required": documentation_required,
         },
