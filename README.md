@@ -239,6 +239,8 @@ and scope, implements against that plan, runs narrow and project-level checks,
 and creates a handoff backed by exact digests. Review depth scales with actual
 risk instead of the profile name alone.
 
+Controller health is separate from task health: project context and code come first, protocol errors get one bounded repair and then degrade control without blocking implementation. Tracked tasks can suspend into one compact checkpoint and resume alongside other unfinished work. Graph 3.7 also allows declared, tested root integration edits after accepted slices.
+
 Parallel write delegation is intentionally fail-closed until isolated worktrees can be proven.
 
 ### Agent Graph Builder

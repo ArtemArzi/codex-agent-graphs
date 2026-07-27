@@ -7,6 +7,21 @@ description: Recover implementation work when code, tests, scope, or observed be
 
 Treat recovery as a conditional development control, not as a graph or a mandatory stage. Keep the current root model as the judgment owner. Do not add agents or ceremony unless evidence localization or independent verification genuinely needs them.
 
+## Не триггерить recovery из-за controller
+
+Graph/controller protocol не является specification или implementation
+evidence. Digest, marker whitespace, receipt/schema mismatch, agent/reviewer
+budget, run partition, checkpoint format, unavailable optional reviewer и другая
+служебная несовместимость сами по себе не запускают Development Recovery и не
+считаются попыткой без нового evidence. Сделай одну bounded controller repair;
+затем degrade/disable control и продолжай обычную работу с кодом. Если
+пользователь отключил граф, не активируй его снова. If the user disabled the graph, keep it disabled for that task.
+
+Порог двух попыток относится только к повторным гипотезам о specification,
+implementation, tests или runtime behavior. Recovery начинается по semantic,
+security, data, external-state либо acceptance divergence, а не ради приведения
+служебного графа к зелёному состоянию.
+
 ## Establish the divergence
 
 1. Read the accepted specification, active plan, relevant repository instructions, current diff and recent Git history.

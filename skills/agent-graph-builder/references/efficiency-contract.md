@@ -3,6 +3,26 @@
 The graph is a control boundary around model judgment, not a checklist engine.
 Every new or materially refactored graph declares `work_policy` in `graph.json`.
 
+## Code-first control boundary
+
+- Project instructions, architecture, source code, tests and runtime evidence come
+  before controller artifacts. The graph controls boundaries and completion; it
+  is never the primary work product.
+- Separate domain/task state from controller health. A digest, marker, receipt,
+  schema, reviewer budget, run partition or checkpoint mismatch gets at most one
+  bounded repair. If it persists, mark control degraded and continue authorized
+  domain work. Degraded control may block a verified completion claim, not
+  implementation, tests or a skill-only handoff.
+- Interrupt the user only for missing authority, semantic contract ambiguity,
+  security/data/external-state risk or a destructive choice. Technical controller
+  compatibility is not a human decision.
+- Support independent unfinished tasks with a compact suspend checkpoint:
+  canonical input digest, current objective, changed paths, accepted evidence and
+  resume hint. Suspension and host compaction are lifecycle operations, not graph
+  nodes.
+- An explicit user instruction to disable a graph disables its controller for
+  that task. Do not reactivate it through recovery or another skill.
+
 ## Fast path
 
 - Start root-only. A skill, MCP call, subagent or reviewer must close a concrete

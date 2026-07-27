@@ -243,6 +243,22 @@ def validate_graph_skill(
         graph, required=require_work_policy
     )
 
+    control_plane = graph.get("control_plane_policy")
+    if control_plane is not None and (
+        control_plane.get("schema_version") != 1
+        or control_plane.get("task_priority") not in {"domain-first", "code-first"}
+        or control_plane.get("controller_role") != "checkpoint-and-completion-boundary"
+        or control_plane.get("protocol_failure") != "degrade-control-not-task"
+        or control_plane.get("max_protocol_repairs_before_degrade") != 1
+        or control_plane.get("human_interrupt")
+        not in {"authority-semantic-or-high-risk-only", "authority-or-high-risk-only"}
+        or control_plane.get("project_context_before_controller_detail") is not True
+        or control_plane.get("multiple_unfinished_tasks") != "independent-per-task"
+        or control_plane.get("verified_completion_requires_healthy_control") is not True
+        or len(control_plane) != 9
+    ):
+        raise ContractError("control_plane_policy must preserve the code-first shared contract.")
+
     mcp = graph.get("mcp_policy")
     if not isinstance(mcp, dict):
         raise ContractError("graph.json requires the shared conditional MCP policy.")

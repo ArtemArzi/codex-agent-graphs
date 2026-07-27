@@ -55,6 +55,21 @@ A user decision may pause `work`, but it does not need a permanent decision node
 
 Add a node only when it owns a distinct durable artifact, has independent transition/retry semantics, appears in most runs, and cannot remain a bounded operation inside `work`. Record the justification in the owning reference and tests.
 
+### Code-first and control-late
+
+The domain task and controller have separate health. Read project instructions,
+architecture, source, tests and runtime evidence before control receipts. Give a
+protocol mismatch one bounded repair; if it persists, degrade control and continue
+authorized work. Degraded control can refuse verified completion, but cannot turn
+a healthy implementation task into a user blocker. Only authority, semantic
+contract, security, data, external state or destructive choices may interrupt the
+user.
+
+Unfinished tasks are independent. A tracked graph may write one compact suspend
+checkpoint and later rehydrate from that checkpoint plus the repository. Suspend,
+resume, host compaction and task switching remain lifecycle operations inside
+`work`, never permanent nodes.
+
 ## Ownership boundary
 
 The model owns:

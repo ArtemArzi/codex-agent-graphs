@@ -82,6 +82,8 @@ class GraphContractTests(unittest.TestCase):
         self.assertEqual(["full"], result["routes"])
         self.assertEqual("current", result["work_policy"])
         self.assertEqual("current", result["execution_policy"])
+        graph = json.loads((skill / "graph.json").read_text(encoding="utf-8"))
+        self.assertEqual("domain-first", graph["control_plane_policy"]["task_priority"])
 
     def test_legacy_graph_is_readable_but_not_current(self) -> None:
         skill = self.base_skill()

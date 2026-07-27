@@ -525,6 +525,8 @@ Recorded in the Task Delivery receipt.
         self.assertEqual("slice-accept", contract["context_policy"]["checkpoint_after"])
         self.assertFalse(contract["context_policy"]["global_hook_required"])
         self.assertEqual("exact-union-by-check-id", contract["test_policy"]["deferred_final_checks"])
+        self.assertEqual("code-first", contract["control_plane_policy"]["task_priority"])
+        self.assertEqual("explicit-suspend", contract["context_policy"]["task_checkpoint_after"])
 
     def test_cli_exposes_slice_commands_without_new_graph_nodes(self) -> None:
         created = graph.parser().parse_args(
@@ -540,11 +542,17 @@ Recorded in the Task Delivery receipt.
         amended = graph.parser().parse_args(
             ["scope-amend", "--run", "/tmp/run", "--amendment", "/tmp/amendment.json"]
         )
+        suspended = graph.parser().parse_args(["suspend", "--run", "/tmp/run", "--reason", "switch task", "--next-objective", "resume code"])
+        resumed = graph.parser().parse_args(["resume", "--run", "/tmp/run"])
+        degraded = graph.parser().parse_args(["control-degrade", "--run", "/tmp/run", "--reason", "receipt mismatch"])
         self.assertEqual("slice-create", created.command)
         self.assertEqual("slice-record", recorded.command)
         self.assertEqual("slice-accept", accepted.command)
         self.assertEqual("context-rehydrate", rehydrated.command)
         self.assertEqual("scope-amend", amended.command)
+        self.assertEqual("suspend", suspended.command)
+        self.assertEqual("resume", resumed.command)
+        self.assertEqual("control-degrade", degraded.command)
         initialized = graph.parser().parse_args(
             [
                 "init",
@@ -582,19 +590,12 @@ Recorded in the Task Delivery receipt.
                 slice_budget=7,
             )
         critical = self.initialize(
-            task_id="TD-CRITICAL-FIVE",
+            task_id="TD-CRITICAL-SIX",
             profile="critical",
             implementation_strategy="delegated-sequential",
-            slice_budget=5,
+            slice_budget=6,
         )
-        self.assertEqual(5, self.read(critical / graph.STATE_NAME)["slice_budget"])
-        with self.assertRaisesRegex(graph.GraphError, "critical review; максимум 5"):
-            self.initialize(
-                task_id="TD-CRITICAL-SIX",
-                profile="critical",
-                implementation_strategy="delegated-sequential",
-                slice_budget=6,
-            )
+        self.assertEqual(6, self.read(critical / graph.STATE_NAME)["slice_budget"])
 
     def test_current_digest_ignores_start_marker_line_break_but_legacy_keeps_it(self) -> None:
         plan = self.write(
@@ -775,15 +776,15 @@ src/app.py
         ready = graph.record(run, "work", "verify")
         self.assertEqual("verify", ready["data"]["current"])
 
-    def test_complex_full_slice_rejects_self_review_before_worker(self) -> None:
+    def test_complex_full_slice_allows_self_review_before_worker(self) -> None:
         run = self.initialize(profile="complex")
         self.plan()
         draft = self.slice_draft(run)
         payload = self.read(draft)
         payload["plan_review"] = {"mode": "self", "receipt": "root:self-review"}
         draft.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        with self.assertRaisesRegex(graph.GraphError, "independent plan review"):
-            graph.register_slice(run, draft)
+        created = graph.register_slice(run, draft)
+        self.assertEqual("ready", created["status"])
 
     def test_implement_mode_can_delegate_after_exact_plan_reuse(self) -> None:
         plan_run = self.initialize(mode="plan", profile="standard")
@@ -1033,7 +1034,7 @@ src/app.py
                 implementation=implementation,
             ),
         )
-        with self.assertRaisesRegex(graph.GraphError, "root-accepted path provenance"):
+        with self.assertRaisesRegex(graph.GraphError, "accepted slice provenance"):
             graph.record(run, "work", "verify")
 
     def test_done_with_concerns_requires_root_resolution(self) -> None:
@@ -1610,7 +1611,7 @@ src/app.py
         self.write_work(implement_run, payload)
         graph.record(implement_run, "work", "verify")
 
-    def test_complex_implement_cannot_reuse_light_self_review(self) -> None:
+    def test_complex_implement_can_reuse_light_self_review(self) -> None:
         run = self.initialize(mode="plan", profile="light")
         self.plan()
         self.write_work(run, self.work_payload(run))
@@ -1619,8 +1620,8 @@ src/app.py
         implement = self.initialize(mode="implement", profile="complex", plan="docs/tasks/TD-1/PLAN.md")
         self.write("src/app.py", "VALUE = 3\n")
         self.write_work(implement, self.work_payload(implement, review_mode="reused"))
-        with self.assertRaisesRegex(graph.GraphError, "self-review"):
-            graph.record(implement, "work", "verify")
+        ready = graph.record(implement, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
 
     def test_implement_rejects_scope_drift_after_plan_review(self) -> None:
         run = self.initialize(mode="plan", profile="light")
@@ -1632,22 +1633,13 @@ src/app.py
         with self.assertRaisesRegex(graph.GraphError, "Область реализации изменилась"):
             self.initialize(mode="implement", profile="light", plan="docs/tasks/TD-1/PLAN.md")
 
-    def test_complex_full_requires_plan_reviewer_receipt(self) -> None:
+    def test_complex_full_defaults_to_self_review(self) -> None:
         run = self.initialize(profile="complex")
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
-        self.write_work(run, self.work_payload(run, review_mode="independent"))
-        with self.assertRaisesRegex(graph.GraphError, "requires a separate plan review|требует отдельный plan review"):
-            graph.record(run, "work", "verify")
-        self.write_work(
-            run,
-            self.work_payload(
-                run,
-                agents=[self.agent("task_plan_reviewer", "plan-review", "/root/plan-reviewer")],
-                review_mode="independent",
-            ),
-        )
-        graph.record(run, "work", "verify")
+        self.write_work(run, self.work_payload(run, review_mode="self"))
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
 
     def test_critical_full_requires_risk_reviewer(self) -> None:
         run = self.initialize(profile="critical")
@@ -1977,6 +1969,71 @@ src/app.py
         receipt = Path(self.read(run / graph.STATE_NAME)["slices"]["implementation-app"]["receipt_path"])
         receipt.write_text(receipt.read_text(encoding="utf-8") + "\n", encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "Worker receipt изменился"):
+            graph.complete(run)
+
+    def test_declared_root_integration_path_is_allowed(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src")
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        self.write("src/other.py", "OTHER = 2\n")
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py", "src/other.py"],
+            "strategy": "delegated-sequential",
+            "integration_paths": ["src/other.py"],
+            "slices": [self.accepted_slice(run)],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[self.worker_agent(run)],
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+
+    def test_suspend_and_resume_keep_task_and_control_state_separate(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        suspended = graph.suspend(
+            run,
+            "Switch to an unrelated urgent task.",
+            "Resume implementation from the current code checkpoint.",
+        )
+        self.assertEqual("suspended", suspended["status"])
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("suspended", state["task_status"])
+        self.assertEqual("healthy", state["control_status"])
+        self.assertTrue((run / graph.TASK_CHECKPOINT_NAME).is_file())
+        resumed = graph.resume(run)
+        self.assertEqual("running", resumed["status"])
+        self.assertEqual("active", resumed["data"]["task_status"])
+
+    def test_control_degradation_does_not_block_code_work(self) -> None:
+        run = self.initialize(profile="standard")
+        degraded = graph.degrade_control(run, "Controller receipt format is incompatible.")
+        self.assertEqual("degraded", degraded["status"])
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("running", state["status"])
+        self.assertEqual("active", state["task_status"])
+        self.assertEqual("degraded", state["control_status"])
+        ready = graph.ready(run)
+        self.assertEqual("running", ready["status"])
+        self.assertEqual("degraded", ready["data"]["control_status"])
+        self.plan()
+        created = graph.register_slice(run, self.slice_draft(run))
+        self.assertEqual("ready", created["status"])
+        state = self.read(run / graph.STATE_NAME)
+        state["verification_required"] = True
+        state["current"] = "complete"
+        (run / graph.STATE_NAME).write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "Verified completion requires healthy control"):
             graph.complete(run)
 
     def test_v2_task_id_is_not_silently_migrated(self) -> None:

@@ -8,6 +8,26 @@ description: >-
 
 Доведи одну задачу до доказанного результата. Граф — это короткий контроль границ, а не пошаговый заменитель инженерного мышления.
 
+## Project first, controller second
+
+Task Delivery controls boundaries; it does not replace engineering work. In every
+pass, read the nearest AGENTS.md, architecture map, engineering standard, plan,
+production path, and relevant tests before controller artifacts. Read controller
+detail only at a current boundary: resume, slice handoff, independent
+verification, or completion.
+
+A digest, marker, receipt, reviewer budget, run partition, or other protocol
+failure is not a task blocker and does not trigger Development Recovery. Make at
+most one bounded controller repair. If it produces no new evidence, run
+`control-degrade` and continue local implementation and tests. Degraded control
+may reject `verified completion`; it may not prevent reading files, changing
+code, running checks, or returning a skill-only handoff.
+
+Stop the task only for missing authority, actual data/security/external-state
+risk, ambiguous business behavior, or proven specification/code/runtime
+divergence. If the user explicitly disables Task Delivery, disable its controller
+for that task and do not reactivate it automatically.
+
 ## Сначала выбери уровень исполнения
 
 - `quick` (`skill-only`) — default для небольшой или средней локальной,
@@ -32,6 +52,30 @@ Tracked и verified используют один граф:
 `work → complete` или, только когда профиль либо фактический риск требует независимости, `work → verify → complete`.
 
 Внутри `work` корневой агент сам исследует кодовую базу, выбирает навыки, создаёт и проверяет план, реализует, запускает тесты и формирует один `task.json`. Не превращай эти действия в обязательные узлы графа.
+
+## Переключение между незавершёнными задачами
+
+Незавершённые задачи независимы. Перед явным переключением создай один компактный
+checkpoint, не review:
+
+```bash
+python3 scripts/task_graph.py suspend --run <run-dir> \
+  --reason "<почему переключаемся>" --next-objective "<с чего продолжить>"
+python3 scripts/task_graph.py resume --run <run-dir>
+```
+
+Checkpoint хранит plan digest, текущий узел, изменённые пути, accepted slices и
+следующую цель. При resume перечитай checkpoint, ближайшие проектные документы,
+реальный diff и decisive source files. Не пытайся восстановить рассуждения из
+истории чата и не требуй закрыть или отревьюить первую задачу перед началом
+другой.
+
+При служебной несовместимости после одной попытки:
+
+```bash
+python3 scripts/task_graph.py control-degrade --run <run-dir> \
+  --reason "<точная несовместимость controller>"
+```
 
 ## Адаптивность и настоящие блокеры
 
@@ -98,14 +142,13 @@ python3 scripts/task_graph.py init \
 
 - `light` — малая локальная обратимая правка, ясные критерии: самопроверка плана и результата, 0 независимых агентов.
 - `standard` — обычная продуктовая задача: self plan/result; reviewer только по фактическому risk signal.
-- `complex` — несколько модулей, новая граница или неоднозначный план: 1 проверка плана; result verifier только по фактическому risk signal.
-- `critical` — безопасность, данные, миграция, деньги, необратимость или широкий blast radius: проверка плана, проверка риска и итоговая проверка, всего 3 независимых запуска.
+- `complex` — несколько модулей, новая граница или неоднозначный plan: self-review по умолчанию; независимый reviewer только при реальном risk/uncertainty signal.
+- `critical` — безопасность, данные, миграция, деньги, необратимость или широкий blast radius: обязательны risk reviewer и итоговый verifier; plan reviewer подключается только когда сам план остаётся существенным источником неопределённости.
 
-`plan` в профилях `complex/critical` использует проверяющего плана как внешний
-узел `verify`; проверяющий риска нужен только для critical-реализации. В
-`standard/complex` профиль сам по себе не запускает result verifier. Низкая
-уверенность всегда поднимает результат в `verify`. Подробная матрица — в
-[profiles-and-agents.md](references/profiles-and-agents.md).
+`plan` не получает reviewer только из-за имени профиля. Независимый plan review
+нужен при неоднозначной архитектуре, слабом evidence, публичном контракте или
+явном запросе. Critical-реализация сохраняет risk reviewer и итоговый verifier.
+Подробная матрица — в [profiles-and-agents.md](references/profiles-and-agents.md).
 
 ## Один рабочий проход
 
@@ -118,7 +161,7 @@ python3 scripts/task_graph.py init \
    - provider-specific MCP используй для данных его продукта, Context7 — для официальной документации библиотек, research MCP — для внешнего поиска, Playwright или другой live MCP — для относящейся к acceptance живой системы;
    - для строго локальной задачи запиши `mcp:not-applicable:<reason>`; если релевантный MCP проверен, но не сработал, запиши `mcp:fallback:<reason>` и продолжай подходящим fallback; не выполняй внешнюю запись без полномочий.
 4. Создай или обнови один план. В замороженной части должны быть outcome, основания, ссылка на exact engineering standard или честное `N/A`, применимые правила/команды, acceptance, шаги, тесты, stop conditions и точный `task-delivery:scope`. Не веди гигантский журнал снимков внутри плана. Названный в плане этап не обязан становиться worker slice: read-only baseline, authorization, evidence freeze, integration и final acceptance root выполняет внутри `work`, если независимый worker не даёт отдельной полезной дельты.
-5. Проверь план сам. В `complex/critical` вызови `task_plan_reviewer` до реализации. В режиме `implement` повторно используй прошлый review только если runner принял неизменный план и scope.
+5. Проверь план сам. Подключи `task_plan_reviewer` только при реальной неопределённости плана или явном запросе; профиль сам по себе не создаёт pre-code gate. В режиме `implement` используй принятый plan как рабочую основу и переходи к коду, если semantic scope не изменился.
 
 Пункты 6–7, `slice-accept`, checkpoint, scope amendment и verifier repair относятся к staged graph `3.4+` runs. Активный `3.3.0` run завершай по его v1 packet и inline root-acceptance contract.
 
@@ -128,7 +171,7 @@ python3 scripts/task_graph.py init \
 
 В `capabilities` запиши ровно один тип MCP-квитанции: `mcp:<server>` для реально использованного MCP, `mcp:fallback:<reason>` после неудачи релевантного сервера либо `mcp:not-applicable:<reason>` для локальной задачи. Нативный web/browser и затем `curl` являются fallback, а не первым выбором при наличии подходящего MCP.
 
-В graph `3.4+` каждый делегированный slice получает только применимые skills, ближайшие инструкции, must-read файлы и уже проверенный MCP/research-контекст. Для новых runs runner автоматически добавляет Project Start engineering standard в `must_read` и связывает packet с его digest; root не должен полагаться на то, что worker догадается о guide по имени. Worker обязан прочитать весь `must_read`, применить required skills и вернуть `capabilities_used`; недоступный skill или недостаточный контекст означает `needs_context`. Root самостоятельно проверяет реальный diff, ownership, соответствие guide и тесты, фиксирует отдельный immutable acceptance до следующего packet. Итоговая delegated delta обязана состоять ровно из union root-accepted paths; скрытых root integration edits нет. В `task.json` переносится только digest acceptance, а worker report не является доказательством.
+В graph `3.4+` каждый делегированный slice получает только применимые skills, ближайшие инструкции, must-read файлы и уже проверенный MCP/research-контекст. Для новых runs runner автоматически добавляет Project Start engineering standard в `must_read` и связывает packet с его digest; root не должен полагаться на то, что worker догадается о guide по имени. Worker обязан прочитать весь `must_read`, применить required skills и вернуть `capabilities_used`; недоступный skill или недостаточный контекст означает `needs_context`. Root самостоятельно проверяет реальный diff, ownership, соответствие guide и тесты, фиксирует отдельный immutable acceptance до следующего packet. Итоговая delegated delta состоит из union root-accepted paths и явно объявленных `implementation.integration_paths`. Root может выполнить небольшую связующую правку внутри reviewed scope, но обязан назвать её, прогнать относящиеся тесты и не маскировать новый самостоятельный slice. В `task.json` переносится только digest acceptance, а worker report не является доказательством.
 
 В graph `3.4+` после `slice-accept` runner создаёт компактный `context-checkpoint.json`: принятые digests и exact paths, проверенные discoveries, исходный `plan_scope`, deferred checks и следующий objective. `plan_scope` не выдаётся за вычисленный остаток directory scope. Если нужен ещё один slice, сначала выполни `context-rehydrate`; следующий packet будет связан с точным checkpoint SHA-256. Физический host compact можно использовать по ситуации, но он не является частью correctness contract и не нужен после последнего slice.
 
@@ -194,7 +237,7 @@ python3 scripts/task_graph.py retry --run <run-dir> --node <work|verify>
 
 Не редактируй канонические документы Project Start внутри Task Delivery: передай фактическую документационную дельту через handoff. Если реализация доказала устойчивое новое coding rule, команду качества или framework boundary, укажи `documentation_impact=factual|semantic`; одноразовый workaround не превращай в правило.
 
-Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Активные graph `3.3.0` runs завершаются по своему v1 slice contract; `3.4.0` и `3.5.0` продолжают staged v2 packet contract со своим прежним digest; новые runs используют `3.6.0` и нормализованный marker-boundary digest. Все новые задачи запускай через `task_graph.py`.
+Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Активные graph `3.3.0` runs завершаются по своему v1 slice contract; `3.4.0`-`3.6.0` сохраняют staged v2 packet contract и прежнюю семантику review; новые runs используют `3.7.0`, нормализованный digest, code-first control и task checkpoint. Все новые задачи запускай через `task_graph.py`.
 
 ## Служебные ресурсы
 

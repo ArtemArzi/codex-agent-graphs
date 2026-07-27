@@ -5,20 +5,19 @@
 | Профиль | План | Реализация | Итог | Независимых запусков |
 |---|---|---|---|---:|
 | `light` | self | root | self | 0 |
-| `standard` | self | root; worker только для независимого slice | self либо risk-triggered `task_result_reviewer` | 0–2 |
-| `complex` | `task_plan_reviewer` | root; worker только для независимого slice | self либо risk-triggered `task_result_reviewer` | 1–3 |
-| `critical` | `task_plan_reviewer` | root + `task_risk_reviewer`; worker только для независимого slice | `task_result_reviewer` | 3–4 |
+| `standard` | self | root; worker только для независимого slice | self либо risk-triggered verifier | 0–2 |
+| `complex` | self либо uncertainty-triggered plan reviewer | root; worker только для независимого slice | self либо risk-triggered verifier | 0–3 |
+| `critical` | self либо uncertainty-triggered plan reviewer | root + `task_risk_reviewer`; worker только для независимого slice | `task_result_reviewer` | 2–4 |
 
-В режиме `plan` нет проверки результата реализации. Для `complex/critical`
-проверяющий плана становится внешним узлом `verify`; для `light/standard`
-корневой агент останавливается после собственной проверки. В реализации
-`standard/complex` result reviewer не является следствием имени профиля:
-нужен фактический risk/uncertainty signal. `critical` всегда verified.
+Режим `plan` не получает reviewer только из-за профиля. Plan reviewer нужен
+при реальной неоднозначности архитектуры, evidence или acceptance либо по явному
+запросу. `standard/complex` result reviewer также risk-triggered; `critical`
+сохраняет risk review и итоговый verifier.
 
 ## Дополнительные роли
 
 - `task_explorer` — read-only локализация одной независимой области большой кодовой базы. Обычно 0, максимум 2.
-- `task_worker` — реализация одного независимого slice по immutable packet. Обычно 0–1. Default budget — 2 normal packet/worker receipts; явный `--slice-budget` допускает до 6 последовательных slices с учётом фактически обязательных profile reviews. Critical допускает до 5 normal slices в одном run: repair заранее место не отнимает и получает отдельный условный budget только после verifier reject. Root принимает реальный diff, повторяет один быстрый check и владеет checkpoint по [implementation-slices.md](implementation-slices.md).
+- `task_worker` — реализация одного независимого slice по immutable packet. Обычно 0–1. Default budget — 2 normal packet/worker receipts; явный `--slice-budget` допускает до 6 последовательных slices с учётом фактически обязательных profile reviews. Critical допускает до 6 normal slices в одном run: repair заранее место не отнимает и получает отдельный условный budget только после verifier reject. Root принимает реальный diff, повторяет один быстрый check и владеет checkpoint по [implementation-slices.md](implementation-slices.md).
 - Агенты Research — только когда реально запущен внешний или глубокий исследовательский проход.
 
 Все роли — leaf-only. Они не создают потомков, не коммитят и не пушат. Корневой агент интегрирует изменения, запускает итоговые тесты и владеет `task.json`.

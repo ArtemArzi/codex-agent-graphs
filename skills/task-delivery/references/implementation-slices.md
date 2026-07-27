@@ -148,7 +148,7 @@ python3 scripts/task_graph.py slice-accept \
   --run <run-dir> --slice-id <slice-id> --acceptance <acceptance.json>
 ```
 
-Runner сохраняет immutable `root-acceptance.json` и обновляет `context-checkpoint.json`. Следующий packet запрещён, пока успешный worker receipt не принят root. В `task.json.implementation.slices` root переносит только `slice_id`, `packet_sha256`, `receipt_sha256` и `acceptance_sha256`; controller сам перечитывает canonical acceptance и требует, чтобы final changed paths ровно совпали с union accepted path provenance. Root-only integration edits внутри delegated strategy не допускаются.
+Runner сохраняет immutable `root-acceptance.json` и обновляет `context-checkpoint.json`. Следующий packet запрещён, пока успешный worker receipt не принят root. В `task.json.implementation.slices` root переносит только `slice_id`, `packet_sha256`, `receipt_sha256` и `acceptance_sha256`; controller сам перечитывает canonical acceptance. Для graph 3.4-3.6 final changed paths равны union accepted path provenance. Для graph 3.7+ к этому union можно добавить явный implementation.integration_paths: только небольшие root-owned связующие правки внутри reviewed scope, без дублирования slice paths, с task-level passing tests.
 
 Если нужен следующий slice:
 
