@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.5.0",
+  "graph_version": "3.6.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
@@ -100,6 +100,7 @@
       "needs_context",
       "blocked"
     ],
+    "budget_accounting": "actual-normal-starts-with-conditional-repair",
     "parallel_write_isolation": "worktree-required",
     "parallel_write_enabled": false
   },

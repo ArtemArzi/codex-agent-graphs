@@ -127,8 +127,8 @@ def main() -> int:
     task_graph = json.loads((ROOT / "skills" / "task-delivery" / "graph.json").read_text(encoding="utf-8"))
     if task_graph.get("schema_version") != 2 or task_graph.get("default_mode") != "full":
         raise RuntimeError("Task Delivery v3 must use schema 2 and full default mode")
-    if task_graph.get("graph_version") != "3.5.0":
-        raise RuntimeError("Task Delivery current graph must remain 3.5.0")
+    if task_graph.get("graph_version") != "3.6.0":
+        raise RuntimeError("Task Delivery current graph must remain 3.6.0")
     if set(task_graph.get("routes", {})) != {"plan", "implement", "full"}:
         raise RuntimeError("Task Delivery must expose plan, implement and full routes")
     for mode in ("plan", "implement", "full"):

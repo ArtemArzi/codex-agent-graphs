@@ -63,9 +63,11 @@ LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.2.0", "4317362f02d843470cfa3bc063cb861577bec09c9b98bd78126dd12bb8bb2bb1"),
     ("3.3.0", "07b19482bca36d54ace9a3cc470e76e421b2b1c14f0ee123c90a7792af79b7e8"),
     ("3.4.0", "208d0b08c4b4e3298add4802414d18ee97cb71f8f7bcfdb9dd97c1ab67894d1d"),
+    ("3.5.0", "7e9b2b4c3a9051f8f09a69ea89d359836181a6cbd77391e326c74f0480d9e7b2"),
 }
-SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0"}
-STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0"}
+SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0"}
+STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0"}
+NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0"}
 
 
 class GraphError(RuntimeError):
@@ -206,6 +208,8 @@ def graph_contract() -> dict[str, Any]:
         or delegation.get("explicit_slice_request") != "required"
         or set(delegation.get("strategies", [])) != IMPLEMENTATION_STRATEGIES
         or set(delegation.get("worker_statuses", [])) != WORKER_STATUSES
+        or delegation.get("budget_accounting")
+        != "actual-normal-starts-with-conditional-repair"
         or delegation.get("parallel_write_isolation") != "worktree-required"
         or delegation.get("parallel_write_enabled") is not False
         or not isinstance(limits.get("max_slices_per_run"), int)
@@ -390,25 +394,34 @@ PENDING
 """
 
 
-def plan_contract_text(path: Path) -> str:
+def plan_contract_text(path: Path, *, graph_version: str | None = None) -> str:
     text = path.read_text(encoding="utf-8")
     start = "<!-- task-delivery:plan:start -->"
     end = "<!-- task-delivery:plan:end -->"
     if start in text or end in text:
         if text.count(start) != 1 or text.count(end) != 1 or text.index(start) >= text.index(end):
             raise GraphError("Некорректные границы task-delivery:plan в плане.")
-        return text[text.index(start) + len(start) : text.index(end)]
+        contract = text[text.index(start) + len(start) : text.index(end)]
+        version = graph_version or graph_contract()["graph_version"]
+        if version in NORMALIZED_PLAN_DIGEST_VERSIONS:
+            if contract.startswith("\r\n"):
+                contract = contract[2:]
+            elif contract.startswith("\n"):
+                contract = contract[1:]
+        return contract
     return text
 
 
-def plan_digest(path: Path) -> str:
-    return hashlib.sha256(plan_contract_text(path).encode("utf-8")).hexdigest()
+def plan_digest(path: Path, *, graph_version: str | None = None) -> str:
+    return hashlib.sha256(
+        plan_contract_text(path, graph_version=graph_version).encode("utf-8")
+    ).hexdigest()
 
 
-def validate_plan(path: Path) -> tuple[str, list[str]]:
+def validate_plan(path: Path, *, graph_version: str | None = None) -> tuple[str, list[str]]:
     if path.is_symlink() or not path.is_file():
         raise GraphError(f"План должен быть обычным существующим файлом: {path}")
-    contract = plan_contract_text(path)
+    contract = plan_contract_text(path, graph_version=graph_version)
     placeholders = [token for token in ("PENDING", "TODO", "{{") if token in contract]
     if placeholders:
         raise GraphError("Контракт плана содержит незаполненные маркеры: " + ", ".join(placeholders))
@@ -416,7 +429,7 @@ def validate_plan(path: Path) -> tuple[str, list[str]]:
         scope = snapshots.parse_scope(path.read_text(encoding="utf-8"))
     except snapshots.SnapshotError as exc:
         raise GraphError(str(exc)) from exc
-    return plan_digest(path), scope
+    return plan_digest(path, graph_version=graph_version), scope
 
 
 def exclusions(plan: str) -> list[str]:
@@ -797,7 +810,10 @@ def validate_amendment_chain(
     if not isinstance(records, list):
         raise GraphError("Scope amendment registry повреждён.")
     if not records:
-        digest = current_digest or plan_digest(snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"]))
+        digest = current_digest or plan_digest(
+            snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"]),
+            graph_version=state.get("graph_version"),
+        )
         return {"base_digest": digest, "effective_digest": digest, "receipts": []}
     cursor: str | None = None
     validated: list[dict[str, Any]] = []
@@ -823,7 +839,8 @@ def validate_amendment_chain(
         cursor = after
         validated.append(artifact)
     effective = current_digest or plan_digest(
-        snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"])
+        snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"]),
+        graph_version=state.get("graph_version"),
     )
     if cursor != effective:
         raise GraphError("Текущий план не совпадает с effective scope-amendment digest.")
@@ -872,7 +889,9 @@ def load_context_checkpoint(state: dict[str, Any], run_dir: Path) -> tuple[dict[
     ):
         raise GraphError("Context checkpoint связан с другим Task Delivery run.")
     current_plan = snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"])
-    current_plan_digest = plan_digest(current_plan)
+    current_plan_digest = plan_digest(
+        current_plan, graph_version=state.get("graph_version")
+    )
     if checkpoint.get("plan_digest") != current_plan_digest:
         raise GraphError("Context checkpoint связан с другим plan digest.")
     validate_amendment_chain(state, run_dir, current_digest=current_plan_digest)
@@ -990,7 +1009,9 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             if strategy == "delegated-sequential" and any(item.get("status") == "ready" for item in records.values()):
                 raise GraphError("Delegated-sequential допускает только один активный slice.")
             plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-            digest, scope = validate_plan(plan_path)
+            digest, scope = validate_plan(
+                plan_path, graph_version=state.get("graph_version")
+            )
             if state["mode"] == "implement":
                 prior = state.get("task_state_snapshot", {}).get("checkpoints", {}).get("plan-review")
                 if (
@@ -1241,7 +1262,10 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
             if snapshots.manifest_digest(baseline) != record["base_repo_digest"]:
                 raise GraphError("Slice baseline изменился после регистрации.")
             current_plan = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-            if plan_digest(current_plan) != packet["plan_digest"]:
+            if (
+                plan_digest(current_plan, graph_version=state.get("graph_version"))
+                != packet["plan_digest"]
+            ):
                 raise GraphError("План изменился после выдачи slice packet; создай новый packet.")
             receipt = load_json(receipt_path.resolve())
             expected_schema = graph_contract()["test_policy"]["packet_schema_version"] if staged_contract else 1
@@ -1425,7 +1449,9 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
 def write_context_checkpoint(state: dict[str, Any], run_dir: Path, *, next_objective: str) -> tuple[Path, str]:
     root = Path(state["root"])
     plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-    digest, scope = validate_plan(plan_path)
+    digest, scope = validate_plan(
+        plan_path, graph_version=state.get("graph_version")
+    )
     accepted: list[dict[str, Any]] = []
     deferred_by_id: dict[str, dict[str, str]] = {}
     verified_discoveries: list[dict[str, str]] = []
@@ -1517,7 +1543,9 @@ def accept_slice(run_dir: Path, identifier: str, acceptance_path: Path) -> dict[
             packet = load_json(Path(record["packet_path"]))
             receipt = load_json(Path(record["receipt_path"]))
             current_plan = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-            if packet.get("plan_digest") != plan_digest(current_plan):
+            if packet.get("plan_digest") != plan_digest(
+                current_plan, graph_version=state.get("graph_version")
+            ):
                 raise GraphError("План изменился после выдачи slice packet; создай новый packet.")
             draft = load_json(acceptance_path.resolve())
             if draft.get("schema_version") != 1 or slice_id(draft.get("slice_id")) != identifier:
@@ -1741,7 +1769,9 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             reason = meaningful(draft.get("reason"), "scope amendment reason", 16)
             plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
             text_value = plan_path.read_text(encoding="utf-8")
-            before_digest, before_scope = validate_plan(plan_path)
+            before_digest, before_scope = validate_plan(
+                plan_path, graph_version=state.get("graph_version")
+            )
             review_receipt = meaningful(
                 draft.get("plan_review_receipt"), "scope amendment plan_review_receipt", 6
             )
@@ -1804,7 +1834,9 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             try:
                 with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
                     handle.write(updated)
-                after_digest, verified_scope = validate_plan(temporary_path)
+                after_digest, verified_scope = validate_plan(
+                    temporary_path, graph_version=state.get("graph_version")
+                )
             finally:
                 temporary_path.unlink(missing_ok=True)
             if verified_scope != after_scope or after_digest == before_digest:
@@ -1843,7 +1875,9 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             appended = False
             try:
                 atomic_text(plan_path, updated)
-                actual_digest, actual_scope = validate_plan(plan_path)
+                actual_digest, actual_scope = validate_plan(
+                    plan_path, graph_version=state.get("graph_version")
+                )
                 if actual_digest != after_digest or actual_scope != after_scope:
                     raise GraphError("Scope amendment plan write не совпал с validated draft.")
                 atomic_json(target, artifact)
@@ -2282,7 +2316,9 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     if state.get("graph_version") in {"3.3.0", graph_contract()["graph_version"]}:
         validate_mcp_capabilities(capabilities)
     plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-    digest, scope = validate_plan(plan_path)
+    digest, scope = validate_plan(
+        plan_path, graph_version=state.get("graph_version")
+    )
     plan = artifact.get("plan")
     if not isinstance(plan, dict) or plan.get("path") != state["plan_path"] or plan.get("digest") != digest:
         raise GraphError("task.json должен быть связан с точным путём и digest плана.")
@@ -2526,18 +2562,15 @@ def initialize(
         + int(graph["profiles"][profile]["result_reviewers"])
         + (1 if profile == "critical" else 0)
     )
-    repair_reserve = 0 if profile == "light" else int(
-        graph["limits"]["max_verification_repair_slices"]
-    )
     profile_slice_ceiling = (
         int(graph["limits"]["max_agents_per_run"])
         - profile_review_reserve
-        - repair_reserve
     )
     if effective_slice_budget > profile_slice_ceiling:
         raise GraphError(
             f"--slice-budget {effective_slice_budget} не оставляет agent budget для "
-            f"{profile} review/repair; максимум {profile_slice_ceiling}."
+            f"{profile} review; максимум {profile_slice_ceiling}. "
+            "Условный verifier repair имеет отдельный бюджет и заранее normal slices не сокращает."
         )
     policy = graph["delegation_policy"]
     strategy_request = "root-only" if mode == "plan" else implementation_strategy
@@ -2562,7 +2595,9 @@ def initialize(
             if existing.get("artifacts", {}).get("plan") != plan:
                 raise GraphError("Implement должен открыть точный ранее проверенный план.")
             plan_path = snapshots.safe_join_no_symlinks(root, plan)
-            digest, scope = validate_plan(plan_path)
+            digest, scope = validate_plan(
+                plan_path, graph_version=existing.get("graph_version")
+            )
             review = existing.get("checkpoints", {}).get("plan-review")
             if not isinstance(review, dict) or review.get("plan_digest") != digest:
                 raise GraphError("План изменился после review; нужен новый plan run.")
@@ -2982,7 +3017,10 @@ def verify_integrity(state: dict[str, Any]) -> dict[str, Any]:
         if not path.is_file() or sha256_file(path) != work["sha256"]:
             raise GraphError("task.json изменился после record.")
     plan = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-    if plan_digest(plan) != work["plan_digest"]:
+    if (
+        plan_digest(plan, graph_version=state.get("graph_version"))
+        != work["plan_digest"]
+    ):
         raise GraphError("План изменился после record.")
     if state["verification_required"]:
         verifier = state["nodes"]["verify"]

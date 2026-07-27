@@ -18,7 +18,7 @@
 ## Дополнительные роли
 
 - `task_explorer` — read-only локализация одной независимой области большой кодовой базы. Обычно 0, максимум 2.
-- `task_worker` — реализация одного независимого slice по immutable packet. Обычно 0–1. Default budget — 2 normal packet/worker receipts; явный `--slice-budget` допускает до 6 последовательных slices; только после verifier reject допустим один дополнительный bounded repair worker. Root принимает реальный diff, повторяет один быстрый check и владеет checkpoint по [implementation-slices.md](implementation-slices.md).
+- `task_worker` — реализация одного независимого slice по immutable packet. Обычно 0–1. Default budget — 2 normal packet/worker receipts; явный `--slice-budget` допускает до 6 последовательных slices с учётом фактически обязательных profile reviews. Critical допускает до 5 normal slices в одном run: repair заранее место не отнимает и получает отдельный условный budget только после verifier reject. Root принимает реальный diff, повторяет один быстрый check и владеет checkpoint по [implementation-slices.md](implementation-slices.md).
 - Агенты Research — только когда реально запущен внешний или глубокий исследовательский проход.
 
 Все роли — leaf-only. Они не создают потомков, не коммитят и не пушат. Корневой агент интегрирует изменения, запускает итоговые тесты и владеет `task.json`.
@@ -26,6 +26,9 @@
 ## Общие пределы
 
 - Root-only — fast path для любого профиля. Не запускай worker только из-за размера задачи или свободного слота.
+- Считай только фактические agent starts. Не резервируй агента под возможный
+  repair и не приравнивай read-only/evidence/controller этап плана к worker
+  slice.
 - Не более 8 агентов на Task Delivery run, включая Research и явный bounded slice budget.
 - Не более 2 одновременно активных агентов.
 - Ровно один агент каждой review-роли. Несколько block reviewers допустимы только по явному deep/multi-review запросу вне обычного Task Delivery receipt.

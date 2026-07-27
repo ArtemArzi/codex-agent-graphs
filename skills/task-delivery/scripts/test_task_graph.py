@@ -427,7 +427,9 @@ Recorded in the Task Delivery receipt.
             },
             "plan": {
                 "path": state["plan_path"],
-                "digest": graph.plan_digest(plan),
+                "digest": graph.plan_digest(
+                    plan, graph_version=state.get("graph_version")
+                ),
                 "review": {"mode": review_mode, "verdict": "pass"},
             },
             "implementation": implementation,
@@ -516,6 +518,10 @@ Recorded in the Task Delivery receipt.
         self.assertEqual(0, contract["profiles"]["standard"]["result_reviewers"])
         self.assertEqual(0, contract["profiles"]["complex"]["result_reviewers"])
         self.assertFalse(contract["delegation_policy"]["parallel_write_enabled"])
+        self.assertEqual(
+            "actual-normal-starts-with-conditional-repair",
+            contract["delegation_policy"]["budget_accounting"],
+        )
         self.assertEqual("slice-accept", contract["context_policy"]["checkpoint_after"])
         self.assertFalse(contract["context_policy"]["global_hook_required"])
         self.assertEqual("exact-union-by-check-id", contract["test_policy"]["deferred_final_checks"])
@@ -575,12 +581,45 @@ Recorded in the Task Delivery receipt.
                 implementation_strategy="delegated-sequential",
                 slice_budget=7,
             )
-        with self.assertRaisesRegex(graph.GraphError, "critical review/repair; максимум 4"):
+        critical = self.initialize(
+            task_id="TD-CRITICAL-FIVE",
+            profile="critical",
+            implementation_strategy="delegated-sequential",
+            slice_budget=5,
+        )
+        self.assertEqual(5, self.read(critical / graph.STATE_NAME)["slice_budget"])
+        with self.assertRaisesRegex(graph.GraphError, "critical review; максимум 5"):
             self.initialize(
+                task_id="TD-CRITICAL-SIX",
                 profile="critical",
                 implementation_strategy="delegated-sequential",
-                slice_budget=5,
+                slice_budget=6,
             )
+
+    def test_current_digest_ignores_start_marker_line_break_but_legacy_keeps_it(self) -> None:
+        plan = self.write(
+            "docs/tasks/TD-DIGEST/PLAN.md",
+            """# Plan
+
+<!-- task-delivery:plan:start -->
+## Outcome
+
+Same semantic contract.
+
+<!-- task-delivery:scope
+src/app.py
+-->
+<!-- task-delivery:plan:end -->
+""",
+        )
+        current_contract = graph.plan_contract_text(plan)
+        legacy_contract = graph.plan_contract_text(plan, graph_version="3.5.0")
+        self.assertTrue(current_contract.startswith("## Outcome"))
+        self.assertTrue(legacy_contract.startswith("\n## Outcome"))
+        self.assertNotEqual(
+            graph.plan_digest(plan),
+            graph.plan_digest(plan, graph_version="3.5.0"),
+        )
 
     def test_explicit_slice_budget_allows_third_sequential_slice(self) -> None:
         run = self.initialize(
@@ -1894,6 +1933,21 @@ Recorded in the Task Delivery receipt.
         state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
         ready = graph.ready(run)
         self.assertEqual("3.4.0", self.read(state_path)["graph_version"])
+        self.assertEqual("work", ready["data"]["current"])
+
+    def test_started_v3_5_run_keeps_legacy_digest_and_staged_slice_commands(self) -> None:
+        run = self.initialize(profile="standard")
+        state_path = run / graph.STATE_NAME
+        state = self.read(state_path)
+        state["graph_version"] = "3.5.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.5.0"]
+        state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        plan = self.plan()
+        self.assertTrue(
+            graph.plan_contract_text(plan, graph_version="3.5.0").startswith("\n")
+        )
+        ready = graph.ready(run)
+        self.assertEqual("3.5.0", self.read(state_path)["graph_version"])
         self.assertEqual("work", ready["data"]["current"])
 
     def test_slice_receipt_tampering_blocks_complete(self) -> None:
