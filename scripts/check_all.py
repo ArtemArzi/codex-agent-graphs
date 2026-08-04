@@ -128,8 +128,8 @@ def main() -> int:
     task_graph = json.loads((ROOT / "skills" / "task-delivery" / "graph.json").read_text(encoding="utf-8"))
     if task_graph.get("schema_version") != 2 or task_graph.get("default_mode") != "full":
         raise RuntimeError("Task Delivery v3 must use schema 2 and full default mode")
-    if task_graph.get("graph_version") != "3.5.0":
-        raise RuntimeError("Task Delivery current graph must remain 3.5.0")
+    if task_graph.get("graph_version") != "3.8.0":
+        raise RuntimeError("Task Delivery current graph must remain 3.8.0")
     if set(task_graph.get("routes", {})) != {"plan", "implement", "full"}:
         raise RuntimeError("Task Delivery must expose plan, implement and full routes")
     for mode in ("plan", "implement", "full"):
@@ -162,10 +162,34 @@ def main() -> int:
         or task_graph.get("execution_policy", {}).get("default_tier") != "skill-only"
     ):
         raise RuntimeError("Task Delivery efficiency contract changed unexpectedly")
+    if task_graph.get("control_plane_policy") != {
+        "schema_version": 1,
+        "task_priority": "code-first",
+        "controller_role": "checkpoint-and-completion-boundary",
+        "protocol_failure": "degrade-control-not-task",
+        "max_protocol_repairs_before_degrade": 1,
+        "human_interrupt": "authority-or-high-risk-only",
+        "project_context_before_controller_detail": True,
+        "multiple_unfinished_tasks": "independent-per-task",
+        "verified_completion_requires_healthy_control": True,
+    }:
+        raise RuntimeError("Task Delivery control-plane policy changed unexpectedly")
+    if task_graph.get("retirement_policy") != {
+        "schema_version": 1,
+        "terminal_status": "retired",
+        "success": False,
+        "authority": "explicit-user",
+        "preserve_raw_state": True,
+        "artifact_lifecycle": "hold",
+    }:
+        raise RuntimeError("Task Delivery retirement policy changed unexpectedly")
     if task_graph.get("context_policy") != {
         "checkpoint_schema_version": 1,
         "checkpoint_after": "slice-accept",
         "rehydrate_before": "next-slice",
+        "task_checkpoint_after": "explicit-suspend",
+        "task_switching": "suspend-without-review",
+        "resume_source": "checkpoint-plus-repository",
         "host_compact": "optional",
         "global_hook_required": False,
     }:
@@ -180,11 +204,11 @@ def main() -> int:
     if limits.get("max_root_technical_amendments") != 2 or limits.get("max_paths_per_scope_amendment") != 2:
         raise RuntimeError("Task Delivery technical amendment bound changed unexpectedly")
     worker_prompt = (ROOT / "agents" / "task_worker.toml").read_text(encoding="utf-8")
-    for required_text in ("schema_version 2", "test_impact", "deferred_final_checks"):
+    for required_text in ("nearest AGENTS.md", "fast slice_check", "control concern"):
         if required_text not in worker_prompt:
             raise RuntimeError(f"Task Delivery worker prompt is missing: {required_text}")
     result_prompt = (ROOT / "agents" / "task_result_reviewer.toml").read_text(encoding="utf-8")
-    for required_text in ("context-checkpoint", "scope amendments", "deferred_final_checks"):
+    for required_text in ("real repository diff", "integration_paths", "degraded-control finding"):
         if required_text not in result_prompt:
             raise RuntimeError(f"Task Delivery result reviewer prompt is missing: {required_text}")
     for role in ("task_plan_reviewer", "task_result_reviewer", "task_risk_reviewer"):
@@ -229,6 +253,31 @@ def main() -> int:
     for required in ("first false assumption", "rebuild-from-checkpoint", "repair-forward"):
         if required not in recovery_skill:
             raise RuntimeError(f"Development Recovery contract is missing: {required}")
+    graph_skills = {
+        graph_path.parent.name for graph_path in (ROOT / "skills").glob("*/graph.json")
+    }
+    plain_language_skills = sorted(
+        graph_skills | {"agent-graph-builder", "development-recovery"}
+    )
+    english_skills = {"agent-graph-builder", "development-recovery", "research"}
+    for skill_name in plain_language_skills:
+        skill_text = (ROOT / "skills" / skill_name / "SKILL.md").read_text(encoding="utf-8")
+        localized_requirements = (
+            "## Plain-language user updates",
+            "user's language" if skill_name in english_skills else "языке пользователя",
+            "Required order: result → impact → next step."
+            if skill_name in english_skills
+            else "Обязательный порядок: результат → влияние → следующий шаг.",
+            "internal log" if skill_name in english_skills else "журнал контроллера",
+            "explain it on first use" if skill_name in english_skills else "при первом упоминании",
+            "Technical details:" if skill_name in english_skills else "Технически:",
+            "one short paragraph" if skill_name in english_skills else "один короткий абзац",
+        )
+        for required in localized_requirements:
+            if required not in skill_text:
+                raise RuntimeError(
+                    f"{skill_name} plain-language user update contract is missing: {required}"
+                )
     recovery_policy = (ROOT / "policies" / "development-recovery.md").read_text(encoding="utf-8")
     if "$development-recovery" not in recovery_policy or "regardless of which graph" not in recovery_policy:
         raise RuntimeError("Global Development Recovery trigger is missing or graph-coupled")

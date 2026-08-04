@@ -9,7 +9,7 @@
 - `blocked` — узел завершился ошибкой или исчерпан repair; повтор ограничен.
 - `completed` — квитанции и документы связаны SHA-256, общее состояние обновлено.
 - `superseded` — вход изменился; run безопасно закрыт через `abandon`, обязательная Task Delivery квитанция при необходимости восстановлена.
-- `restart-required` — run закрыт, но Project Start и Task Delivery остаются fail-closed до успешного replacement run.
+- `restart-required` — run закрыт, Project Start остаётся fail-closed до успешного replacement run. Независимая Task Delivery допускается только когда нет document drift и verifier requirement; все семантические и evidence obligations продолжают блокировать её.
 
 ## Переходы
 

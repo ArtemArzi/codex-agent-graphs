@@ -427,7 +427,9 @@ Recorded in the Task Delivery receipt.
             },
             "plan": {
                 "path": state["plan_path"],
-                "digest": graph.plan_digest(plan),
+                "digest": graph.plan_digest(
+                    plan, graph_version=state.get("graph_version")
+                ),
                 "review": {"mode": review_mode, "verdict": "pass"},
             },
             "implementation": implementation,
@@ -516,9 +518,15 @@ Recorded in the Task Delivery receipt.
         self.assertEqual(0, contract["profiles"]["standard"]["result_reviewers"])
         self.assertEqual(0, contract["profiles"]["complex"]["result_reviewers"])
         self.assertFalse(contract["delegation_policy"]["parallel_write_enabled"])
+        self.assertEqual(
+            "actual-normal-starts-with-conditional-repair",
+            contract["delegation_policy"]["budget_accounting"],
+        )
         self.assertEqual("slice-accept", contract["context_policy"]["checkpoint_after"])
         self.assertFalse(contract["context_policy"]["global_hook_required"])
         self.assertEqual("exact-union-by-check-id", contract["test_policy"]["deferred_final_checks"])
+        self.assertEqual("code-first", contract["control_plane_policy"]["task_priority"])
+        self.assertEqual("explicit-suspend", contract["context_policy"]["task_checkpoint_after"])
 
     def test_cli_exposes_slice_commands_without_new_graph_nodes(self) -> None:
         created = graph.parser().parse_args(
@@ -534,11 +542,17 @@ Recorded in the Task Delivery receipt.
         amended = graph.parser().parse_args(
             ["scope-amend", "--run", "/tmp/run", "--amendment", "/tmp/amendment.json"]
         )
+        suspended = graph.parser().parse_args(["suspend", "--run", "/tmp/run", "--reason", "switch task", "--next-objective", "resume code"])
+        resumed = graph.parser().parse_args(["resume", "--run", "/tmp/run"])
+        degraded = graph.parser().parse_args(["control-degrade", "--run", "/tmp/run", "--reason", "receipt mismatch"])
         self.assertEqual("slice-create", created.command)
         self.assertEqual("slice-record", recorded.command)
         self.assertEqual("slice-accept", accepted.command)
         self.assertEqual("context-rehydrate", rehydrated.command)
         self.assertEqual("scope-amend", amended.command)
+        self.assertEqual("suspend", suspended.command)
+        self.assertEqual("resume", resumed.command)
+        self.assertEqual("control-degrade", degraded.command)
         initialized = graph.parser().parse_args(
             [
                 "init",
@@ -575,12 +589,38 @@ Recorded in the Task Delivery receipt.
                 implementation_strategy="delegated-sequential",
                 slice_budget=7,
             )
-        with self.assertRaisesRegex(graph.GraphError, "critical review/repair; максимум 4"):
-            self.initialize(
-                profile="critical",
-                implementation_strategy="delegated-sequential",
-                slice_budget=5,
-            )
+        critical = self.initialize(
+            task_id="TD-CRITICAL-SIX",
+            profile="critical",
+            implementation_strategy="delegated-sequential",
+            slice_budget=6,
+        )
+        self.assertEqual(6, self.read(critical / graph.STATE_NAME)["slice_budget"])
+
+    def test_current_digest_ignores_start_marker_line_break_but_legacy_keeps_it(self) -> None:
+        plan = self.write(
+            "docs/tasks/TD-DIGEST/PLAN.md",
+            """# Plan
+
+<!-- task-delivery:plan:start -->
+## Outcome
+
+Same semantic contract.
+
+<!-- task-delivery:scope
+src/app.py
+-->
+<!-- task-delivery:plan:end -->
+""",
+        )
+        current_contract = graph.plan_contract_text(plan)
+        legacy_contract = graph.plan_contract_text(plan, graph_version="3.5.0")
+        self.assertTrue(current_contract.startswith("## Outcome"))
+        self.assertTrue(legacy_contract.startswith("\n## Outcome"))
+        self.assertNotEqual(
+            graph.plan_digest(plan),
+            graph.plan_digest(plan, graph_version="3.5.0"),
+        )
 
     def test_explicit_slice_budget_allows_third_sequential_slice(self) -> None:
         run = self.initialize(
@@ -736,15 +776,15 @@ Recorded in the Task Delivery receipt.
         ready = graph.record(run, "work", "verify")
         self.assertEqual("verify", ready["data"]["current"])
 
-    def test_complex_full_slice_rejects_self_review_before_worker(self) -> None:
+    def test_complex_full_slice_allows_self_review_before_worker(self) -> None:
         run = self.initialize(profile="complex")
         self.plan()
         draft = self.slice_draft(run)
         payload = self.read(draft)
         payload["plan_review"] = {"mode": "self", "receipt": "root:self-review"}
         draft.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        with self.assertRaisesRegex(graph.GraphError, "independent plan review"):
-            graph.register_slice(run, draft)
+        created = graph.register_slice(run, draft)
+        self.assertEqual("ready", created["status"])
 
     def test_implement_mode_can_delegate_after_exact_plan_reuse(self) -> None:
         plan_run = self.initialize(mode="plan", profile="standard")
@@ -994,7 +1034,7 @@ Recorded in the Task Delivery receipt.
                 implementation=implementation,
             ),
         )
-        with self.assertRaisesRegex(graph.GraphError, "root-accepted path provenance"):
+        with self.assertRaisesRegex(graph.GraphError, "accepted slice provenance"):
             graph.record(run, "work", "verify")
 
     def test_done_with_concerns_requires_root_resolution(self) -> None:
@@ -1382,10 +1422,10 @@ Recorded in the Task Delivery receipt.
             graph.rehydrate_context(run)
 
     def test_model_guidance_never_requests_user_hash_echo(self) -> None:
-        research = (graph.SKILL_DIR.parents[1] / "docs/research/task-delivery-context-checkpoint-research.md").read_text(encoding="utf-8")
+        skill = (graph.SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         reference = (graph.SKILL_DIR / "references/implementation-slices.md").read_text(encoding="utf-8")
-        self.assertNotIn("exact user hash is useful", research)
-        self.assertIn("must never ask the\nuser to echo an amendment hash", research)
+        self.assertNotIn("exact user hash is useful", skill)
+        self.assertIn("Не проси\nпользователя выбрать между двумя хешами", skill)
         self.assertIn("Никакого «разреши случайный hash»", reference)
 
     def test_started_v3_3_slice_keeps_exact_legacy_contract(self) -> None:
@@ -1500,6 +1540,9 @@ Recorded in the Task Delivery receipt.
         self.assertEqual("complete", ready["data"]["current"])
         completed = graph.complete(run)
         self.assertEqual("completed", completed["status"])
+        self.assertEqual("completed", completed["data"]["task_status"])
+        run_state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("completed", run_state["task_status"])
         task = self.read(self.root / ".codex/task-delivery/TD-1/state.json")
         self.assertEqual("completed", task["phase"])
         handoff = self.root / ".agent-graphs/task-delivery-handoffs/TD-1/HANDOFF.md"
@@ -1564,6 +1607,9 @@ Recorded in the Task Delivery receipt.
         graph.record(plan_run, "verify", "succeeded")
         result = graph.complete(plan_run)
         self.assertEqual("awaiting_implementation", result["data"]["phase"])
+        self.assertEqual("awaiting_implementation", result["data"]["task_status"])
+        plan_state = self.read(plan_run / graph.STATE_NAME)
+        self.assertEqual("awaiting_implementation", plan_state["task_status"])
 
         implement_run = self.initialize(mode="implement", profile="complex", plan="docs/tasks/TD-1/PLAN.md")
         self.write("src/app.py", "VALUE = 3\n")
@@ -1571,7 +1617,7 @@ Recorded in the Task Delivery receipt.
         self.write_work(implement_run, payload)
         graph.record(implement_run, "work", "verify")
 
-    def test_complex_implement_cannot_reuse_light_self_review(self) -> None:
+    def test_complex_implement_can_reuse_light_self_review(self) -> None:
         run = self.initialize(mode="plan", profile="light")
         self.plan()
         self.write_work(run, self.work_payload(run))
@@ -1580,8 +1626,8 @@ Recorded in the Task Delivery receipt.
         implement = self.initialize(mode="implement", profile="complex", plan="docs/tasks/TD-1/PLAN.md")
         self.write("src/app.py", "VALUE = 3\n")
         self.write_work(implement, self.work_payload(implement, review_mode="reused"))
-        with self.assertRaisesRegex(graph.GraphError, "self-review"):
-            graph.record(implement, "work", "verify")
+        ready = graph.record(implement, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
 
     def test_implement_rejects_scope_drift_after_plan_review(self) -> None:
         run = self.initialize(mode="plan", profile="light")
@@ -1593,22 +1639,13 @@ Recorded in the Task Delivery receipt.
         with self.assertRaisesRegex(graph.GraphError, "Область реализации изменилась"):
             self.initialize(mode="implement", profile="light", plan="docs/tasks/TD-1/PLAN.md")
 
-    def test_complex_full_requires_plan_reviewer_receipt(self) -> None:
+    def test_complex_full_defaults_to_self_review(self) -> None:
         run = self.initialize(profile="complex")
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
-        self.write_work(run, self.work_payload(run, review_mode="independent"))
-        with self.assertRaisesRegex(graph.GraphError, "requires a separate plan review|требует отдельный plan review"):
-            graph.record(run, "work", "verify")
-        self.write_work(
-            run,
-            self.work_payload(
-                run,
-                agents=[self.agent("task_plan_reviewer", "plan-review", "/root/plan-reviewer")],
-                review_mode="independent",
-            ),
-        )
-        graph.record(run, "work", "verify")
+        self.write_work(run, self.work_payload(run, review_mode="self"))
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
 
     def test_critical_full_requires_risk_reviewer(self) -> None:
         run = self.initialize(profile="critical")
@@ -1896,6 +1933,21 @@ Recorded in the Task Delivery receipt.
         self.assertEqual("3.4.0", self.read(state_path)["graph_version"])
         self.assertEqual("work", ready["data"]["current"])
 
+    def test_started_v3_5_run_keeps_legacy_digest_and_staged_slice_commands(self) -> None:
+        run = self.initialize(profile="standard")
+        state_path = run / graph.STATE_NAME
+        state = self.read(state_path)
+        state["graph_version"] = "3.5.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.5.0"]
+        state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        plan = self.plan()
+        self.assertTrue(
+            graph.plan_contract_text(plan, graph_version="3.5.0").startswith("\n")
+        )
+        ready = graph.ready(run)
+        self.assertEqual("3.5.0", self.read(state_path)["graph_version"])
+        self.assertEqual("work", ready["data"]["current"])
+
     def test_slice_receipt_tampering_blocks_complete(self) -> None:
         run = self.initialize(profile="standard")
         self.plan()
@@ -1924,6 +1976,194 @@ Recorded in the Task Delivery receipt.
         receipt.write_text(receipt.read_text(encoding="utf-8") + "\n", encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "Worker receipt изменился"):
             graph.complete(run)
+
+    def test_declared_root_integration_path_is_allowed(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        run = self.initialize(profile="standard")
+        self.plan(scope="src")
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        self.write("src/other.py", "OTHER = 2\n")
+        implementation = {
+            "status": "complete",
+            "changed_paths": ["src/app.py", "src/other.py"],
+            "strategy": "delegated-sequential",
+            "integration_paths": ["src/other.py"],
+            "slices": [self.accepted_slice(run)],
+        }
+        self.write_work(
+            run,
+            self.work_payload(
+                run,
+                agents=[self.worker_agent(run)],
+                capabilities=["repository search", "project test command", "mcp:context7"],
+                implementation=implementation,
+            ),
+        )
+        ready = graph.record(run, "work", "verify")
+        self.assertEqual("verify", ready["data"]["current"])
+
+    def test_suspend_and_resume_keep_task_and_control_state_separate(self) -> None:
+        run = self.initialize(profile="standard")
+        self.plan()
+        suspended = graph.suspend(
+            run,
+            "Switch to an unrelated urgent task.",
+            "Resume implementation from the current code checkpoint.",
+        )
+        self.assertEqual("suspended", suspended["status"])
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("suspended", state["task_status"])
+        self.assertEqual("healthy", state["control_status"])
+        self.assertTrue((run / graph.TASK_CHECKPOINT_NAME).is_file())
+        resumed = graph.resume(run)
+        self.assertEqual("running", resumed["status"])
+        self.assertEqual("active", resumed["data"]["task_status"])
+
+    def test_control_degradation_does_not_block_code_work(self) -> None:
+        run = self.initialize(profile="standard")
+        degraded = graph.degrade_control(run, "Controller receipt format is incompatible.")
+        self.assertEqual("degraded", degraded["status"])
+        state = self.read(run / graph.STATE_NAME)
+        self.assertEqual("running", state["status"])
+        self.assertEqual("active", state["task_status"])
+        self.assertEqual("degraded", state["control_status"])
+        ready = graph.ready(run)
+        self.assertEqual("running", ready["status"])
+        self.assertEqual("degraded", ready["data"]["control_status"])
+        self.plan()
+        created = graph.register_slice(run, self.slice_draft(run))
+        self.assertEqual("ready", created["status"])
+        state = self.read(run / graph.STATE_NAME)
+        state["verification_required"] = True
+        state["current"] = "complete"
+        (run / graph.STATE_NAME).write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "Verified completion requires healthy control"):
+            graph.complete(run)
+
+    def test_retire_preserves_exact_pre_state_and_closes_task_index(self) -> None:
+        run = self.initialize(profile="standard")
+        state_path = run / graph.STATE_NAME
+        task_path = self.root / ".codex/task-delivery/TD-1/state.json"
+        run_before = state_path.read_bytes()
+        task_before = task_path.read_bytes()
+        current_before = self.read(state_path)["current"]
+        nodes_before = self.read(state_path)["nodes"]
+
+        retired = graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+
+        self.assertEqual("retired", retired["status"])
+        state = self.read(state_path)
+        task = self.read(task_path)
+        self.assertEqual("retired", state["status"])
+        self.assertEqual("retired", state["task_status"])
+        self.assertEqual(current_before, state["current"])
+        self.assertEqual(nodes_before, state["nodes"])
+        self.assertEqual("retired", task["phase"])
+        self.assertIsNone(task["current_run"])
+        record = next(item for item in task["runs"] if item["run_id"] == state["run_id"])
+        self.assertEqual("retired", record["status"])
+        retirement = state["retirement"]
+        self.assertEqual(run_before, Path(retirement["run_state_snapshot"]["path"]).read_bytes())
+        self.assertEqual(task_before, Path(retirement["task_state_snapshot"]["path"]).read_bytes())
+        self.assertEqual([], graph.ready(run)["next_actions"])
+        with self.assertRaisesRegex(graph.GraphError, "terminal run"):
+            graph.degrade_control(run, "Controller should stay closed after retirement.")
+
+        second = graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+        self.assertTrue(second["data"]["idempotent"])
+
+    def test_retire_refuses_pending_project_start_obligation(self) -> None:
+        run = self.initialize()
+        marker = graph.legacy.obligation_marker(self.root, "TD-1")
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text('{"schema_version": 1}\n', encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "pending Project Start obligation"):
+            graph.retire(run, "Do not orphan a completion obligation.", True)
+        self.assertEqual("running", self.read(run / graph.STATE_NAME)["status"])
+
+    def test_retire_idempotency_rejects_missing_or_changed_snapshots(self) -> None:
+        run = self.initialize()
+        graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+        state = self.read(run / graph.STATE_NAME)
+        snapshot = Path(state["retirement"]["run_state_snapshot"]["path"])
+        snapshot.write_text("tampered\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "snapshot изменён"):
+            graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+
+    def test_retire_repairs_task_index_after_interrupted_save(self) -> None:
+        run = self.initialize()
+        with mock.patch.object(graph, "save_task", side_effect=OSError("injected task save failure")):
+            with self.assertRaisesRegex(OSError, "injected task save failure"):
+                graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+        self.assertEqual("retired", self.read(run / graph.STATE_NAME)["status"])
+        repaired = graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+        self.assertTrue(repaired["data"]["repaired_task_index"])
+        self.assertEqual(
+            "retired",
+            self.read(self.root / ".codex/task-delivery/TD-1/state.json")["phase"],
+        )
+
+    def test_retire_requires_explicit_incomplete_acknowledgement(self) -> None:
+        run = self.initialize()
+        with self.assertRaisesRegex(graph.GraphError, "acknowledge-incomplete"):
+            graph.retire(run, "Close a stale unfinished run.", False)
+        self.assertEqual("running", self.read(run / graph.STATE_NAME)["status"])
+
+    def test_retire_accepts_supported_unfinished_states_and_legacy_37(self) -> None:
+        for index, status in enumerate(("blocked", "decision-required", "suspended"), start=1):
+            with self.subTest(status=status):
+                run = self.initialize(task_id=f"TD-RETIRE-{index}")
+                state_path = run / graph.STATE_NAME
+                state = self.read(state_path)
+                state["status"] = status
+                state["task_status"] = "suspended" if status == "suspended" else "active"
+                if status == "suspended":
+                    task_path = self.root / f".codex/task-delivery/TD-RETIRE-{index}/state.json"
+                    task = self.read(task_path)
+                    task["phase"] = "suspended"
+                    task["current_run"] = None
+                    task_path.write_text(json.dumps(task, indent=2) + "\n", encoding="utf-8")
+                state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+                self.assertEqual(
+                    "retired",
+                    graph.retire(run, "Explicitly close this unfinished legacy run.", True)["status"],
+                )
+
+        legacy = self.initialize(task_id="TD-LEGACY-37")
+        legacy_state = self.read(legacy / graph.STATE_NAME)
+        legacy_state["graph_version"] = "3.7.0"
+        legacy_state["graph_sha256"] = "cae9219d58295caf00c2d702134047f11fe8cdfb9409b957068a81d90f77657a"
+        (legacy / graph.STATE_NAME).write_text(json.dumps(legacy_state, indent=2) + "\n", encoding="utf-8")
+        self.assertEqual(
+            "retired",
+            graph.retire(legacy, "Retire the final supported v3.7 run.", True)["status"],
+        )
+
+    def test_retire_rejects_completed_and_new_runs_pin_38(self) -> None:
+        run = self.initialize(task_id="TD-CURRENT")
+        state_path = run / graph.STATE_NAME
+        state = self.read(state_path)
+        self.assertEqual("3.8.0", state["graph_version"])
+        state["status"] = "completed"
+        state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "нельзя пометить retired"):
+            graph.retire(run, "Do not rewrite successful completion.", True)
+
+    def test_retire_cli_contract_requires_acknowledgement_flag(self) -> None:
+        parsed = graph.parser().parse_args(
+            [
+                "retire",
+                "--run",
+                "/tmp/run",
+                "--reason",
+                "Close stale unfinished work.",
+                "--acknowledge-incomplete",
+            ]
+        )
+        self.assertEqual("retire", parsed.command)
+        self.assertTrue(parsed.acknowledge_incomplete)
 
     def test_v2_task_id_is_not_silently_migrated(self) -> None:
         state = self.root / ".codex/task-delivery/TD-1/state.json"

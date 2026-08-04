@@ -156,11 +156,19 @@ class ArtifactLifecycleTests(unittest.TestCase):
         self.assertTrue(second["data"]["idempotent"])
 
     def test_active_blocked_and_awaiting_implementation_are_refused(self) -> None:
-        for identifier, status in (("active", "running"), ("blocked", "blocked")):
+        for identifier, status in (("active", "running"), ("blocked", "blocked"), ("retired", "retired")):
             with self.subTest(status=status):
                 run = self.research_run(identifier, status=status)
                 with self.assertRaisesRegex(lifecycle.ArtifactError, "not safe to compact"):
                     lifecycle.compact(self.root, run)
+                if status == "retired":
+                    record = next(
+                        item
+                        for item in lifecycle.inventory(self.root)["data"]["runs"]
+                        if Path(item["run"]).name == identifier
+                    )
+                    self.assertEqual("unsupported-status:retired", record["hold_reason"])
+                    self.assertFalse((self.root / ".agent-graphs/history").exists())
         plan_run = self.root / ".agent-graphs" / "task-delivery-runs" / "plan-run"
         plan_run.mkdir(parents=True)
         self.write_json(

@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.5.0",
+  "graph_version": "3.8.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
@@ -20,8 +20,8 @@
   "profiles": {
     "light": {"plan_reviewers": 0, "result_reviewers": 0},
     "standard": {"plan_reviewers": 0, "result_reviewers": 0},
-    "complex": {"plan_reviewers": 1, "result_reviewers": 0},
-    "critical": {"plan_reviewers": 1, "result_reviewers": 1}
+    "complex": {"plan_reviewers": 0, "result_reviewers": 0},
+    "critical": {"plan_reviewers": 0, "result_reviewers": 1}
   },
   "work_policy": {
     "schema_version": 1,
@@ -58,6 +58,25 @@
       "controller": "resumability-or-durable-evidence",
       "verification": "risk-or-uncertainty"
     }
+  },
+  "control_plane_policy": {
+    "schema_version": 1,
+    "task_priority": "code-first",
+    "controller_role": "checkpoint-and-completion-boundary",
+    "protocol_failure": "degrade-control-not-task",
+    "max_protocol_repairs_before_degrade": 1,
+    "human_interrupt": "authority-or-high-risk-only",
+    "project_context_before_controller_detail": true,
+    "multiple_unfinished_tasks": "independent-per-task",
+    "verified_completion_requires_healthy_control": true
+  },
+  "retirement_policy": {
+    "schema_version": 1,
+    "terminal_status": "retired",
+    "success": false,
+    "authority": "explicit-user",
+    "preserve_raw_state": true,
+    "artifact_lifecycle": "hold"
   },
   "optional_agents": [
     "task_explorer",
@@ -100,6 +119,8 @@
       "needs_context",
       "blocked"
     ],
+    "budget_accounting": "actual-normal-starts-with-conditional-repair",
+    "root_integration": "allowed-within-reviewed-scope-and-declared-tests",
     "parallel_write_isolation": "worktree-required",
     "parallel_write_enabled": false
   },
@@ -107,6 +128,9 @@
     "checkpoint_schema_version": 1,
     "checkpoint_after": "slice-accept",
     "rehydrate_before": "next-slice",
+    "task_checkpoint_after": "explicit-suspend",
+    "task_switching": "suspend-without-review",
+    "resume_source": "checkpoint-plus-repository",
     "host_compact": "optional",
     "global_hook_required": false
   },

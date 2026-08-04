@@ -43,6 +43,17 @@
       "verification": "risk-or-uncertainty"
     }
   },
+  "control_plane_policy": {
+    "schema_version": 1,
+    "task_priority": "domain-first",
+    "controller_role": "checkpoint-and-completion-boundary",
+    "protocol_failure": "degrade-control-not-task",
+    "max_protocol_repairs_before_degrade": 1,
+    "human_interrupt": "authority-semantic-or-high-risk-only",
+    "project_context_before_controller_detail": true,
+    "multiple_unfinished_tasks": "independent-per-task",
+    "verified_completion_requires_healthy_control": true
+  },
   "optional_agents": ["__VERIFIER_ROLE__"],
   "mcp_policy": {
     "discovery": "when-relevant",

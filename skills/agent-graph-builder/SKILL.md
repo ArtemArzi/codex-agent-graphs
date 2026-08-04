@@ -9,6 +9,23 @@ Host invocation: `$agent-graph-builder` in Codex, `/cag:agent-graph-builder` in 
 
 Create a skill-backed control graph that constrains evidence and lifecycle while leaving semantic work to the model.
 
+## Plain-language user updates
+
+Make every operational graph explain its work in the user's language and in
+plain words. User-facing progress and final messages must lead with what
+changed, what it means for the task, and what happens next. They must not read
+like the controller's internal log.
+
+Required order: result → impact → next step.
+
+Require a `Plain-language user updates` section in every operational graph
+skill. Internal terms such as `controller`, `root`, `worker`, `packet`,
+`receipt`, `digest`, `checkpoint`, `gate`, `authority`, `control-degrade` and
+`recovery route` may appear only when the user needs the exact identifier to
+act or verify something; translate and explain it on first use. Put hashes, exact
+artifact names and protocol details in an optional `Technical details:` block
+after the plain explanation. Keep ordinary progress to one short paragraph.
+
 ## Mandatory dependency
 
 1. Invoke `$skill-creator` and read its complete `SKILL.md` before creating or restructuring a graph skill.
@@ -40,14 +57,16 @@ python3 scripts/graph_contract.py scaffold \
 The scaffold refuses to overwrite existing graph or control-artifact files. It does not invent the domain controller.
 
 4. Keep the default control topology `work → optional verify → complete`. Planning, research, capability selection, implementation and synthesis normally stay inside `work`; they are not graph nodes merely because they occur in sequence.
-5. Put judgment in the root model. Put path safety, state transitions, retry bounds, immutable receipts, SHA-256 binding, compatibility and completion checks in standard-library code.
-6. Apply [efficiency-contract.md](references/efficiency-contract.md). Start root-only; admit an agent or reviewer only for a concrete independent evidence gap; stop duplicate scopes and no-new-evidence retries at their declared budgets. An explicit user override must remain finite.
-7. Declare `execution_policy`: `skill-only` does not initialize durable state, `tracked` uses the controller without mandatory review, and `verified` adds exact-candidate independent verification. A graph whose core purpose is durable lifecycle may expose only `tracked` and `verified`; do not invent a fake quick path.
-8. Make agents conditional capabilities, not mandatory stages. Root owns synthesis and final truth; subagents receive bounded packets and remain leaf workers. Never hard-code model names in the graph skill.
-9. Route applicable installed skills and relevant MCP context inside `work`. Discover MCP only when the task can benefit from external, provider, library or live-system context. Record an actual receipt, a checked fallback or `mcp:not-applicable:<reason>` for local-only work; never add a separate MCP node.
-10. Version `graph.json` and the durable state schema. Pin active runs to the graph identity and add an explicit compatibility or migration path before changing a released contract.
-11. Classify run material by [artifact-lifecycle.md](references/artifact-lifecycle.md). Canonical outputs remain project history; active state remains resumable; safely terminal raw state uses the shared runtime for verified compaction and explicit TTL pruning. Do not add a cleanup node or destructive hook.
-12. Read [graph-contract.md](references/graph-contract.md) while designing fields and [evaluation.md](references/evaluation.md) before claiming completion.
+5. Declare a code-first control boundary. Domain work reads project instructions, architecture, source and tests before controller detail. Protocol failure gets one bounded repair, then degrades control without blocking authorized domain work. Only authority, semantic contract, safety, data or external-state boundaries may interrupt the user; degraded control may refuse verified completion.
+6. Keep task state separate from controller health. When resumability matters, provide one compact suspend checkpoint and allow unrelated unfinished tasks to proceed independently; do not model suspension, compaction or task switching as graph nodes.
+7. Put judgment in the root model. Put path safety, state transitions, retry bounds, immutable receipts, SHA-256 binding, compatibility and completion checks in standard-library code.
+8. Apply [efficiency-contract.md](references/efficiency-contract.md). Start root-only; admit an agent or reviewer only for a concrete independent evidence gap; stop duplicate scopes and no-new-evidence retries at their declared budgets. An explicit user override must remain finite.
+9. Declare `execution_policy`: `skill-only` does not initialize durable state, `tracked` uses the controller without mandatory review, and `verified` adds exact-candidate independent verification. A graph whose core purpose is durable lifecycle may expose only `tracked` and `verified`; do not invent a fake quick path.
+10. Make agents conditional capabilities, not mandatory stages. Root owns synthesis and final truth; subagents receive bounded packets and remain leaf workers. Never hard-code model names in the graph skill.
+11. Route applicable installed skills and relevant MCP context inside `work`. Discover MCP only when the task can benefit from external, provider, library or live-system context. Record an actual receipt, a checked fallback or `mcp:not-applicable:<reason>` for local-only work; never add a separate MCP node.
+12. Version `graph.json` and the durable state schema. Pin active runs to the graph identity and add an explicit compatibility or migration path before changing a released contract.
+13. Classify run material by [artifact-lifecycle.md](references/artifact-lifecycle.md). Canonical outputs remain project history; active state remains resumable; safely terminal raw state uses the shared runtime for verified compaction and explicit TTL pruning. Do not add a cleanup node or destructive hook.
+14. Read [graph-contract.md](references/graph-contract.md) while designing fields and [evaluation.md](references/evaluation.md) before claiming completion.
 
 ## Validate
 

@@ -9,6 +9,22 @@ Host invocation: `$development-recovery` in Codex, `/cag:development-recovery` i
 
 Treat recovery as a conditional development control, not as a graph or a mandatory stage. Keep the current root model as the judgment owner. Do not add agents or ceremony unless evidence localization or independent verification genuinely needs them.
 
+## Plain-language user updates
+
+Write every progress and final message in the user's language and in plain
+words. First say what assumption or rule turned out to be wrong, then whether
+the approved behavior or plan changes, and finally how the work will continue.
+Do not expose the recovery protocol's internal log as the explanation.
+
+Required order: result → impact → next step.
+
+Use terms such as `recovery route`, `first false assumption`, `root`, `worker`,
+`packet`, `receipt`, `digest`, `checkpoint`, `gate` and `authority` only when the
+exact internal name helps the user act or verify something; explain it on first use.
+Put hashes, artifact names and protocol details in an optional
+`Technical details:` block after the plain explanation. Keep ordinary progress
+to one short paragraph.
+
 ## Establish the divergence
 
 1. Read the accepted specification, active plan, relevant repository instructions, current diff and recent Git history.

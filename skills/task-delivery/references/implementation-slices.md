@@ -7,8 +7,27 @@
 ## Стратегии и режимы
 
 - `root-only` — `light`, маленькая или тесно связанная реализация; slice artifacts отсутствуют.
-- `delegated-sequential` — один активный write slice. Default budget — два normal packet; явный `init --implementation-strategy delegated-sequential --slice-budget N` допускает от 1 до 6 заранее обоснованных slices, пока профиль оставляет общий agent budget для своих reviews и возможного repair. После verifier reject допускается ровно один дополнительный repair packet.
+- `delegated-sequential` — один активный write slice. Default budget — два
+  normal packet; явный
+  `init --implementation-strategy delegated-sequential --slice-budget N`
+  допускает от 1 до 6 заранее обоснованных implementation slices, пока профиль
+  оставляет общий budget для обязательных reviews. Условный verifier repair не
+  резервируется заранее и после REJECT получает ровно один отдельный packet.
 - `delegated-parallel` — fail-closed, пока нет доказанной изоляции отдельных worktrees.
+
+Plan phase и worker slice — разные сущности. Read-only authorization,
+baseline/evidence freeze, controller bookkeeping, integration и final
+acceptance root выполняет внутри `work`, если отдельный worker не создаёт
+независимую реализационную дельту. Не расходуй worker budget и не создавай
+фиктивный packet только потому, что в плане раздел назван «слайсом».
+
+Если реальных независимых implementation slices больше допустимого budget,
+root автоматически делит их на минимальное число последовательно именованных
+runs, сохраняя один plan/outcome/acceptance, явно фиксируя диапазон units
+каждого run и передавая terminal handoff предыдущего run как evidence
+следующему. Это техническое разбиение не требует решения пользователя. Новый
+доступ к данным, смена acceptance/risk или расширение полномочий остаются
+отдельным решением.
 
 `plan` не запускает workers. `implement` переиспользует exact review сохранённого плана. `full` создаёт packet после текущего plan review. Явная просьба реализовать слайсами требует `--implementation-strategy delegated-sequential`; root-only completion тогда запрещён.
 
@@ -129,7 +148,7 @@ python3 scripts/task_graph.py slice-accept \
   --run <run-dir> --slice-id <slice-id> --acceptance <acceptance.json>
 ```
 
-Runner сохраняет immutable `root-acceptance.json` и обновляет `context-checkpoint.json`. Следующий packet запрещён, пока успешный worker receipt не принят root. В `task.json.implementation.slices` root переносит только `slice_id`, `packet_sha256`, `receipt_sha256` и `acceptance_sha256`; controller сам перечитывает canonical acceptance и требует, чтобы final changed paths ровно совпали с union accepted path provenance. Root-only integration edits внутри delegated strategy не допускаются.
+Runner сохраняет immutable `root-acceptance.json` и обновляет `context-checkpoint.json`. Следующий packet запрещён, пока успешный worker receipt не принят root. В `task.json.implementation.slices` root переносит только `slice_id`, `packet_sha256`, `receipt_sha256` и `acceptance_sha256`; controller сам перечитывает canonical acceptance. Для graph 3.4-3.6 final changed paths равны union accepted path provenance. Для graph 3.7+ к этому union можно добавить явный implementation.integration_paths: только небольшие root-owned связующие правки внутри reviewed scope, без дублирования slice paths, с task-level passing tests.
 
 Если нужен следующий slice:
 

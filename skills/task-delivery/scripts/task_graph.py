@@ -39,6 +39,7 @@ SLICE_PACKET_NAME = "packet.json"
 SLICE_BASELINE_NAME = "baseline.json"
 SLICE_ACCEPTANCE_NAME = "root-acceptance.json"
 CONTEXT_CHECKPOINT_NAME = "context-checkpoint.json"
+TASK_CHECKPOINT_NAME = "task-checkpoint.json"
 SCOPE_AMENDMENTS_DIR = "scope-amendments"
 MODES = {"plan", "implement", "full"}
 PROFILES = {"light", "standard", "complex", "critical"}
@@ -63,9 +64,13 @@ LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.2.0", "4317362f02d843470cfa3bc063cb861577bec09c9b98bd78126dd12bb8bb2bb1"),
     ("3.3.0", "07b19482bca36d54ace9a3cc470e76e421b2b1c14f0ee123c90a7792af79b7e8"),
     ("3.4.0", "208d0b08c4b4e3298add4802414d18ee97cb71f8f7bcfdb9dd97c1ab67894d1d"),
+    ("3.5.0", "7e9b2b4c3a9051f8f09a69ea89d359836181a6cbd77391e326c74f0480d9e7b2"),
+    ("3.6.0", "ffe9580e03ce2aa76a9947e30e016f0d3d58d1a34a77ac534f59ab083e4653ec"),
+    ("3.7.0", "cae9219d58295caf00c2d702134047f11fe8cdfb9409b957068a81d90f77657a"),
 }
-SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0"}
-STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0"}
+SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0"}
+STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0"}
+NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0"}
 
 
 class GraphError(RuntimeError):
@@ -134,6 +139,18 @@ def atomic_text(path: Path, value: str) -> None:
             os.unlink(temporary)
 
 
+def atomic_bytes(path: Path, value: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(value)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def graph_contract() -> dict[str, Any]:
     graph = load_json(GRAPH_PATH)
     if graph.get("schema_version") != 2 or graph.get("graph_id") != "task-delivery":
@@ -145,8 +162,8 @@ def graph_contract() -> dict[str, Any]:
     if graph["profiles"] != {
         "light": {"plan_reviewers": 0, "result_reviewers": 0},
         "standard": {"plan_reviewers": 0, "result_reviewers": 0},
-        "complex": {"plan_reviewers": 1, "result_reviewers": 0},
-        "critical": {"plan_reviewers": 1, "result_reviewers": 1},
+        "complex": {"plan_reviewers": 0, "result_reviewers": 0},
+        "critical": {"plan_reviewers": 0, "result_reviewers": 1},
     }:
         raise GraphError("Task Delivery profile review policy должна быть risk-triggered.")
     for mode in MODES:
@@ -180,6 +197,28 @@ def graph_contract() -> dict[str, Any]:
         != {"skill-only", "tracked", "verified"}
     ):
         raise GraphError("Task Delivery graph содержит неверные adaptive execution tiers.")
+    control = graph.get("control_plane_policy", {})
+    if control != {
+        "schema_version": 1,
+        "task_priority": "code-first",
+        "controller_role": "checkpoint-and-completion-boundary",
+        "protocol_failure": "degrade-control-not-task",
+        "max_protocol_repairs_before_degrade": 1,
+        "human_interrupt": "authority-or-high-risk-only",
+        "project_context_before_controller_detail": True,
+        "multiple_unfinished_tasks": "independent-per-task",
+        "verified_completion_requires_healthy_control": True,
+    }:
+        raise GraphError("Task Delivery graph содержит неверную code-first control-plane policy.")
+    if graph.get("retirement_policy") != {
+        "schema_version": 1,
+        "terminal_status": "retired",
+        "success": False,
+        "authority": "explicit-user",
+        "preserve_raw_state": True,
+        "artifact_lifecycle": "hold",
+    }:
+        raise GraphError("Task Delivery graph содержит неверную retirement policy.")
     mcp_policy = graph.get("mcp_policy")
     if (
         not isinstance(mcp_policy, dict)
@@ -206,6 +245,10 @@ def graph_contract() -> dict[str, Any]:
         or delegation.get("explicit_slice_request") != "required"
         or set(delegation.get("strategies", [])) != IMPLEMENTATION_STRATEGIES
         or set(delegation.get("worker_statuses", [])) != WORKER_STATUSES
+        or delegation.get("budget_accounting")
+        != "actual-normal-starts-with-conditional-repair"
+        or delegation.get("root_integration")
+        != "allowed-within-reviewed-scope-and-declared-tests"
         or delegation.get("parallel_write_isolation") != "worktree-required"
         or delegation.get("parallel_write_enabled") is not False
         or not isinstance(limits.get("max_slices_per_run"), int)
@@ -222,6 +265,9 @@ def graph_contract() -> dict[str, Any]:
         "checkpoint_schema_version": 1,
         "checkpoint_after": "slice-accept",
         "rehydrate_before": "next-slice",
+        "task_checkpoint_after": "explicit-suspend",
+        "task_switching": "suspend-without-review",
+        "resume_source": "checkpoint-plus-repository",
         "host_compact": "optional",
         "global_hook_required": False,
     }:
@@ -390,25 +436,34 @@ PENDING
 """
 
 
-def plan_contract_text(path: Path) -> str:
+def plan_contract_text(path: Path, *, graph_version: str | None = None) -> str:
     text = path.read_text(encoding="utf-8")
     start = "<!-- task-delivery:plan:start -->"
     end = "<!-- task-delivery:plan:end -->"
     if start in text or end in text:
         if text.count(start) != 1 or text.count(end) != 1 or text.index(start) >= text.index(end):
             raise GraphError("Некорректные границы task-delivery:plan в плане.")
-        return text[text.index(start) + len(start) : text.index(end)]
+        contract = text[text.index(start) + len(start) : text.index(end)]
+        version = graph_version or graph_contract()["graph_version"]
+        if version in NORMALIZED_PLAN_DIGEST_VERSIONS:
+            if contract.startswith("\r\n"):
+                contract = contract[2:]
+            elif contract.startswith("\n"):
+                contract = contract[1:]
+        return contract
     return text
 
 
-def plan_digest(path: Path) -> str:
-    return hashlib.sha256(plan_contract_text(path).encode("utf-8")).hexdigest()
+def plan_digest(path: Path, *, graph_version: str | None = None) -> str:
+    return hashlib.sha256(
+        plan_contract_text(path, graph_version=graph_version).encode("utf-8")
+    ).hexdigest()
 
 
-def validate_plan(path: Path) -> tuple[str, list[str]]:
+def validate_plan(path: Path, *, graph_version: str | None = None) -> tuple[str, list[str]]:
     if path.is_symlink() or not path.is_file():
         raise GraphError(f"План должен быть обычным существующим файлом: {path}")
-    contract = plan_contract_text(path)
+    contract = plan_contract_text(path, graph_version=graph_version)
     placeholders = [token for token in ("PENDING", "TODO", "{{") if token in contract]
     if placeholders:
         raise GraphError("Контракт плана содержит незаполненные маркеры: " + ", ".join(placeholders))
@@ -416,7 +471,7 @@ def validate_plan(path: Path) -> tuple[str, list[str]]:
         scope = snapshots.parse_scope(path.read_text(encoding="utf-8"))
     except snapshots.SnapshotError as exc:
         raise GraphError(str(exc)) from exc
-    return plan_digest(path), scope
+    return plan_digest(path, graph_version=graph_version), scope
 
 
 def exclusions(plan: str) -> list[str]:
@@ -437,7 +492,7 @@ def profile_requires_verify(mode: str, profile: str, confidence: str = "high") -
     if confidence == "low":
         return True
     if mode == "plan":
-        return profile in {"complex", "critical"}
+        return False
     return profile == "critical"
 
 
@@ -797,7 +852,10 @@ def validate_amendment_chain(
     if not isinstance(records, list):
         raise GraphError("Scope amendment registry повреждён.")
     if not records:
-        digest = current_digest or plan_digest(snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"]))
+        digest = current_digest or plan_digest(
+            snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"]),
+            graph_version=state.get("graph_version"),
+        )
         return {"base_digest": digest, "effective_digest": digest, "receipts": []}
     cursor: str | None = None
     validated: list[dict[str, Any]] = []
@@ -823,7 +881,8 @@ def validate_amendment_chain(
         cursor = after
         validated.append(artifact)
     effective = current_digest or plan_digest(
-        snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"])
+        snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"]),
+        graph_version=state.get("graph_version"),
     )
     if cursor != effective:
         raise GraphError("Текущий план не совпадает с effective scope-amendment digest.")
@@ -872,7 +931,9 @@ def load_context_checkpoint(state: dict[str, Any], run_dir: Path) -> tuple[dict[
     ):
         raise GraphError("Context checkpoint связан с другим Task Delivery run.")
     current_plan = snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"])
-    current_plan_digest = plan_digest(current_plan)
+    current_plan_digest = plan_digest(
+        current_plan, graph_version=state.get("graph_version")
+    )
     if checkpoint.get("plan_digest") != current_plan_digest:
         raise GraphError("Context checkpoint связан с другим plan digest.")
     validate_amendment_chain(state, run_dir, current_digest=current_plan_digest)
@@ -990,7 +1051,9 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             if strategy == "delegated-sequential" and any(item.get("status") == "ready" for item in records.values()):
                 raise GraphError("Delegated-sequential допускает только один активный slice.")
             plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-            digest, scope = validate_plan(plan_path)
+            digest, scope = validate_plan(
+                plan_path, graph_version=state.get("graph_version")
+            )
             if state["mode"] == "implement":
                 prior = state.get("task_state_snapshot", {}).get("checkpoints", {}).get("plan-review")
                 if (
@@ -1009,7 +1072,11 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                 allowed_review_modes = {"self", "independent"}
                 if review_mode not in allowed_review_modes:
                     raise GraphError("Full slice plan_review mode должен быть self или independent.")
-                if state["profile"] in {"complex", "critical"} and review_mode != "independent":
+                if (
+                    state.get("graph_version") != graph_contract()["graph_version"]
+                    and state["profile"] in {"complex", "critical"}
+                    and review_mode != "independent"
+                ):
                     raise GraphError("Complex/critical slice требует independent plan review до worker.")
                 plan_review = {"mode": review_mode, "receipt": review_receipt}
             root_only_amendment_receipts: list[str] = []
@@ -1241,7 +1308,10 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
             if snapshots.manifest_digest(baseline) != record["base_repo_digest"]:
                 raise GraphError("Slice baseline изменился после регистрации.")
             current_plan = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-            if plan_digest(current_plan) != packet["plan_digest"]:
+            if (
+                plan_digest(current_plan, graph_version=state.get("graph_version"))
+                != packet["plan_digest"]
+            ):
                 raise GraphError("План изменился после выдачи slice packet; создай новый packet.")
             receipt = load_json(receipt_path.resolve())
             expected_schema = graph_contract()["test_policy"]["packet_schema_version"] if staged_contract else 1
@@ -1425,7 +1495,9 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
 def write_context_checkpoint(state: dict[str, Any], run_dir: Path, *, next_objective: str) -> tuple[Path, str]:
     root = Path(state["root"])
     plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-    digest, scope = validate_plan(plan_path)
+    digest, scope = validate_plan(
+        plan_path, graph_version=state.get("graph_version")
+    )
     accepted: list[dict[str, Any]] = []
     deferred_by_id: dict[str, dict[str, str]] = {}
     verified_discoveries: list[dict[str, str]] = []
@@ -1517,7 +1589,9 @@ def accept_slice(run_dir: Path, identifier: str, acceptance_path: Path) -> dict[
             packet = load_json(Path(record["packet_path"]))
             receipt = load_json(Path(record["receipt_path"]))
             current_plan = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-            if packet.get("plan_digest") != plan_digest(current_plan):
+            if packet.get("plan_digest") != plan_digest(
+                current_plan, graph_version=state.get("graph_version")
+            ):
                 raise GraphError("План изменился после выдачи slice packet; создай новый packet.")
             draft = load_json(acceptance_path.resolve())
             if draft.get("schema_version") != 1 or slice_id(draft.get("slice_id")) != identifier:
@@ -1741,7 +1815,9 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             reason = meaningful(draft.get("reason"), "scope amendment reason", 16)
             plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
             text_value = plan_path.read_text(encoding="utf-8")
-            before_digest, before_scope = validate_plan(plan_path)
+            before_digest, before_scope = validate_plan(
+                plan_path, graph_version=state.get("graph_version")
+            )
             review_receipt = meaningful(
                 draft.get("plan_review_receipt"), "scope amendment plan_review_receipt", 6
             )
@@ -1804,7 +1880,9 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             try:
                 with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
                     handle.write(updated)
-                after_digest, verified_scope = validate_plan(temporary_path)
+                after_digest, verified_scope = validate_plan(
+                    temporary_path, graph_version=state.get("graph_version")
+                )
             finally:
                 temporary_path.unlink(missing_ok=True)
             if verified_scope != after_scope or after_digest == before_digest:
@@ -1843,7 +1921,9 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             appended = False
             try:
                 atomic_text(plan_path, updated)
-                actual_digest, actual_scope = validate_plan(plan_path)
+                actual_digest, actual_scope = validate_plan(
+                    plan_path, graph_version=state.get("graph_version")
+                )
                 if actual_digest != after_digest or actual_scope != after_scope:
                     raise GraphError("Scope amendment plan write не совпал с validated draft.")
                 atomic_json(target, artifact)
@@ -2226,8 +2306,20 @@ def validate_slice_acceptance(
             for item in accepted
             for path in item["root_acceptance"]["verified_changed_paths"]
         }
-        if set(changed) != accepted_path_union:
-            raise GraphError("Итоговая delegated delta должна иметь только root-accepted path provenance.")
+        integration_paths = []
+        if state.get("graph_version") == graph_contract()["graph_version"]:
+            integration_paths = normalize_repo_paths(
+                Path(state["root"]),
+                implementation.get("integration_paths", []),
+                "implementation.integration_paths",
+            )
+            if accepted_path_union.intersection(integration_paths):
+                raise GraphError("Root integration paths must not duplicate accepted slice paths.")
+        elif implementation.get("integration_paths") not in (None, []):
+            raise GraphError("Legacy delegated runs do not support root integration paths.")
+        expected_paths = accepted_path_union.union(integration_paths)
+        if set(changed) != expected_paths:
+            raise GraphError("Delegated delta requires accepted slice provenance or declared root integration paths.")
         passed_ids = {item["check_id"] for item in task_tests}
         missing = set(deferred_by_id).difference(passed_ids)
         if missing:
@@ -2243,6 +2335,7 @@ def validate_slice_acceptance(
         "accepted_slices": accepted,
         "context_checkpoint_sha256": checkpoint_sha,
         "deferred_final_check_ids": sorted(deferred_by_id),
+        "integration_paths": integration_paths if staged_contract else [],
     }
 
 
@@ -2282,7 +2375,9 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     if state.get("graph_version") in {"3.3.0", graph_contract()["graph_version"]}:
         validate_mcp_capabilities(capabilities)
     plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-    digest, scope = validate_plan(plan_path)
+    digest, scope = validate_plan(
+        plan_path, graph_version=state.get("graph_version")
+    )
     plan = artifact.get("plan")
     if not isinstance(plan, dict) or plan.get("path") != state["plan_path"] or plan.get("digest") != digest:
         raise GraphError("task.json должен быть связан с точным путём и digest плана.")
@@ -2305,9 +2400,20 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     )
     if review_mode == "reused" and not prior_reusable:
         raise GraphError("Reuse plan review требует свежую точную квитанцию прошлого plan run.")
-    if profile in {"complex", "critical"} and mode != "plan" and not (independent_plan or prior_reusable):
+    if (
+        not current_contract
+        and profile in {"complex", "critical"}
+        and mode != "plan"
+        and not (independent_plan or prior_reusable)
+    ):
         raise GraphError("Complex/critical реализация требует отдельный plan review или свежую reuse-квитанцию.")
-    if profile in {"complex", "critical"} and mode != "plan" and prior_reusable and prior.get("mode") != "independent":
+    if (
+        not current_contract
+        and profile in {"complex", "critical"}
+        and mode != "plan"
+        and prior_reusable
+        and prior.get("mode") != "independent"
+    ):
         raise GraphError("Complex/critical нельзя переиспользовать self-review лёгкого плана.")
     if review_mode == "independent" and not independent_plan:
         raise GraphError("Independent plan review требует task_plan_reviewer receipt.")
@@ -2488,6 +2594,231 @@ def save_task(path: Path, state: dict[str, Any]) -> None:
     atomic_json(path, state)
 
 
+def suspend(run_dir: Path, reason: str, next_objective: str) -> dict[str, Any]:
+    reason = meaningful(reason, "suspend reason", 8)
+    next_objective = meaningful(next_objective, "next objective", 8)
+    with state_lock(run_dir):
+        state = load_run_state(run_dir)
+        if state["status"] == "suspended":
+            return ready(run_dir)
+        if state["status"] not in {"running", "blocked", "decision-required"}:
+            raise GraphError("Suspend is available only for an unfinished run.")
+        root = Path(state["root"])
+        baseline = snapshots.load_manifest(
+            snapshots.safe_join_no_symlinks(root, state["baseline_manifest"])
+        )
+        changed = snapshots.changed_paths(baseline, manifest(root, state["plan_path"]))
+        accepted = sorted(
+            identifier
+            for identifier, item in state.get("slices", {}).items()
+            if item.get("status") == "accepted"
+        )
+        checkpoint = {
+            "schema_version": 1,
+            "task_id": state["task_id"],
+            "run_id": state["run_id"],
+            "plan_path": state["plan_path"],
+            "plan_digest": plan_digest(
+                root / state["plan_path"], graph_version=state.get("graph_version")
+            ),
+            "resume_status": state["status"],
+            "current": state["current"],
+            "changed_paths": changed,
+            "accepted_slices": accepted,
+            "reason": reason,
+            "next_objective": next_objective,
+            "created_at": now(),
+        }
+        checkpoint_path = run_dir / TASK_CHECKPOINT_NAME
+        atomic_json(checkpoint_path, checkpoint)
+        checkpoint_sha = sha256_file(checkpoint_path)
+        state["suspended_from_status"] = state["status"]
+        state["status"] = "suspended"
+        state["task_status"] = "suspended"
+        state["context"]["task_checkpoint_path"] = str(checkpoint_path)
+        state["context"]["task_checkpoint_sha256"] = checkpoint_sha
+        save_run(run_dir, state)
+        task_path, task = load_task_state(root, state["task_id"])
+        task["phase"] = "suspended"
+        task["current_run"] = None
+        task["runs"][-1]["status"] = "suspended"
+        task["runs"][-1]["checkpoint_sha256"] = checkpoint_sha
+        save_task(task_path, task)
+    return ready(run_dir)
+
+
+def resume(run_dir: Path) -> dict[str, Any]:
+    with state_lock(run_dir):
+        state = load_run_state(run_dir)
+        if state["status"] != "suspended":
+            raise GraphError("Resume requires a suspended run.")
+        context = state.get("context", {})
+        checkpoint_path = Path(str(context.get("task_checkpoint_path", "")))
+        if (
+            not checkpoint_path.is_file()
+            or sha256_file(checkpoint_path) != context.get("task_checkpoint_sha256")
+        ):
+            raise GraphError("Task checkpoint is missing or changed.")
+        checkpoint = load_json(checkpoint_path)
+        root = Path(state["root"])
+        if checkpoint.get("plan_digest") != plan_digest(
+            root / state["plan_path"], graph_version=state.get("graph_version")
+        ):
+            raise GraphError("The plan changed after suspend; make a bounded plan decision.")
+        restore = checkpoint.get("resume_status")
+        if restore not in {"running", "blocked", "decision-required"}:
+            raise GraphError("Task checkpoint has an unknown resume status.")
+        state["status"] = restore
+        state["task_status"] = "active"
+        state.pop("suspended_from_status", None)
+        save_run(run_dir, state)
+        task_path, task = load_task_state(root, state["task_id"])
+        task["phase"] = "running"
+        task["current_run"] = state["run_id"]
+        task["runs"][-1]["status"] = restore
+        save_task(task_path, task)
+    return ready(run_dir)
+
+
+def validate_retirement_snapshots(run_dir: Path, retirement: dict[str, Any]) -> None:
+    expected = {
+        "run_state_snapshot": run_dir / "retirement/pre-run-state.json",
+        "task_state_snapshot": run_dir / "retirement/pre-task-state.json",
+    }
+    for key, path in expected.items():
+        receipt = retirement.get(key)
+        if not isinstance(receipt, dict) or receipt.get("path") != str(path):
+            raise GraphError("Retirement snapshot metadata повреждена.")
+        if path.is_symlink() or not path.is_file():
+            raise GraphError(f"Retirement snapshot отсутствует или небезопасен: {path}")
+        if receipt.get("sha256") != sha256_file(path):
+            raise GraphError(f"Retirement snapshot изменён после сохранения: {path}")
+
+
+def retire(run_dir: Path, reason: str, acknowledge_incomplete: bool) -> dict[str, Any]:
+    reason = meaningful(reason, "retirement reason", 8)
+    if not acknowledge_incomplete:
+        raise GraphError("Retire требует явный --acknowledge-incomplete: это не успешное завершение.")
+    initial = load_run_state(run_dir)
+    root = Path(initial["root"])
+    task_id = initial["task_id"]
+    with legacy.mutation_guard(root, task_id, True, skip_project_reopen=True):
+        with state_lock(run_dir):
+            state = load_run_state(run_dir)
+            marker = legacy.obligation_marker(root, task_id)
+            if marker.exists() or marker.is_symlink():
+                raise GraphError(
+                    "Retire запрещён: pending Project Start obligation требует recovery через complete."
+                )
+            task_path, task = load_task_state(root, task_id)
+            matching = [item for item in task.get("runs", []) if item.get("run_id") == state["run_id"]]
+            if len(matching) != 1:
+                raise GraphError("Task index не содержит ровно одну запись этого run.")
+            run_record = matching[0]
+            if state["status"] == "completed":
+                raise GraphError("Успешно завершённый run нельзя пометить retired.")
+            if state["status"] == "retired":
+                retirement = state.get("retirement")
+                if not isinstance(retirement, dict):
+                    raise GraphError("Retired run не содержит retirement metadata.")
+                validate_retirement_snapshots(run_dir, retirement)
+                current_run = task.get("current_run")
+                if current_run not in {None, state["run_id"]}:
+                    raise GraphError("Task index уже связан с другим current_run; repair запрещён.")
+                repaired = False
+                if run_record.get("status") != "retired" or current_run == state["run_id"]:
+                    run_record["status"] = "retired"
+                    run_record["retired_at"] = retirement["retired_at"]
+                    run_record["retirement_reason"] = retirement["reason"]
+                    task["phase"] = "retired"
+                    task["current_run"] = None
+                    task["completed_at"] = None
+                    save_task(task_path, task)
+                    repaired = True
+                return result(
+                    "retired",
+                    "Run уже закрыт как незавершённый; raw evidence сохранён.",
+                    artifacts=[str(run_dir), str(task_path)],
+                    data={"run": str(run_dir), "idempotent": not repaired, "repaired_task_index": repaired},
+                )
+            if state["status"] not in {"running", "blocked", "decision-required", "suspended"}:
+                raise GraphError(f"Run status {state['status']!r} нельзя закрыть через retire.")
+            current_run = task.get("current_run")
+            if current_run not in {state["run_id"], None}:
+                raise GraphError("Task index связан с другим current_run; retire запрещён.")
+            if current_run is None and task.get("phase") != "suspended":
+                raise GraphError("Только suspended run может иметь пустой current_run перед retire.")
+
+            retirement_dir = run_dir / "retirement"
+            run_snapshot = retirement_dir / "pre-run-state.json"
+            task_snapshot = retirement_dir / "pre-task-state.json"
+            run_bytes = (run_dir / STATE_NAME).read_bytes()
+            task_bytes = task_path.read_bytes()
+            atomic_bytes(run_snapshot, run_bytes)
+            atomic_bytes(task_snapshot, task_bytes)
+            retired_at = now()
+            retirement = {
+                "schema_version": 1,
+                "authority": "explicit-user",
+                "reason": reason,
+                "retired_at": retired_at,
+                "previous_status": state["status"],
+                "previous_task_status": state.get("task_status"),
+                "run_state_snapshot": {
+                    "path": str(run_snapshot),
+                    "sha256": sha256_file(run_snapshot),
+                },
+                "task_state_snapshot": {
+                    "path": str(task_snapshot),
+                    "sha256": sha256_file(task_snapshot),
+                },
+            }
+            state["retirement"] = retirement
+            validate_retirement_snapshots(run_dir, retirement)
+            state["status"] = "retired"
+            state["task_status"] = "retired"
+            save_run(run_dir, state)
+
+            run_record["status"] = "retired"
+            run_record["retired_at"] = retired_at
+            run_record["retirement_reason"] = reason
+            task["phase"] = "retired"
+            task["current_run"] = None
+            task["completed_at"] = None
+            save_task(task_path, task)
+    return result(
+        "retired",
+        "Run закрыт как незавершённый; raw evidence и pre-retirement snapshots сохранены.",
+        artifacts=[str(run_dir), str(task_path), str(run_snapshot), str(task_snapshot)],
+        data={"run": str(run_dir), "idempotent": False, "repaired_task_index": False},
+    )
+
+
+def degrade_control(run_dir: Path, reason: str) -> dict[str, Any]:
+    reason = meaningful(reason, "control degradation reason", 8)
+    with state_lock(run_dir):
+        state = load_run_state(run_dir)
+        if state["status"] in {"completed", "retired"}:
+            raise GraphError("A terminal run cannot enter degraded control.")
+        state["control_status"] = "degraded"
+        issues = state.setdefault("control_issues", [])
+        if reason not in issues:
+            issues.append(reason)
+        save_run(run_dir, state)
+    return result(
+        "degraded",
+        "Control is degraded, but local code work may continue.",
+        next_actions=[
+            "Continue implementation and tests; verified completion needs a fresh healthy run."
+        ],
+        artifacts=[str(run_dir / STATE_NAME)],
+        data={
+            "task_status": state.get("task_status"),
+            "control_status": "degraded",
+        },
+    )
+
+
 def initialize(
     root_raw: str,
     mode: str,
@@ -2526,18 +2857,15 @@ def initialize(
         + int(graph["profiles"][profile]["result_reviewers"])
         + (1 if profile == "critical" else 0)
     )
-    repair_reserve = 0 if profile == "light" else int(
-        graph["limits"]["max_verification_repair_slices"]
-    )
     profile_slice_ceiling = (
         int(graph["limits"]["max_agents_per_run"])
         - profile_review_reserve
-        - repair_reserve
     )
     if effective_slice_budget > profile_slice_ceiling:
         raise GraphError(
             f"--slice-budget {effective_slice_budget} не оставляет agent budget для "
-            f"{profile} review/repair; максимум {profile_slice_ceiling}."
+            f"{profile} review; максимум {profile_slice_ceiling}. "
+            "Условный verifier repair имеет отдельный бюджет и заранее normal slices не сокращает."
         )
     policy = graph["delegation_policy"]
     strategy_request = "root-only" if mode == "plan" else implementation_strategy
@@ -2562,7 +2890,9 @@ def initialize(
             if existing.get("artifacts", {}).get("plan") != plan:
                 raise GraphError("Implement должен открыть точный ранее проверенный план.")
             plan_path = snapshots.safe_join_no_symlinks(root, plan)
-            digest, scope = validate_plan(plan_path)
+            digest, scope = validate_plan(
+                plan_path, graph_version=existing.get("graph_version")
+            )
             review = existing.get("checkpoints", {}).get("plan-review")
             if not isinstance(review, dict) or review.get("plan_digest") != digest:
                 raise GraphError("План изменился после review; нужен новый plan run.")
@@ -2647,6 +2977,9 @@ def initialize(
             "baseline_repo_digest": snapshots.manifest_digest(baseline),
             "task_state_snapshot": task_snapshot,
             "status": "running",
+            "task_status": "active",
+            "control_status": "healthy",
+            "control_issues": [],
             "current": "work",
             "verification_required": False,
             "verification_repairs": 0,
@@ -2661,6 +2994,8 @@ def initialize(
                 "latest_checkpoint_sha256": None,
                 "rehydrated_checkpoint_sha256": None,
                 "rehydrated_at": None,
+                "task_checkpoint_path": None,
+                "task_checkpoint_sha256": None,
             },
             "scope_amendments": [],
             "node_retries": {"work": 0, "verify": 0},
@@ -2676,6 +3011,21 @@ def initialize(
 
 def ready(run_dir: Path) -> dict[str, Any]:
     state = load_run_state(run_dir)
+    if state["status"] == "retired":
+        return result(
+            "retired",
+            "Task Delivery run закрыт как незавершённый; продолжение действий запрещено.",
+            artifacts=[str(run_dir / STATE_NAME)],
+            data={
+                "run": str(run_dir),
+                "task_id": state["task_id"],
+                "mode": state["mode"],
+                "profile": state["profile"],
+                "current": state["current"],
+                "task_status": "retired",
+                "retirement": state.get("retirement"),
+            },
+        )
     current = state["current"]
     staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
     rejected_work_sha = verification_repair_work_sha(state) if staged_contract else None
@@ -2685,7 +3035,9 @@ def ready(run_dir: Path) -> dict[str, Any]:
         else None
     )
     actions: list[str] = []
-    if state["status"] == "running" and current in {"work", "verify"}:
+    if state["status"] == "suspended":
+        actions = [f"{runner_command()} resume --run {shlex.quote(str(run_dir))}"]
+    elif state["status"] == "running" and current in {"work", "verify"}:
         artifact = run_dir / (WORK_NAME if current == "work" else VERIFY_NAME)
         actions = [
             f"Создай {artifact}",
@@ -2772,6 +3124,10 @@ def ready(run_dir: Path) -> dict[str, Any]:
             "mode": state["mode"],
             "profile": state["profile"],
             "current": current,
+            "task_status": state.get("task_status", "active"),
+            "control_status": state.get("control_status", "healthy"),
+            "control_issues": state.get("control_issues", []),
+            "control_plane_policy": graph_contract()["control_plane_policy"],
             "artifact": str(run_dir / (WORK_NAME if current == "work" else VERIFY_NAME)) if current in {"work", "verify"} else None,
             "mcp_policy": graph_contract()["mcp_policy"] if current == "work" else None,
             "execution_policy": (
@@ -2982,7 +3338,10 @@ def verify_integrity(state: dict[str, Any]) -> dict[str, Any]:
         if not path.is_file() or sha256_file(path) != work["sha256"]:
             raise GraphError("task.json изменился после record.")
     plan = snapshots.safe_join_no_symlinks(root, state["plan_path"])
-    if plan_digest(plan) != work["plan_digest"]:
+    if (
+        plan_digest(plan, graph_version=state.get("graph_version"))
+        != work["plan_digest"]
+    ):
         raise GraphError("План изменился после record.")
     if state["verification_required"]:
         verifier = state["nodes"]["verify"]
@@ -3017,6 +3376,8 @@ def complete(run_dir: Path) -> dict[str, Any]:
     initial = load_run_state(run_dir)
     root = Path(initial["root"])
     task_id = initial["task_id"]
+    if initial.get("verification_required") and initial.get("control_status", "healthy") != "healthy":
+        raise GraphError("Verified completion requires healthy control; continue code work or start a fresh tracked run.")
     with legacy.mutation_guard(root, task_id, True, allow_project_obligation=True):
         with state_lock(run_dir):
             state = load_run_state(run_dir)
@@ -3054,6 +3415,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
                 legacy.obligation_marker(root, task_id).unlink(missing_ok=True)
                 state["nodes"]["complete"]["status"] = "completed"
                 state["status"] = "completed"
+                state["task_status"] = "completed"
                 save_run(run_dir, state)
                 return result(
                     "completed",
@@ -3061,6 +3423,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
                     artifacts=[str(root / HANDOFFS_REL / task_id / "HANDOFF.md"), str(run_dir)],
                     data={
                         "phase": "completed",
+                        "task_status": "completed",
                         "task_id": task_id,
                         "documentation_maintenance_required": documentation_required,
                     },
@@ -3086,13 +3449,18 @@ def complete(run_dir: Path) -> dict[str, Any]:
                 save_task(task_path, task)
                 state["nodes"]["complete"]["status"] = "completed"
                 state["status"] = "completed"
+                state["task_status"] = "awaiting_implementation"
                 save_run(run_dir, state)
                 return result(
                     "completed",
                     "План проверен; реализация не запускалась.",
                     next_actions=[f"Запусти implement с task-id {task_id} и тем же --plan."],
                     artifacts=[str(root / state["plan_path"]), str(run_dir)],
-                    data={"phase": "awaiting_implementation", "task_id": task_id},
+                    data={
+                        "phase": "awaiting_implementation",
+                        "task_status": "awaiting_implementation",
+                        "task_id": task_id,
+                    },
                 )
             task["phase"] = "ready_to_complete"
             task["current_run"] = None
@@ -3173,6 +3541,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
             marker.unlink(missing_ok=True)
             state["nodes"]["complete"]["status"] = "completed"
             state["status"] = "completed"
+            state["task_status"] = "completed"
             save_run(run_dir, state)
     return result(
         "completed",
@@ -3180,6 +3549,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
         artifacts=[str(root / HANDOFFS_REL / task_id / "HANDOFF.md"), str(run_dir)],
         data={
             "phase": "completed",
+            "task_status": "completed",
             "task_id": task_id,
             "documentation_maintenance_required": documentation_required,
         },
@@ -3206,6 +3576,10 @@ def status(run_dir: Path) -> dict[str, Any]:
             "profile": state["profile"],
             "current": state["current"],
             "status": state["status"],
+            "task_status": state.get("task_status", "active"),
+            "control_status": state.get("control_status", "healthy"),
+            "control_issues": state.get("control_issues", []),
+            "control_plane_policy": graph_contract()["control_plane_policy"],
             "verification_repairs": state["verification_repairs"],
             "execution_policy": graph_contract()["execution_policy"],
             "implementation_strategy": state.get("implementation_strategy", "root-only"),
@@ -3248,6 +3622,19 @@ def parser() -> argparse.ArgumentParser:
     init.add_argument("--slice-budget", type=int)
     ready_parser = sub.add_parser("ready")
     ready_parser.add_argument("--run", required=True)
+    suspend_parser = sub.add_parser("suspend")
+    suspend_parser.add_argument("--run", required=True)
+    suspend_parser.add_argument("--reason", required=True)
+    suspend_parser.add_argument("--next-objective", required=True)
+    resume_parser = sub.add_parser("resume")
+    resume_parser.add_argument("--run", required=True)
+    retire_parser = sub.add_parser("retire")
+    retire_parser.add_argument("--run", required=True)
+    retire_parser.add_argument("--reason", required=True)
+    retire_parser.add_argument("--acknowledge-incomplete", action="store_true")
+    control_degrade = sub.add_parser("control-degrade")
+    control_degrade.add_argument("--run", required=True)
+    control_degrade.add_argument("--reason", required=True)
     slice_create = sub.add_parser("slice-create")
     slice_create.add_argument("--run", required=True)
     slice_create.add_argument("--packet", required=True)
@@ -3298,6 +3685,14 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "ready":
             payload = ready(run_path(args.run))
+        elif args.command == "suspend":
+            payload = suspend(run_path(args.run), args.reason, args.next_objective)
+        elif args.command == "resume":
+            payload = resume(run_path(args.run))
+        elif args.command == "retire":
+            payload = retire(run_path(args.run), args.reason, args.acknowledge_incomplete)
+        elif args.command == "control-degrade":
+            payload = degrade_control(run_path(args.run), args.reason)
         elif args.command == "slice-create":
             payload = register_slice(run_path(args.run), Path(args.packet))
         elif args.command == "slice-record":

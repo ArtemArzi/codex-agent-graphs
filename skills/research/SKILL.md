@@ -11,6 +11,21 @@ Use one native Codex research loop. Add the graph only when durable state or
 independent verification closes a real need. Do not turn planning, searching,
 evidence capture, reconciliation, or drafting into separate graph nodes.
 
+## Plain-language user updates
+
+Write every progress and final message in the user's language and in plain
+words. First say what was found or what is blocked, then what it means for the
+question or decision, and finally what happens next. Do not expose the research
+controller's internal log as the explanation.
+
+Required order: result → impact → next step.
+
+Use terms such as `controller`, `root`, `scout`, `receipt`, `digest`,
+`checkpoint`, `gate`, `verification` and `recovery` only when the exact internal
+name helps the user act or verify something; explain it on first use. Put hashes,
+artifact names and protocol details in an optional `Technical details:` block
+after the plain explanation. Keep ordinary progress to one short paragraph.
+
 ## Choose the execution tier
 
 - `skill-only` — default for a normal question that fits one session. Search,
