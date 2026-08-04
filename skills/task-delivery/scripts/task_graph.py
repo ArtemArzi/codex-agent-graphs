@@ -66,10 +66,11 @@ LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.4.0", "208d0b08c4b4e3298add4802414d18ee97cb71f8f7bcfdb9dd97c1ab67894d1d"),
     ("3.5.0", "7e9b2b4c3a9051f8f09a69ea89d359836181a6cbd77391e326c74f0480d9e7b2"),
     ("3.6.0", "ffe9580e03ce2aa76a9947e30e016f0d3d58d1a34a77ac534f59ab083e4653ec"),
+    ("3.7.0", "cae9219d58295caf00c2d702134047f11fe8cdfb9409b957068a81d90f77657a"),
 }
-SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0"}
-STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0"}
-NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0"}
+SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0"}
+STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0"}
+NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0"}
 
 
 class GraphError(RuntimeError):
@@ -138,6 +139,18 @@ def atomic_text(path: Path, value: str) -> None:
             os.unlink(temporary)
 
 
+def atomic_bytes(path: Path, value: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(value)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def graph_contract() -> dict[str, Any]:
     graph = load_json(GRAPH_PATH)
     if graph.get("schema_version") != 2 or graph.get("graph_id") != "task-delivery":
@@ -197,6 +210,15 @@ def graph_contract() -> dict[str, Any]:
         "verified_completion_requires_healthy_control": True,
     }:
         raise GraphError("Task Delivery graph содержит неверную code-first control-plane policy.")
+    if graph.get("retirement_policy") != {
+        "schema_version": 1,
+        "terminal_status": "retired",
+        "success": False,
+        "authority": "explicit-user",
+        "preserve_raw_state": True,
+        "artifact_lifecycle": "hold",
+    }:
+        raise GraphError("Task Delivery graph содержит неверную retirement policy.")
     mcp_policy = graph.get("mcp_policy")
     if (
         not isinstance(mcp_policy, dict)
@@ -2658,12 +2680,126 @@ def resume(run_dir: Path) -> dict[str, Any]:
     return ready(run_dir)
 
 
+def validate_retirement_snapshots(run_dir: Path, retirement: dict[str, Any]) -> None:
+    expected = {
+        "run_state_snapshot": run_dir / "retirement/pre-run-state.json",
+        "task_state_snapshot": run_dir / "retirement/pre-task-state.json",
+    }
+    for key, path in expected.items():
+        receipt = retirement.get(key)
+        if not isinstance(receipt, dict) or receipt.get("path") != str(path):
+            raise GraphError("Retirement snapshot metadata повреждена.")
+        if path.is_symlink() or not path.is_file():
+            raise GraphError(f"Retirement snapshot отсутствует или небезопасен: {path}")
+        if receipt.get("sha256") != sha256_file(path):
+            raise GraphError(f"Retirement snapshot изменён после сохранения: {path}")
+
+
+def retire(run_dir: Path, reason: str, acknowledge_incomplete: bool) -> dict[str, Any]:
+    reason = meaningful(reason, "retirement reason", 8)
+    if not acknowledge_incomplete:
+        raise GraphError("Retire требует явный --acknowledge-incomplete: это не успешное завершение.")
+    initial = load_run_state(run_dir)
+    root = Path(initial["root"])
+    task_id = initial["task_id"]
+    with legacy.mutation_guard(root, task_id, True, skip_project_reopen=True):
+        with state_lock(run_dir):
+            state = load_run_state(run_dir)
+            marker = legacy.obligation_marker(root, task_id)
+            if marker.exists() or marker.is_symlink():
+                raise GraphError(
+                    "Retire запрещён: pending Project Start obligation требует recovery через complete."
+                )
+            task_path, task = load_task_state(root, task_id)
+            matching = [item for item in task.get("runs", []) if item.get("run_id") == state["run_id"]]
+            if len(matching) != 1:
+                raise GraphError("Task index не содержит ровно одну запись этого run.")
+            run_record = matching[0]
+            if state["status"] == "completed":
+                raise GraphError("Успешно завершённый run нельзя пометить retired.")
+            if state["status"] == "retired":
+                retirement = state.get("retirement")
+                if not isinstance(retirement, dict):
+                    raise GraphError("Retired run не содержит retirement metadata.")
+                validate_retirement_snapshots(run_dir, retirement)
+                current_run = task.get("current_run")
+                if current_run not in {None, state["run_id"]}:
+                    raise GraphError("Task index уже связан с другим current_run; repair запрещён.")
+                repaired = False
+                if run_record.get("status") != "retired" or current_run == state["run_id"]:
+                    run_record["status"] = "retired"
+                    run_record["retired_at"] = retirement["retired_at"]
+                    run_record["retirement_reason"] = retirement["reason"]
+                    task["phase"] = "retired"
+                    task["current_run"] = None
+                    task["completed_at"] = None
+                    save_task(task_path, task)
+                    repaired = True
+                return result(
+                    "retired",
+                    "Run уже закрыт как незавершённый; raw evidence сохранён.",
+                    artifacts=[str(run_dir), str(task_path)],
+                    data={"run": str(run_dir), "idempotent": not repaired, "repaired_task_index": repaired},
+                )
+            if state["status"] not in {"running", "blocked", "decision-required", "suspended"}:
+                raise GraphError(f"Run status {state['status']!r} нельзя закрыть через retire.")
+            current_run = task.get("current_run")
+            if current_run not in {state["run_id"], None}:
+                raise GraphError("Task index связан с другим current_run; retire запрещён.")
+            if current_run is None and task.get("phase") != "suspended":
+                raise GraphError("Только suspended run может иметь пустой current_run перед retire.")
+
+            retirement_dir = run_dir / "retirement"
+            run_snapshot = retirement_dir / "pre-run-state.json"
+            task_snapshot = retirement_dir / "pre-task-state.json"
+            run_bytes = (run_dir / STATE_NAME).read_bytes()
+            task_bytes = task_path.read_bytes()
+            atomic_bytes(run_snapshot, run_bytes)
+            atomic_bytes(task_snapshot, task_bytes)
+            retired_at = now()
+            retirement = {
+                "schema_version": 1,
+                "authority": "explicit-user",
+                "reason": reason,
+                "retired_at": retired_at,
+                "previous_status": state["status"],
+                "previous_task_status": state.get("task_status"),
+                "run_state_snapshot": {
+                    "path": str(run_snapshot),
+                    "sha256": sha256_file(run_snapshot),
+                },
+                "task_state_snapshot": {
+                    "path": str(task_snapshot),
+                    "sha256": sha256_file(task_snapshot),
+                },
+            }
+            state["retirement"] = retirement
+            validate_retirement_snapshots(run_dir, retirement)
+            state["status"] = "retired"
+            state["task_status"] = "retired"
+            save_run(run_dir, state)
+
+            run_record["status"] = "retired"
+            run_record["retired_at"] = retired_at
+            run_record["retirement_reason"] = reason
+            task["phase"] = "retired"
+            task["current_run"] = None
+            task["completed_at"] = None
+            save_task(task_path, task)
+    return result(
+        "retired",
+        "Run закрыт как незавершённый; raw evidence и pre-retirement snapshots сохранены.",
+        artifacts=[str(run_dir), str(task_path), str(run_snapshot), str(task_snapshot)],
+        data={"run": str(run_dir), "idempotent": False, "repaired_task_index": False},
+    )
+
+
 def degrade_control(run_dir: Path, reason: str) -> dict[str, Any]:
     reason = meaningful(reason, "control degradation reason", 8)
     with state_lock(run_dir):
         state = load_run_state(run_dir)
-        if state["status"] == "completed":
-            raise GraphError("A completed run cannot enter degraded control.")
+        if state["status"] in {"completed", "retired"}:
+            raise GraphError("A terminal run cannot enter degraded control.")
         state["control_status"] = "degraded"
         issues = state.setdefault("control_issues", [])
         if reason not in issues:
@@ -2875,6 +3011,21 @@ def initialize(
 
 def ready(run_dir: Path) -> dict[str, Any]:
     state = load_run_state(run_dir)
+    if state["status"] == "retired":
+        return result(
+            "retired",
+            "Task Delivery run закрыт как незавершённый; продолжение действий запрещено.",
+            artifacts=[str(run_dir / STATE_NAME)],
+            data={
+                "run": str(run_dir),
+                "task_id": state["task_id"],
+                "mode": state["mode"],
+                "profile": state["profile"],
+                "current": state["current"],
+                "task_status": "retired",
+                "retirement": state.get("retirement"),
+            },
+        )
     current = state["current"]
     staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
     rejected_work_sha = verification_repair_work_sha(state) if staged_contract else None
@@ -3477,6 +3628,10 @@ def parser() -> argparse.ArgumentParser:
     suspend_parser.add_argument("--next-objective", required=True)
     resume_parser = sub.add_parser("resume")
     resume_parser.add_argument("--run", required=True)
+    retire_parser = sub.add_parser("retire")
+    retire_parser.add_argument("--run", required=True)
+    retire_parser.add_argument("--reason", required=True)
+    retire_parser.add_argument("--acknowledge-incomplete", action="store_true")
     control_degrade = sub.add_parser("control-degrade")
     control_degrade.add_argument("--run", required=True)
     control_degrade.add_argument("--reason", required=True)
@@ -3534,6 +3689,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = suspend(run_path(args.run), args.reason, args.next_objective)
         elif args.command == "resume":
             payload = resume(run_path(args.run))
+        elif args.command == "retire":
+            payload = retire(run_path(args.run), args.reason, args.acknowledge_incomplete)
         elif args.command == "control-degrade":
             payload = degrade_control(run_path(args.run), args.reason)
         elif args.command == "slice-create":

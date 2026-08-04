@@ -904,8 +904,7 @@ class ProjectGraphTests(unittest.TestCase):
         project = self.read_json(self.root / ".project-start/state.json")
         self.assertEqual("restart-required", project["maintenance"]["status"])
         self.assertNotIn("active_run", project["maintenance"])
-        with self.assertRaises(graph.task_delivery_runtime.TaskError):
-            graph.task_delivery_runtime.reject_pending_project_reopen(self.root)
+        graph.task_delivery_runtime.reject_pending_project_reopen(self.root)
         fresh = self.init("maintenance", "Refresh after change")
         self.assertNotEqual(run, fresh)
 
@@ -917,6 +916,8 @@ class ProjectGraphTests(unittest.TestCase):
         maintenance = self.read_json(self.root / ".project-start/state.json")["maintenance"]
         self.assertEqual("restart-required", maintenance["status"])
         self.assertEqual(["docs/project/PROJECT.md"], maintenance["pending_drift"]["changed_docs"])
+        with self.assertRaises(graph.task_delivery_runtime.TaskError):
+            graph.task_delivery_runtime.reject_pending_project_reopen(self.root)
         with self.assertRaisesRegex(graph.GraphError, "восстанови документы"):
             self.init("maintenance", "Refresh docs")
         self.write("docs/project/PROJECT.md", original)

@@ -189,6 +189,32 @@ class InstallerTests(unittest.TestCase):
             installer.install_environment(self.home)
         self.assertFalse((self.home / "skills").exists())
 
+    def test_exact_unmarked_managed_block_is_safely_readopted(self) -> None:
+        config = self.home / "config.toml"
+        config.write_text(
+            "[agents]\nmax_threads = 6\n\n"
+            + installer.exact_unmarked_managed_block()
+            + "\n\n[history]\npersistence = 'save-all'\n",
+            encoding="utf-8",
+        )
+        installer.install_environment(self.home)
+        updated = config.read_text(encoding="utf-8")
+        self.assertEqual(1, updated.count(installer.BLOCK_START))
+        self.assertEqual(1, updated.count(installer.BLOCK_END))
+        self.assertIn("[history]", updated)
+        self.assertEqual("ok", installer.verify_environment(self.home)["status"])
+
+    def test_modified_unmarked_managed_block_remains_a_conflict(self) -> None:
+        config = self.home / "config.toml"
+        modified = installer.exact_unmarked_managed_block().replace(
+            "Conditional Continuous Improvement candidate verifier.",
+            "My custom verifier.",
+        )
+        config.write_text(modified + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(installer.InstallError, "Unmanaged config"):
+            installer.install_environment(self.home)
+        self.assertFalse((self.home / "skills").exists())
+
     def test_legacy_research_block_is_upgraded_without_duplication(self) -> None:
         config = self.home / "config.toml"
         config.write_text(

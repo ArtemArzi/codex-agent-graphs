@@ -220,6 +220,7 @@ def mutation_guard(
     enabled: bool,
     *,
     allow_project_obligation: bool = False,
+    skip_project_reopen: bool = False,
 ) -> Iterator[None]:
     if not enabled:
         yield
@@ -238,9 +239,10 @@ def mutation_guard(
         owner = lock / "owner.json"
         try:
             owner.write_text(json.dumps({"pid": os.getpid(), "started_at": now()}) + "\n", encoding="utf-8")
-            reject_pending_project_reopen(
-                root, allow_task_id=task_id if allow_project_obligation else None
-            )
+            if not skip_project_reopen:
+                reject_pending_project_reopen(
+                    root, allow_task_id=task_id if allow_project_obligation else None
+                )
             yield
         finally:
             try:
@@ -605,6 +607,13 @@ def reject_pending_project_reopen(root: Path, allow_task_id: str | None = None) 
         )
     if status == "restart-required":
         restart = maintenance.get("pending_restart") if isinstance(maintenance.get("pending_restart"), dict) else {}
+        drift = maintenance.get("pending_drift")
+        if (
+            not isinstance(drift, dict)
+            and restart.get("requires_verification") is False
+            and value.get("phase") in {"execution", "complete"}
+        ):
+            return
         fail(
             "Новая Task Delivery заблокирована: Project Start требует свежий replacement run после "
             f"{restart.get('run_id')}: {restart.get('reason')}"

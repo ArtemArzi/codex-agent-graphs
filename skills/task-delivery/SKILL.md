@@ -100,6 +100,16 @@ python3 scripts/task_graph.py control-degrade --run <run-dir> \
   --reason "<точная несовместимость controller>"
 ```
 
+Устаревший незавершённый run закрывай только по явному указанию пользователя:
+
+```bash
+python3 scripts/task_graph.py retire --run <run-dir> \
+  --reason "<почему работа больше не продолжается>" --acknowledge-incomplete
+```
+
+`retire` — отдельный неуспешный terminal status. Он сохраняет точные снимки
+run/task state, не завершает узлы, не создаёт handoff и не разрешает compaction.
+
 ## Адаптивность и настоящие блокеры
 
 Skill обязан помогать продолжать работу, а не превращать собственный протокол в
@@ -254,13 +264,13 @@ python3 scripts/task_graph.py retry --run <run-dir> --node <work|verify>
 
 `complete` повторно проверяет immutable receipts, digest плана, фактическую дельту и тестовую квитанцию. Для `plan` он сохраняет reviewed plan и останавливается. Для `implement/full` он автоматически создаёт совместимый `HANDOFF.md` и закрывает задачу. В `task.json.documentation_impact` укажи `{class: none|factual|semantic, summary: ...}`. Только `factual|semantic` атомарно открывают Project Start maintenance; `none` не создаёт лишнее обязательство.
 
-После успешного `implement/full complete` сохрани plan и handoff на их канонических путях и упакуй только terminal run через `<HARNESS_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root <repo> --run <run-dir>` (дом харнеса: `~/.codex` под Codex, `${CLAUDE_PLUGIN_ROOT}` под плагином Claude Code). `plan` со статусом `awaiting_implementation`, active, blocked и unresolved legacy state не упаковывай: runtime сам отклонит их. Pruning остаётся отдельной dry-run-first командой и никогда не запускается hook.
+После успешного `implement/full complete` сохрани plan и handoff на их канонических путях и упакуй только successful terminal run через `<HARNESS_HOME>/agent-graph-runtime/artifact_lifecycle.py compact --root <repo> --run <run-dir>` (дом харнеса: `~/.codex` под Codex, `${CLAUDE_PLUGIN_ROOT}` под плагином Claude Code). `plan` со статусом `awaiting_implementation`, active, blocked, `retired` и unresolved legacy state не упаковывай: runtime сам отклонит их. Pruning остаётся отдельной dry-run-first командой и никогда не запускается hook.
 
 Глобальный hook не является источником истины этого протокола. Не меняй hooks для запуска Task Delivery: checkpoint создаёт и проверяет сам skill. После отдельного внедрения hook может только повторно вызвать `context-rehydrate` на `SessionStart(source=compact)`; изменение hook во время активных задач требует отдельной безопасной активации.
 
 Не редактируй канонические документы Project Start внутри Task Delivery: передай фактическую документационную дельту через handoff. Если реализация доказала устойчивое новое coding rule, команду качества или framework boundary, укажи `documentation_impact=factual|semantic`; одноразовый workaround не превращай в правило.
 
-Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Активные graph `3.3.0` runs завершаются по своему v1 slice contract; `3.4.0`-`3.6.0` сохраняют staged v2 packet contract и прежнюю семантику review; новые runs используют `3.7.0`, нормализованный digest, code-first control и task checkpoint. Все новые задачи запускай через `task_graph.py`.
+Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Поддерживаемые graph `3.0.0`-`3.7.0` runs можно дочитать или явно закрыть через `retire`; их не переписывай под новый контракт. Новые runs используют `3.8.0`: нормализованный digest, code-first control, task checkpoint и безопасное retirement старых хвостов. Все новые задачи запускай через `task_graph.py`.
 
 ## Служебные ресурсы
 

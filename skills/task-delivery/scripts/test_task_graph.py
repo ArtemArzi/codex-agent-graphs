@@ -1422,10 +1422,10 @@ src/app.py
             graph.rehydrate_context(run)
 
     def test_model_guidance_never_requests_user_hash_echo(self) -> None:
-        research = (graph.SKILL_DIR.parents[1] / "docs/research/task-delivery-context-checkpoint-research.md").read_text(encoding="utf-8")
+        skill = (graph.SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         reference = (graph.SKILL_DIR / "references/implementation-slices.md").read_text(encoding="utf-8")
-        self.assertNotIn("exact user hash is useful", research)
-        self.assertIn("must never ask the\nuser to echo an amendment hash", research)
+        self.assertNotIn("exact user hash is useful", skill)
+        self.assertIn("Не проси\nпользователя выбрать между двумя хешами", skill)
         self.assertIn("Никакого «разреши случайный hash»", reference)
 
     def test_started_v3_3_slice_keeps_exact_legacy_contract(self) -> None:
@@ -2041,6 +2041,129 @@ src/app.py
         (run / graph.STATE_NAME).write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "Verified completion requires healthy control"):
             graph.complete(run)
+
+    def test_retire_preserves_exact_pre_state_and_closes_task_index(self) -> None:
+        run = self.initialize(profile="standard")
+        state_path = run / graph.STATE_NAME
+        task_path = self.root / ".codex/task-delivery/TD-1/state.json"
+        run_before = state_path.read_bytes()
+        task_before = task_path.read_bytes()
+        current_before = self.read(state_path)["current"]
+        nodes_before = self.read(state_path)["nodes"]
+
+        retired = graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+
+        self.assertEqual("retired", retired["status"])
+        state = self.read(state_path)
+        task = self.read(task_path)
+        self.assertEqual("retired", state["status"])
+        self.assertEqual("retired", state["task_status"])
+        self.assertEqual(current_before, state["current"])
+        self.assertEqual(nodes_before, state["nodes"])
+        self.assertEqual("retired", task["phase"])
+        self.assertIsNone(task["current_run"])
+        record = next(item for item in task["runs"] if item["run_id"] == state["run_id"])
+        self.assertEqual("retired", record["status"])
+        retirement = state["retirement"]
+        self.assertEqual(run_before, Path(retirement["run_state_snapshot"]["path"]).read_bytes())
+        self.assertEqual(task_before, Path(retirement["task_state_snapshot"]["path"]).read_bytes())
+        self.assertEqual([], graph.ready(run)["next_actions"])
+        with self.assertRaisesRegex(graph.GraphError, "terminal run"):
+            graph.degrade_control(run, "Controller should stay closed after retirement.")
+
+        second = graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+        self.assertTrue(second["data"]["idempotent"])
+
+    def test_retire_refuses_pending_project_start_obligation(self) -> None:
+        run = self.initialize()
+        marker = graph.legacy.obligation_marker(self.root, "TD-1")
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text('{"schema_version": 1}\n', encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "pending Project Start obligation"):
+            graph.retire(run, "Do not orphan a completion obligation.", True)
+        self.assertEqual("running", self.read(run / graph.STATE_NAME)["status"])
+
+    def test_retire_idempotency_rejects_missing_or_changed_snapshots(self) -> None:
+        run = self.initialize()
+        graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+        state = self.read(run / graph.STATE_NAME)
+        snapshot = Path(state["retirement"]["run_state_snapshot"]["path"])
+        snapshot.write_text("tampered\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "snapshot изменён"):
+            graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+
+    def test_retire_repairs_task_index_after_interrupted_save(self) -> None:
+        run = self.initialize()
+        with mock.patch.object(graph, "save_task", side_effect=OSError("injected task save failure")):
+            with self.assertRaisesRegex(OSError, "injected task save failure"):
+                graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+        self.assertEqual("retired", self.read(run / graph.STATE_NAME)["status"])
+        repaired = graph.retire(run, "Close legacy run before the v3.8 rollout.", True)
+        self.assertTrue(repaired["data"]["repaired_task_index"])
+        self.assertEqual(
+            "retired",
+            self.read(self.root / ".codex/task-delivery/TD-1/state.json")["phase"],
+        )
+
+    def test_retire_requires_explicit_incomplete_acknowledgement(self) -> None:
+        run = self.initialize()
+        with self.assertRaisesRegex(graph.GraphError, "acknowledge-incomplete"):
+            graph.retire(run, "Close a stale unfinished run.", False)
+        self.assertEqual("running", self.read(run / graph.STATE_NAME)["status"])
+
+    def test_retire_accepts_supported_unfinished_states_and_legacy_37(self) -> None:
+        for index, status in enumerate(("blocked", "decision-required", "suspended"), start=1):
+            with self.subTest(status=status):
+                run = self.initialize(task_id=f"TD-RETIRE-{index}")
+                state_path = run / graph.STATE_NAME
+                state = self.read(state_path)
+                state["status"] = status
+                state["task_status"] = "suspended" if status == "suspended" else "active"
+                if status == "suspended":
+                    task_path = self.root / f".codex/task-delivery/TD-RETIRE-{index}/state.json"
+                    task = self.read(task_path)
+                    task["phase"] = "suspended"
+                    task["current_run"] = None
+                    task_path.write_text(json.dumps(task, indent=2) + "\n", encoding="utf-8")
+                state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+                self.assertEqual(
+                    "retired",
+                    graph.retire(run, "Explicitly close this unfinished legacy run.", True)["status"],
+                )
+
+        legacy = self.initialize(task_id="TD-LEGACY-37")
+        legacy_state = self.read(legacy / graph.STATE_NAME)
+        legacy_state["graph_version"] = "3.7.0"
+        legacy_state["graph_sha256"] = "cae9219d58295caf00c2d702134047f11fe8cdfb9409b957068a81d90f77657a"
+        (legacy / graph.STATE_NAME).write_text(json.dumps(legacy_state, indent=2) + "\n", encoding="utf-8")
+        self.assertEqual(
+            "retired",
+            graph.retire(legacy, "Retire the final supported v3.7 run.", True)["status"],
+        )
+
+    def test_retire_rejects_completed_and_new_runs_pin_38(self) -> None:
+        run = self.initialize(task_id="TD-CURRENT")
+        state_path = run / graph.STATE_NAME
+        state = self.read(state_path)
+        self.assertEqual("3.8.0", state["graph_version"])
+        state["status"] = "completed"
+        state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "нельзя пометить retired"):
+            graph.retire(run, "Do not rewrite successful completion.", True)
+
+    def test_retire_cli_contract_requires_acknowledgement_flag(self) -> None:
+        parsed = graph.parser().parse_args(
+            [
+                "retire",
+                "--run",
+                "/tmp/run",
+                "--reason",
+                "Close stale unfinished work.",
+                "--acknowledge-incomplete",
+            ]
+        )
+        self.assertEqual("retire", parsed.command)
+        self.assertTrue(parsed.acknowledge_incomplete)
 
     def test_v2_task_id_is_not_silently_migrated(self) -> None:
         state = self.root / ".codex/task-delivery/TD-1/state.json"

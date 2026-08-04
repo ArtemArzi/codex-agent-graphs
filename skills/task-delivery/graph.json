@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.7.0",
+  "graph_version": "3.8.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
@@ -69,6 +69,14 @@
     "project_context_before_controller_detail": true,
     "multiple_unfinished_tasks": "independent-per-task",
     "verified_completion_requires_healthy_control": true
+  },
+  "retirement_policy": {
+    "schema_version": 1,
+    "terminal_status": "retired",
+    "success": false,
+    "authority": "explicit-user",
+    "preserve_raw_state": true,
+    "artifact_lifecycle": "hold"
   },
   "optional_agents": [
     "task_explorer",

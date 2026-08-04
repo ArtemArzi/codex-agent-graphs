@@ -142,8 +142,27 @@ def managed_block() -> str:
     return "\n".join(lines)
 
 
+def exact_unmarked_managed_block() -> str:
+    block = managed_block()
+    body = block.removeprefix(f"{BLOCK_START}\n")
+    return body.removesuffix(f"\n{BLOCK_END}\n").strip()
+
+
 def config_with_block(original: str) -> str:
     without_managed = MANAGED_RE.sub("", original).rstrip()
+    exact_unmarked = exact_unmarked_managed_block()
+    if BLOCK_START not in original and without_managed.count(exact_unmarked) == 1:
+        without_unmarked = without_managed.replace(exact_unmarked, "", 1).rstrip()
+        adopted = (
+            f"{without_unmarked}\n\n{managed_block()}"
+            if without_unmarked
+            else managed_block()
+        )
+        try:
+            tomllib.loads(adopted)
+        except tomllib.TOMLDecodeError as exc:
+            raise InstallError(f"Adopted managed config would be invalid TOML: {exc}") from exc
+        return adopted
     for role in AGENT_ROLES:
         if re.search(rf"(?m)^\s*\[agents\.{re.escape(role)}\]\s*$", without_managed):
             raise InstallError(f"Unmanaged config already defines [agents.{role}]")
