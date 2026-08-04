@@ -244,6 +244,31 @@ def main() -> int:
     for required in ("first false assumption", "rebuild-from-checkpoint", "repair-forward", "controller protocol", "If the user disabled the graph"):
         if required not in recovery_skill:
             raise RuntimeError(f"Development Recovery contract is missing: {required}")
+    graph_skills = {
+        graph_path.parent.name for graph_path in (ROOT / "skills").glob("*/graph.json")
+    }
+    plain_language_skills = sorted(
+        graph_skills | {"agent-graph-builder", "development-recovery"}
+    )
+    english_skills = {"agent-graph-builder", "development-recovery", "research"}
+    for skill_name in plain_language_skills:
+        skill_text = (ROOT / "skills" / skill_name / "SKILL.md").read_text(encoding="utf-8")
+        localized_requirements = (
+            "## Plain-language user updates",
+            "user's language" if skill_name in english_skills else "языке пользователя",
+            "Required order: result → impact → next step."
+            if skill_name in english_skills
+            else "Обязательный порядок: результат → влияние → следующий шаг.",
+            "internal log" if skill_name in english_skills else "журнал контроллера",
+            "explain it on first use" if skill_name in english_skills else "при первом упоминании",
+            "Technical details:" if skill_name in english_skills else "Технически:",
+            "one short paragraph" if skill_name in english_skills else "один короткий абзац",
+        )
+        for required in localized_requirements:
+            if required not in skill_text:
+                raise RuntimeError(
+                    f"{skill_name} plain-language user update contract is missing: {required}"
+                )
     recovery_policy = (ROOT / "policies" / "development-recovery.md").read_text(encoding="utf-8")
     if ("$development-recovery" not in recovery_policy or "regardless of which graph" not in recovery_policy or "controller ceremony" not in recovery_policy):
         raise RuntimeError("Global Development Recovery trigger is missing or graph-coupled")

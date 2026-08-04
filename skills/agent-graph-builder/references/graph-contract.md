@@ -80,6 +80,26 @@ The model owns:
 - selection of applicable installed skills, MCP and bounded agents;
 - user-facing explanation.
 
+### Plain-language user updates
+
+The user-facing explanation is a translation layer, not a copy of the control
+log. Every operational graph skill must tell the user, in the user's language:
+
+1. what changed or what is blocked;
+2. what that means for the task, plan, code or required user decision;
+3. what will happen next.
+
+Lead with those facts. Do not begin with controller modes, role names,
+artifacts, hashes or lifecycle terminology. Mention an internal identifier only
+when it is needed to act, resume or verify; explain it in plain words on first
+use. Put exact hashes, paths, receipts and protocol state in a secondary
+`Technical details:` block when they add practical value.
+
+For example, replace "Recovery route selected; canonical authority will run as
+a root-owned maintenance gate" with "The project documents need one small
+update before coding. The approved plan does not change; after that update I
+will start the first implementation block."
+
 The deterministic controller owns:
 
 - safe paths and state locking;

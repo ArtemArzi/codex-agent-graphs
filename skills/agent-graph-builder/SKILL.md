@@ -9,6 +9,23 @@ Host invocation: `$agent-graph-builder` in Codex, `/cag:agent-graph-builder` in 
 
 Create a skill-backed control graph that constrains evidence and lifecycle while leaving semantic work to the model.
 
+## Plain-language user updates
+
+Make every operational graph explain its work in the user's language and in
+plain words. User-facing progress and final messages must lead with what
+changed, what it means for the task, and what happens next. They must not read
+like the controller's internal log.
+
+Required order: result → impact → next step.
+
+Require a `Plain-language user updates` section in every operational graph
+skill. Internal terms such as `controller`, `root`, `worker`, `packet`,
+`receipt`, `digest`, `checkpoint`, `gate`, `authority`, `control-degrade` and
+`recovery route` may appear only when the user needs the exact identifier to
+act or verify something; translate and explain it on first use. Put hashes, exact
+artifact names and protocol details in an optional `Technical details:` block
+after the plain explanation. Keep ordinary progress to one short paragraph.
+
 ## Mandatory dependency
 
 1. Invoke `$skill-creator` and read its complete `SKILL.md` before creating or restructuring a graph skill.

@@ -58,6 +58,8 @@ Observe:
 - elapsed time and avoidable handoff overhead.
 - agent starts, review starts, waits/handoffs, artifact count and compactions;
 - duplicate scopes, evidence-free retries and unnecessary documentation follow-up.
+- whether progress and final messages lead with the user-visible result, impact
+  and next step instead of exposing the controller log or unexplained jargon.
 
 Treat a partial run as partial coverage. Record the first untested transition rather than inferring success.
 
