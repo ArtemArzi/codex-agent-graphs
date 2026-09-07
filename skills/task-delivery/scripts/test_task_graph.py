@@ -519,7 +519,7 @@ Recorded in the Task Delivery receipt.
         self.assertEqual(0, contract["profiles"]["complex"]["result_reviewers"])
         self.assertFalse(contract["delegation_policy"]["parallel_write_enabled"])
         self.assertEqual(
-            "actual-normal-starts-with-conditional-repair",
+            "advisory-total-hard-concurrency",
             contract["delegation_policy"]["budget_accounting"],
         )
         self.assertEqual("slice-accept", contract["context_policy"]["checkpoint_after"])
@@ -581,21 +581,70 @@ Recorded in the Task Delivery receipt.
         with self.assertRaisesRegex(graph.GraphError, "запрос на реализацию слайсами"):
             graph.record(run, "work", "verify")
 
-    def test_slice_budget_requires_explicit_delegation_and_is_bounded(self) -> None:
-        with self.assertRaisesRegex(graph.GraphError, "explicit delegated-sequential"):
-            self.initialize(slice_budget=3)
-        with self.assertRaisesRegex(graph.GraphError, "bounded explicit slice limit"):
-            self.initialize(
-                implementation_strategy="delegated-sequential",
-                slice_budget=7,
-            )
-        critical = self.initialize(
-            task_id="TD-CRITICAL-SIX",
-            profile="critical",
-            implementation_strategy="delegated-sequential",
-            slice_budget=6,
-        )
-        self.assertEqual(6, self.read(critical / graph.STATE_NAME)["slice_budget"])
+    def test_slice_estimate_is_positive_and_does_not_require_workers(self) -> None:
+        run = self.initialize(slice_budget=12)
+        self.assertEqual(12, self.read(run / graph.STATE_NAME)["slice_budget"])
+        self.assertEqual("estimate", graph.ready(run)["data"]["slice_budget_kind"])
+        for invalid in (0, -1, True, 1.5):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(graph.GraphError, "положительную"):
+                self.initialize(task_id="TD-INVALID", slice_budget=invalid)
+
+    def test_nine_accepted_slices_complete_without_total_agent_ceiling(self) -> None:
+        run = self.initialize(implementation_strategy="delegated-sequential")
+        self.plan()
+        accepted = []
+        agents = []
+        for index in range(9):
+            identifier = f"implementation-unit-{index}"
+            graph.register_slice(run, self.slice_draft(run, identifier))
+            self.write("src/app.py", f"VALUE = {index + 2}\n")
+            graph.record_slice(run, identifier, self.slice_receipt(run, identifier))
+            accepted.append(self.accepted_slice(run, identifier))
+            agents.append(self.worker_agent(run, identifier))
+            graph.rehydrate_context(run)
+        implementation = {
+            "status": "complete", "strategy": "delegated-sequential",
+            "changed_paths": ["src/app.py"], "slices": accepted,
+        }
+        self.write_work(run, self.work_payload(
+            run, agents=agents, implementation=implementation,
+            capabilities=["repository search", "project test command", "mcp:context7"],
+        ))
+        graph.record(run, "work", "verify")
+        with self.assertRaises(graph.GraphError):
+            graph.complete(run)
+        self.write_verify(run, self.verify_payload(run))
+        graph.record(run, "verify", "succeeded")
+        graph.complete(run)
+        self.assertEqual("completed", graph.status(run)["status"])
+
+    def test_38_pinned_run_keeps_slice_limit_and_code_first_completion(self) -> None:
+        run = self.initialize(implementation_strategy="delegated-sequential")
+        state = self.read(run / graph.STATE_NAME)
+        state["graph_version"] = "3.8.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.8.0"]
+        graph.atomic_json(run / graph.STATE_NAME, state)
+        self.assertEqual(state["graph_sha256"], graph.sha256_file(graph.SKILL_DIR / "assets/legacy-graph-v3.8.json"))
+        self.plan()
+        accepted = []
+        agents = []
+        for index in range(2):
+            identifier = f"legacy-unit-{index}"
+            graph.register_slice(run, self.slice_draft(run, identifier))
+            self.write("src/app.py", f"VALUE = {index + 2}\n")
+            graph.record_slice(run, identifier, self.slice_receipt(run, identifier))
+            accepted.append(self.accepted_slice(run, identifier))
+            agents.append(self.worker_agent(run, identifier))
+            graph.rehydrate_context(run)
+        with self.assertRaisesRegex(graph.GraphError, "лимит normal"):
+            graph.register_slice(run, self.slice_draft(run, "legacy-unit-third"))
+        self.write_work(run, self.work_payload(run, agents=agents,
+            capabilities=["repository search", "project test command", "mcp:context7"],
+            implementation={"status":"complete", "strategy":"delegated-sequential", "changed_paths":["src/app.py"], "slices":accepted}))
+        graph.record(run, "work", "succeeded")
+        graph.complete(run)
+        self.assertEqual("completed", graph.status(run)["status"])
+        self.assertEqual("limit", graph.status(run)["data"]["slice_budget_kind"])
 
     def test_current_digest_ignores_start_marker_line_break_but_legacy_keeps_it(self) -> None:
         plan = self.write(
@@ -875,7 +924,8 @@ src/app.py
             graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
 
     def test_needs_context_can_be_superseded_by_one_bounded_slice(self) -> None:
-        run = self.initialize(profile="standard")
+        # Reaching the estimate must not turn a first recoverable result into a block.
+        run = self.initialize(profile="standard", slice_budget=1)
         self.plan()
         graph.register_slice(run, self.slice_draft(run))
         graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
@@ -905,7 +955,8 @@ src/app.py
         self.assertEqual("verify", ready["data"]["current"])
 
     def test_second_unsuccessful_normal_slice_blocks_run_explicitly(self) -> None:
-        run = self.initialize(profile="standard")
+        # A large estimate must not weaken the two-failure stop guard.
+        run = self.initialize(profile="standard", slice_budget=12)
         self.plan()
         graph.register_slice(run, self.slice_draft(run))
         graph.record_slice(run, "implementation-app", self.slice_receipt(run, status="needs_context"))
@@ -2141,11 +2192,11 @@ src/app.py
             graph.retire(legacy, "Retire the final supported v3.7 run.", True)["status"],
         )
 
-    def test_retire_rejects_completed_and_new_runs_pin_38(self) -> None:
+    def test_retire_rejects_completed_and_new_runs_pin_39(self) -> None:
         run = self.initialize(task_id="TD-CURRENT")
         state_path = run / graph.STATE_NAME
         state = self.read(state_path)
-        self.assertEqual("3.8.0", state["graph_version"])
+        self.assertEqual("3.9.0", state["graph_version"])
         state["status"] = "completed"
         state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "нельзя пометить retired"):

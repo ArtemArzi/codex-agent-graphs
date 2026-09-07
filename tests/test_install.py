@@ -79,6 +79,53 @@ class InstallerTests(unittest.TestCase):
             installer.install_environment(self.home)
         self.assertFalse((self.home / "skills").exists())
 
+    def test_audited_orchestration_policy_migrates_with_backup_and_preserves_tail(self) -> None:
+        legacy = (Path(__file__).parent / "fixtures" / "orchestration-legacy.md").read_text(encoding="utf-8")
+        tail = "# My runtime instructions\nKeep my local settings.\n"
+        original = legacy.rstrip() + "\n\n" + installer.global_policy_block() + "\n" + tail
+        agents_file = self.home / "AGENTS.md"
+        agents_file.write_text(original, encoding="utf-8")
+        result = installer.install_environment(self.home)
+        self.assertEqual(original, (Path(result["backup"]) / "AGENTS.md").read_text(encoding="utf-8"))
+        updated = agents_file.read_text(encoding="utf-8")
+        self.assertIn(tail, updated)
+        self.assertNotIn("at most 7 newly spawned", updated)
+        self.assertEqual(1, updated.count("# Global Codex Orchestration Policy"))
+        self.assertEqual(1, updated.count(installer.ORCHESTRATION_POLICY_BLOCK_START))
+        installer.install_environment(self.home)
+        self.assertEqual(updated, agents_file.read_text(encoding="utf-8"))
+        self.assertEqual("ok", installer.verify_environment(self.home)["status"])
+
+    def test_unknown_legacy_orchestration_is_rejected_before_writes(self) -> None:
+        legacy = (Path(__file__).parent / "fixtures" / "orchestration-legacy.md").read_text(encoding="utf-8")
+        original = legacy + "\nMy additional local instruction.\n"
+        agents_file = self.home / "AGENTS.md"
+        agents_file.write_text(original, encoding="utf-8")
+        with self.assertRaisesRegex(installer.InstallError, "Unrecognized local orchestration"):
+            installer.install_environment(self.home)
+        self.assertEqual(original, agents_file.read_text(encoding="utf-8"))
+        self.assertFalse((self.home / "skills").exists())
+
+    def test_malformed_orchestration_is_rejected_before_writes(self) -> None:
+        start, end = installer.ORCHESTRATION_POLICY_BLOCK_START, installer.ORCHESTRATION_POLICY_BLOCK_END
+        for original in (f"{start}\nunfinished\n", f"prefix {start}\nbody\n{end}\n",
+                         f"{start}\nbody\n{end}\n{start}\nbody\n{end}\n"):
+            with self.subTest(original=original):
+                (self.home / "AGENTS.md").write_text(original, encoding="utf-8")
+                with self.assertRaises(installer.InstallError):
+                    installer.install_environment(self.home)
+                self.assertFalse((self.home / "skills").exists())
+
+    def test_install_preserves_astra_routing_and_unrelated_config(self) -> None:
+        original = "[agents]\nmax_threads = 6\nmax_depth = 1\n\n[history]\npersistence = 'save-all'\n"
+        (self.home / "config.toml").write_text(original, encoding="utf-8")
+        installer.install_environment(self.home)
+        installer.install_environment(self.home)
+        self.assertIn(original.rstrip(), (self.home / "config.toml").read_text(encoding="utf-8"))
+        for role, effort in (("task_worker", "low"), ("task_plan_reviewer", "high"), ("task_result_reviewer", "high")):
+            spec = installer.tomllib.loads((self.home / "agents" / f"{role}.toml").read_text(encoding="utf-8"))
+            self.assertEqual(("gpt-6-astra", effort), (spec["model"], spec["model_reasoning_effort"]))
+
     def test_embedded_discovery_policy_marker_is_rejected(self) -> None:
         (self.home / "AGENTS.md").write_text(
             "# Mine "

@@ -182,7 +182,7 @@ The installer copies files; it does not create cross-filesystem symlinks.
 | Shared runtime | `agent-graph-runtime/` under each target Codex home for deterministic artifact inventory, verified compaction, and explicit TTL pruning |
 | Custom agents | Thirteen bounded role definitions for conditional exploration, implementation, planning review, result review, project-doc verification, improvement verification, and deep research |
 | `config.toml` | One managed block that registers those custom roles without replacing unrelated configuration |
-| Global `AGENTS.md` | Managed development-recovery and large-codebase-discovery policy blocks; unrelated instructions are preserved |
+| Global `AGENTS.md` | Managed orchestration, development-recovery and large-codebase-discovery policy blocks; unrelated instructions are preserved. Only the audited legacy orchestration prefix is adopted automatically; unknown local changes require inspection |
 
 Before replacement, existing managed files are backed up under `backups/agent-graphs/`. Installation uses staged copies and finishes with manifest and SHA-256 verification. Drift is reported rather than silently overwritten.
 

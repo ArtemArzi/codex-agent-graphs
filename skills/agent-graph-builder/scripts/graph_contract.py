@@ -128,8 +128,9 @@ def validate_work_policy(graph: dict[str, Any], *, required: bool) -> str:
                 "graph.json requires work_policy for the current efficiency contract."
             )
         return "legacy"
-    if not isinstance(policy, dict) or policy.get("schema_version") != 1:
-        raise ContractError("work_policy must be an object with schema_version 1.")
+    if not isinstance(policy, dict) or policy.get("schema_version") not in {1, 2}:
+        raise ContractError("work_policy must be an object with schema_version 1 or 2.")
+    adaptive = policy["schema_version"] == 2
     for key, expected in WORK_POLICY_VALUES.items():
         if policy.get(key) != expected:
             raise ContractError(f"work_policy.{key} must be {expected!r}.")
@@ -141,6 +142,10 @@ def validate_work_policy(graph: dict[str, Any], *, required: bool) -> str:
         )
     for key, (minimum, maximum) in WORK_POLICY_BUDGETS.items():
         value = budgets.get(key)
+        if adaptive and key == "max_agent_starts":
+            if value is not None:
+                raise ContractError("work_policy v2 max_agent_starts must be null; cap concurrency, not cumulative work.")
+            continue
         if (
             not isinstance(value, int)
             or isinstance(value, bool)
@@ -149,10 +154,14 @@ def validate_work_policy(graph: dict[str, Any], *, required: bool) -> str:
             raise ContractError(
                 f"work_policy.budgets.{key} must be an integer from {minimum} to {maximum}."
             )
-    if budgets["max_review_starts"] > budgets["max_agent_starts"]:
+    if not adaptive and budgets["max_review_starts"] > budgets["max_agent_starts"]:
         raise ContractError(
             "work_policy max_review_starts cannot exceed max_agent_starts."
         )
+    if adaptive:
+        concurrency = graph.get("limits", {}).get("max_parallel_agents")
+        if isinstance(concurrency, bool) or not isinstance(concurrency, int) or not 1 <= concurrency <= 5:
+            raise ContractError("work_policy v2 requires max_parallel_agents from 1 to 5.")
 
     loop_guards = policy.get("loop_guards")
     if not isinstance(loop_guards, dict) or set(loop_guards) != set(

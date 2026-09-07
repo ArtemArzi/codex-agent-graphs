@@ -130,6 +130,35 @@ class GraphContractTests(unittest.TestCase):
         with self.assertRaisesRegex(contract.ContractError, "need-based MCP"):
             contract.validate_graph_skill(skill, require_work_policy=True)
 
+    def test_adaptive_policy_requires_null_total_and_bounded_concurrency(self) -> None:
+        skill = self.base_skill()
+        contract.scaffold(skill, "full", "work.json", "result.md", "example_verifier")
+        graph = json.loads((skill / "graph.json").read_text(encoding="utf-8"))
+        self.assertEqual(2, graph["work_policy"]["schema_version"])
+        self.assertEqual("current", contract.validate_work_policy(graph, required=True))
+        for value in (None, 0, 6, True, 2.5):
+            with self.subTest(concurrency=value):
+                graph["limits"]["max_parallel_agents"] = value
+                with self.assertRaisesRegex(contract.ContractError, "max_parallel_agents"):
+                    contract.validate_work_policy(graph, required=True)
+        graph["limits"]["max_parallel_agents"] = 2
+        graph["work_policy"]["budgets"]["max_agent_starts"] = 7
+        with self.assertRaisesRegex(contract.ContractError, "must be null"):
+            contract.validate_work_policy(graph, required=True)
+        del graph["work_policy"]["budgets"]["max_agent_starts"]
+        with self.assertRaisesRegex(contract.ContractError, "exactly"):
+            contract.validate_work_policy(graph, required=True)
+
+    def test_version_one_still_requires_finite_total(self) -> None:
+        skill = self.base_skill()
+        contract.scaffold(skill, "full", "work.json", "result.md", "example_verifier")
+        graph = json.loads((skill / "graph.json").read_text(encoding="utf-8"))
+        graph["work_policy"]["schema_version"] = 1
+        with self.assertRaisesRegex(contract.ContractError, "max_agent_starts"):
+            contract.validate_work_policy(graph, required=True)
+        graph["work_policy"]["budgets"]["max_agent_starts"] = 7
+        self.assertEqual("current", contract.validate_work_policy(graph, required=True))
+
     def test_execution_policy_rejects_ritual_verified_default(self) -> None:
         skill = self.base_skill()
         contract.scaffold(skill, "full", "work.json", "result.md", "example_verifier")

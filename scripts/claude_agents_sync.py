@@ -34,6 +34,14 @@ ROOT = Path(__file__).resolve().parent.parent
 
 MODEL_MAP = {"gpt-5.6-terra": "sonnet", "gpt-5.6-sol": "opus"}
 EFFORT_MAP = {"high": "high", "xhigh": "xhigh", "max": "max"}
+# Preserve each role's existing Claude budget independently of Codex routing.
+# Pin the source pair too: future routing changes require an explicit decision,
+# not an assumed equivalence between providers' models or effort levels.
+ROLE_PROJECTIONS = {
+    "task_worker": (("gpt-6-astra", "low"), ("sonnet", "xhigh")),
+    "task_plan_reviewer": (("gpt-6-astra", "high"), ("opus", "high")),
+    "task_result_reviewer": (("gpt-6-astra", "high"), ("opus", "max")),
+}
 DEFAULT_WEB = "disabled"  # web_search отсутствует в 2 из 13 toml — трактуем как disabled
 
 KNOWN_TOML_KEYS = {
@@ -126,12 +134,17 @@ def _tools_for(sandbox_mode: str, web_search: str) -> tuple[list[str], list[str]
 
 
 def render_role(role: str, spec: dict, description: str) -> str:
-    model = MODEL_MAP.get(spec["model"])
-    if model is None:
-        raise SystemExit(f"{role}: неизвестная модель {spec['model']!r} — обнови MODEL_MAP")
-    effort = EFFORT_MAP.get(spec["model_reasoning_effort"])
-    if effort is None:
-        raise SystemExit(f"{role}: неизвестный effort {spec['model_reasoning_effort']!r} — обнови EFFORT_MAP")
+    if role in ROLE_PROJECTIONS:
+        source, (model, effort) = ROLE_PROJECTIONS[role]
+        if (spec["model"], spec["model_reasoning_effort"]) != source:
+            raise SystemExit(f"{role}: изменились модель/effort — обнови ROLE_PROJECTIONS")
+    else:
+        model = MODEL_MAP.get(spec["model"])
+        if model is None:
+            raise SystemExit(f"{role}: неизвестная модель {spec['model']!r} — обнови MODEL_MAP")
+        effort = EFFORT_MAP.get(spec["model_reasoning_effort"])
+        if effort is None:
+            raise SystemExit(f"{role}: неизвестный effort {spec['model_reasoning_effort']!r} — обнови EFFORT_MAP")
     tools, deny = _tools_for(spec["sandbox_mode"], spec.get("web_search", DEFAULT_WEB))
 
     lines = [

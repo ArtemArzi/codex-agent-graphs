@@ -55,6 +55,36 @@ class ClaudePackagingTests(unittest.TestCase):
     def test_projection_is_deterministic(self) -> None:
         self.assertEqual(self.rendered, sync.render_all())
 
+    def test_astra_roles_preserve_claude_model_and_effort(self) -> None:
+        expected = {
+            "task_worker": ("low", "sonnet", "xhigh"),
+            "task_plan_reviewer": ("high", "opus", "high"),
+            "task_result_reviewer": ("high", "opus", "max"),
+        }
+        roles = sync.canonical_roles()
+        for role, (codex_effort, model, effort) in expected.items():
+            with self.subTest(role=role):
+                self.assertEqual(roles[role]["model"], "gpt-6-astra")
+                self.assertEqual(roles[role]["model_reasoning_effort"], codex_effort)
+                fields = frontmatter_fields(self.rendered[sync.claude_name(role)])
+                self.assertEqual((fields["model"], fields["effort"]), (model, effort))
+
+    def test_role_projection_rejects_source_drift(self) -> None:
+        roles = sync.canonical_roles()
+        for role in sync.ROLE_PROJECTIONS:
+            for key, value in (("model", "gpt-99-unknown"),
+                               ("model_reasoning_effort", "ultra"),
+                               ("model", "gpt-5.6-sol"),
+                               ("model_reasoning_effort", "xhigh")):
+                with self.subTest(role=role, key=key, value=value):
+                    with self.assertRaises(SystemExit):
+                        sync.render_role(role, {**roles[role], key: value}, "desc")
+
+    def test_astra_projection_does_not_extend_to_other_roles(self) -> None:
+        spec = {**sync.canonical_roles()["task_worker"]}
+        with self.assertRaises(SystemExit):
+            sync.render_role("fake_role", spec, "desc")
+
     def test_committed_files_match_regeneration_exactly(self) -> None:
         out_dir = REPO / "agents"
         on_disk = {path.stem: path.read_text(encoding="utf-8") for path in sorted(out_dir.glob("*.md"))}

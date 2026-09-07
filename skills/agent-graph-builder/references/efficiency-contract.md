@@ -46,9 +46,11 @@ Every new or materially refactored graph declares `work_policy` in `graph.json`.
 
 ## Admission rules
 
-Start an agent only when its bounded scope is independent enough to save root
-context or wall time. Do not duplicate a live or completed scope. A same-scope
-retry must identify new evidence or a new discriminating check.
+Start an agent only when its independent result or necessary counterexample
+search is worth startup, context transfer and integration cost. State this
+briefly in the dispatch, not a new artifact. A stage or slice is not an agent.
+Do not duplicate a live or completed scope. A same-scope retry must identify
+new evidence or a new discriminating check.
 
 Start independent review only when risk, uncertainty, an explicit user request
 or a release gate needs a counterexample search. One reviewer is the default.
@@ -64,7 +66,12 @@ Before repair, name the first false assumption in the specification, plan,
 implementation or verification. Stop at the declared repair budget. Stop sooner
 when two consecutive iterations create no new evidence.
 
-The common budgets cap agent starts, review starts, repair cycles,
-no-new-evidence iterations and logical receipts per work unit. Domain graphs may
-choose lower values and may add bounded domain limits, but must not remove the
-common guards.
+For work_policy schema 2, max_agent_starts is null: cumulative starts are an
+overhead signal, not a task-stop condition. Cap concurrent agents instead (0–2
+normally, respecting the host). Other budgets still bound repeated review,
+repair, no-new-evidence iterations and receipts per work unit. Released schema 1
+graphs retain their original limits; do not reinterpret active receipts.
+
+Host limits are not reset by creating another run. When delegation is unavailable,
+continue authorized domain work as root. Preserve required independent checks
+as unmet rather than manufacturing verification or asking about internal counters.

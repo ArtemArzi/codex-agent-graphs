@@ -1,39 +1,30 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.9.0",
+  "graph_version": "3.8.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
     "max_verification_repairs": 1,
+    "max_agents_per_run": 8,
     "max_parallel_agents": 2,
     "max_parallel_explorers": 2,
     "max_parallel_workers": 2,
+    "max_slices_per_run": 2,
+    "max_explicit_slices_per_run": 6,
     "max_verification_repair_slices": 1,
     "max_selected_skills_per_slice": 3,
     "max_root_technical_amendments": 2,
     "max_paths_per_scope_amendment": 2
   },
   "profiles": {
-    "light": {
-      "plan_reviewers": 0,
-      "result_reviewers": 0
-    },
-    "standard": {
-      "plan_reviewers": 0,
-      "result_reviewers": 0
-    },
-    "complex": {
-      "plan_reviewers": 0,
-      "result_reviewers": 0
-    },
-    "critical": {
-      "plan_reviewers": 0,
-      "result_reviewers": 1
-    }
+    "light": {"plan_reviewers": 0, "result_reviewers": 0},
+    "standard": {"plan_reviewers": 0, "result_reviewers": 0},
+    "complex": {"plan_reviewers": 0, "result_reviewers": 0},
+    "critical": {"plan_reviewers": 0, "result_reviewers": 1}
   },
   "work_policy": {
-    "schema_version": 2,
+    "schema_version": 1,
     "fast_path": "root-only",
     "capability_discovery": "need-based",
     "agent_admission": "independent-work-only",
@@ -42,7 +33,7 @@
     "documentation_followup": "impact-gated",
     "explicit_user_override": "bounded",
     "budgets": {
-      "max_agent_starts": null,
+      "max_agent_starts": 8,
       "max_review_starts": 3,
       "max_repair_cycles": 1,
       "max_no_new_evidence_iterations": 2,
@@ -59,18 +50,9 @@
     "schema_version": 1,
     "default_tier": "skill-only",
     "tiers": {
-      "skill-only": {
-        "controller": false,
-        "verification": "self"
-      },
-      "tracked": {
-        "controller": true,
-        "verification": "conditional"
-      },
-      "verified": {
-        "controller": true,
-        "verification": "required"
-      }
+      "skill-only": {"controller": false, "verification": "self"},
+      "tracked": {"controller": true, "verification": "conditional"},
+      "verified": {"controller": true, "verification": "required"}
     },
     "admission": {
       "controller": "resumability-or-durable-evidence",
@@ -125,7 +107,7 @@
       "complex": "root-only",
       "critical": "root-only"
     },
-    "explicit_slice_request": "staged-work-not-agent-request",
+    "explicit_slice_request": "required",
     "strategies": [
       "root-only",
       "delegated-sequential",
@@ -137,13 +119,10 @@
       "needs_context",
       "blocked"
     ],
-    "budget_accounting": "advisory-total-hard-concurrency",
+    "budget_accounting": "actual-normal-starts-with-conditional-repair",
     "root_integration": "allowed-within-reviewed-scope-and-declared-tests",
     "parallel_write_isolation": "worktree-required",
-    "parallel_write_enabled": false,
-    "default_slice_estimate": 2,
-    "admission": "independent-benefit-exceeds-handoff-cost",
-    "capacity_exhausted": "continue-root-preserve-review-requirements"
+    "parallel_write_enabled": false
   },
   "context_policy": {
     "checkpoint_schema_version": 1,
@@ -158,24 +137,9 @@
   "test_policy": {
     "packet_schema_version": 2,
     "check_identity": "sha256-command-purpose",
-    "impact_actions": [
-      "reuse",
-      "update",
-      "add",
-      "not-applicable"
-    ],
-    "impact_levels": [
-      "unit",
-      "integration",
-      "e2e",
-      "static",
-      "other"
-    ],
-    "required_impact_levels": [
-      "unit",
-      "integration",
-      "e2e"
-    ],
+    "impact_actions": ["reuse", "update", "add", "not-applicable"],
+    "impact_levels": ["unit", "integration", "e2e", "static", "other"],
+    "required_impact_levels": ["unit", "integration", "e2e"],
     "root_replay_minimum_per_slice": 1,
     "deferred_final_checks": "exact-union-by-check-id"
   },
@@ -235,10 +199,7 @@
           "on_success": "complete",
           "on_rejected": "work"
         },
-        "complete": {
-          "role": "root",
-          "artifact": "PLAN.md"
-        }
+        "complete": {"role": "root", "artifact": "PLAN.md"}
       }
     },
     "implement": {
@@ -258,10 +219,7 @@
           "on_success": "complete",
           "on_rejected": "work"
         },
-        "complete": {
-          "role": "root",
-          "artifact": "HANDOFF.md"
-        }
+        "complete": {"role": "root", "artifact": "HANDOFF.md"}
       }
     },
     "full": {
@@ -281,10 +239,7 @@
           "on_success": "complete",
           "on_rejected": "work"
         },
-        "complete": {
-          "role": "root",
-          "artifact": "HANDOFF.md"
-        }
+        "complete": {"role": "root", "artifact": "HANDOFF.md"}
       }
     }
   }

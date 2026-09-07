@@ -24,6 +24,7 @@ GRAPH_RUNTIME_ROOT = REPO_ROOT / "agent-graph-runtime"
 GRAPH_RUNTIME_TARGET = "agent-graph-runtime"
 GLOBAL_POLICY_SOURCE = REPO_ROOT / "policies" / "development-recovery.md"
 DISCOVERY_POLICY_SOURCE = REPO_ROOT / "policies" / "large-codebase-discovery.md"
+ORCHESTRATION_POLICY_SOURCE = REPO_ROOT / "policies" / "orchestration.md"
 SKILLS = (
     "agent-graph-builder",
     "continuous-improvement",
@@ -55,6 +56,11 @@ POLICY_BLOCK_START = "<!-- BEGIN codex-development-recovery -->"
 POLICY_BLOCK_END = "<!-- END codex-development-recovery -->"
 DISCOVERY_POLICY_BLOCK_START = "<!-- BEGIN codex-large-codebase-discovery -->"
 DISCOVERY_POLICY_BLOCK_END = "<!-- END codex-large-codebase-discovery -->"
+ORCHESTRATION_POLICY_BLOCK_START = "<!-- BEGIN codex-orchestration -->"
+ORCHESTRATION_POLICY_BLOCK_END = "<!-- END codex-orchestration -->"
+# Only this audited unmarked policy may be adopted automatically. Unknown local
+# edits are never removed just because they share a heading.
+LEGACY_ORCHESTRATION_SHA256 = "1e0afaf5c6a78ca52ecb08e4c0262d1704a069e328e26377de947c86457b3da9"
 MANAGED_RE = re.compile(
     rf"(?ms)^\s*(?:{re.escape(BLOCK_START)}|{re.escape(LEGACY_BLOCK_START)})\n.*?^\s*(?:{re.escape(BLOCK_END)}|{re.escape(LEGACY_BLOCK_END)})\n?"
 )
@@ -65,6 +71,10 @@ POLICY_MANAGED_RE = re.compile(
 DISCOVERY_POLICY_MANAGED_RE = re.compile(
     rf"(?ms)^[ \t]*{re.escape(DISCOVERY_POLICY_BLOCK_START)}[ \t]*\r?\n.*?"
     rf"^[ \t]*{re.escape(DISCOVERY_POLICY_BLOCK_END)}[ \t]*(?:\r?\n|$)"
+)
+ORCHESTRATION_POLICY_MANAGED_RE = re.compile(
+    rf"(?ms)^[ \t]*{re.escape(ORCHESTRATION_POLICY_BLOCK_START)}[ \t]*\r?\n.*?"
+    rf"^[ \t]*{re.escape(ORCHESTRATION_POLICY_BLOCK_END)}[ \t]*(?:\r?\n|$)"
 )
 EXCLUDED_NAMES = {"__pycache__", ".pytest_cache", ".DS_Store"}
 
@@ -193,6 +203,8 @@ def policy_block(source: Path, start: str, end: str) -> str:
         POLICY_BLOCK_END,
         DISCOVERY_POLICY_BLOCK_START,
         DISCOVERY_POLICY_BLOCK_END,
+        ORCHESTRATION_POLICY_BLOCK_START,
+        ORCHESTRATION_POLICY_BLOCK_END,
     )
     if any(marker in policy for marker in managed_markers):
         raise InstallError(f"Global policy source contains a managed marker: {source}")
@@ -212,7 +224,21 @@ def discovery_policy_block() -> str:
 
 
 def agents_with_policy(original: str) -> str:
+    if ORCHESTRATION_POLICY_BLOCK_START not in original and "# Global Codex Orchestration Policy" in original:
+        # The legacy block occupies the document prefix, ending at the first
+        # managed block. Preserve all following instructions byte-for-byte here.
+        boundary = original.find("<!-- BEGIN ")
+        prior = original if boundary < 0 else original[:boundary]
+        if hashlib.sha256(prior.rstrip().encode("utf-8")).hexdigest() != LEGACY_ORCHESTRATION_SHA256:
+            raise InstallError("Unrecognized local orchestration policy; inspect drift before adoption")
+        original = "" if boundary < 0 else original[boundary:]
     managed = (
+        (
+            "orchestration",
+            ORCHESTRATION_POLICY_BLOCK_START,
+            ORCHESTRATION_POLICY_BLOCK_END,
+            ORCHESTRATION_POLICY_MANAGED_RE,
+        ),
         (
             "development-recovery",
             POLICY_BLOCK_START,
@@ -236,7 +262,10 @@ def agents_with_policy(original: str) -> str:
             raise InstallError(f"Malformed or embedded managed {name} policy block")
         without_managed = pattern.sub("", without_managed)
     without_managed = without_managed.rstrip()
-    blocks = f"{global_policy_block()}\n{discovery_policy_block()}"
+    orchestration = policy_block(
+        ORCHESTRATION_POLICY_SOURCE, ORCHESTRATION_POLICY_BLOCK_START, ORCHESTRATION_POLICY_BLOCK_END
+    )
+    blocks = f"{orchestration}\n{global_policy_block()}\n{discovery_policy_block()}"
     return f"{without_managed}\n\n{blocks}" if without_managed else blocks
 
 

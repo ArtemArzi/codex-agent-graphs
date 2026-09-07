@@ -67,10 +67,25 @@ LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.5.0", "7e9b2b4c3a9051f8f09a69ea89d359836181a6cbd77391e326c74f0480d9e7b2"),
     ("3.6.0", "ffe9580e03ce2aa76a9947e30e016f0d3d58d1a34a77ac534f59ab083e4653ec"),
     ("3.7.0", "cae9219d58295caf00c2d702134047f11fe8cdfb9409b957068a81d90f77657a"),
+    ("3.8.0", "e85e31327b1e370332bf2e65f2d4f6f1776e459072dafbd0ba9f9099830eeb76"),
 }
-SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0"}
-STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0"}
-NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0"}
+SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0"}
+STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0"}
+NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0", "3.9.0"}
+
+
+def adaptive_delegation(state: dict[str, Any]) -> bool:
+    return state.get("graph_version") == "3.9.0"
+
+
+def uses_code_first_contract(state: dict[str, Any]) -> bool:
+    # Pin behavior by release, not by whichever graph happens to be installed.
+    return state.get("graph_version") in {"3.8.0", "3.9.0"}
+
+
+def slice_estimate(state: dict[str, Any]) -> int:
+    # In 3.8 and earlier this same state field remains a hard per-run bound.
+    return int(state.get("slice_budget", 2))
 
 
 class GraphError(RuntimeError):
@@ -175,7 +190,7 @@ def graph_contract() -> dict[str, Any]:
     work_policy = graph.get("work_policy")
     if (
         not isinstance(work_policy, dict)
-        or work_policy.get("schema_version") != 1
+        or work_policy.get("schema_version") != 2
         or work_policy.get("fast_path") != "root-only"
         or work_policy.get("capability_discovery") != "need-based"
         or work_policy.get("agent_admission") != "independent-work-only"
@@ -187,6 +202,7 @@ def graph_contract() -> dict[str, Any]:
         or work_policy.get("loop_guards", {}).get("same_scope_retry") != "new-evidence-required"
         or work_policy.get("loop_guards", {}).get("repair_start") != "first-false-assumption-required"
         or work_policy.get("loop_guards", {}).get("no_new_evidence") != "stop-at-budget"
+        or work_policy.get("budgets", {}).get("max_agent_starts") is not None
         or work_policy.get("budgets", {}).get("max_no_new_evidence_iterations") != 2
     ):
         raise GraphError("Task Delivery graph содержит неверную work efficiency policy.")
@@ -242,19 +258,22 @@ def graph_contract() -> dict[str, Any]:
             "complex": "root-only",
             "critical": "root-only",
         }
-        or delegation.get("explicit_slice_request") != "required"
+        or delegation.get("explicit_slice_request") != "staged-work-not-agent-request"
         or set(delegation.get("strategies", [])) != IMPLEMENTATION_STRATEGIES
         or set(delegation.get("worker_statuses", [])) != WORKER_STATUSES
         or delegation.get("budget_accounting")
-        != "actual-normal-starts-with-conditional-repair"
+        != "advisory-total-hard-concurrency"
+        or delegation.get("admission") != "independent-benefit-exceeds-handoff-cost"
+        or delegation.get("capacity_exhausted") != "continue-root-preserve-review-requirements"
         or delegation.get("root_integration")
         != "allowed-within-reviewed-scope-and-declared-tests"
         or delegation.get("parallel_write_isolation") != "worktree-required"
         or delegation.get("parallel_write_enabled") is not False
-        or not isinstance(limits.get("max_slices_per_run"), int)
-        or limits["max_slices_per_run"] < 1
-        or not isinstance(limits.get("max_explicit_slices_per_run"), int)
-        or limits["max_explicit_slices_per_run"] < limits["max_slices_per_run"]
+        or delegation.get("default_slice_estimate") != 2
+        or "max_slices_per_run" in limits
+        or "max_explicit_slices_per_run" in limits
+        or "max_agents_per_run" in limits
+        or limits.get("max_parallel_agents") != 2
         or limits.get("max_verification_repair_slices") != 1
         or not isinstance(limits.get("max_selected_skills_per_slice"), int)
         or limits["max_selected_skills_per_slice"] < 1
@@ -957,7 +976,7 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             state = load_run_state(run_dir)
             staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
             efficiency_contract = (
-                state.get("graph_version") == graph_contract()["graph_version"]
+                uses_code_first_contract(state)
             )
             if not staged_contract and state.get("graph_version") != "3.3.0":
                 raise GraphError("Slice delegation недоступен для этой legacy Task Delivery версии.")
@@ -1041,9 +1060,7 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                         "Следующий normal slice обязан supersedes exact unresolved slice: "
                         + unresolved[-1]
                     )
-                if len(normal_records) >= int(
-                    state.get("slice_budget", graph_contract()["limits"]["max_slices_per_run"])
-                ):
+                if not adaptive_delegation(state) and len(normal_records) >= slice_estimate(state):
                     raise GraphError("Превышен лимит normal slice packets для одного run.")
             current_strategy = state.get("implementation_strategy", "root-only")
             if current_strategy not in {"root-only", strategy}:
@@ -1073,7 +1090,7 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                 if review_mode not in allowed_review_modes:
                     raise GraphError("Full slice plan_review mode должен быть self или independent.")
                 if (
-                    state.get("graph_version") != graph_contract()["graph_version"]
+                    not uses_code_first_contract(state)
                     and state["profile"] in {"complex", "critical"}
                     and review_mode != "independent"
                 ):
@@ -1455,13 +1472,7 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
                             "max_no_new_evidence_iterations"
                         ]
                     )
-                    or normal_count
-                    >= int(
-                        state.get(
-                            "slice_budget",
-                            graph_contract()["limits"]["max_slices_per_run"],
-                        )
-                    )
+                    or (not adaptive_delegation(state) and normal_count >= slice_estimate(state))
                 )
                 if terminal_unsuccessful:
                     state["status"] = "blocked"
@@ -2015,13 +2026,13 @@ def validate_agents(
     value: Any,
     *,
     slice_contract: bool,
-    worker_limit: int,
+    worker_limit: int | None,
     efficiency_contract: bool,
-    max_agents: int,
+    max_agents: int | None,
 ) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise GraphError("agents должен быть списком.")
-    if len(value) > max_agents:
+    if max_agents is not None and len(value) > max_agents:
         raise GraphError("Превышен общий лимит агентов Task Delivery.")
     normalized: list[dict[str, Any]] = []
     receipts: set[str] = set()
@@ -2054,7 +2065,7 @@ def validate_agents(
         )
     workers = sum(item["role"] == "task_worker" for item in normalized)
     explorers = sum(item["role"] == "task_explorer" for item in normalized)
-    if workers > worker_limit or explorers > 2:
+    if (worker_limit is not None and workers > worker_limit) or (max_agents is not None and explorers > 2):
         raise GraphError(
             "Task Delivery превысил bounded worker/explorer budget этого run."
         )
@@ -2307,7 +2318,7 @@ def validate_slice_acceptance(
             for path in item["root_acceptance"]["verified_changed_paths"]
         }
         integration_paths = []
-        if state.get("graph_version") == graph_contract()["graph_version"]:
+        if uses_code_first_contract(state):
             integration_paths = normalize_repo_paths(
                 Path(state["root"]),
                 implementation.get("integration_paths", []),
@@ -2354,25 +2365,22 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     if confidence not in {"high", "medium", "low"}:
         raise GraphError("confidence должен быть high, medium или low.")
     capabilities = strings(artifact.get("capabilities"), "capabilities", allow_empty=False)
-    current_contract = state.get("graph_version") == graph_contract()["graph_version"]
+    current_contract = uses_code_first_contract(state)
     staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
     slice_contract = state.get("graph_version") in SLICE_CONTRACT_VERSIONS
-    worker_limit = int(
-        state.get("slice_budget", graph_contract()["limits"]["max_slices_per_run"])
-    ) + int(graph_contract()["limits"]["max_verification_repair_slices"])
+    worker_limit = (
+        None if adaptive_delegation(state)
+        else slice_estimate(state) + int(graph_contract()["limits"]["max_verification_repair_slices"])
+    )
     agents = validate_agents(
         artifact.get("agents"),
         slice_contract=slice_contract,
         worker_limit=worker_limit,
         efficiency_contract=current_contract,
-        max_agents=(
-            int(graph_contract()["limits"]["max_agents_per_run"])
-            if current_contract
-            else 5
-        ),
+        max_agents=None if adaptive_delegation(state) else (8 if current_contract else 5),
     )
     validate_research(artifact.get("research"))
-    if state.get("graph_version") in {"3.3.0", graph_contract()["graph_version"]}:
+    if state.get("graph_version") in {"3.3.0", "3.8.0", "3.9.0"}:
         validate_mcp_capabilities(capabilities)
     plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
     digest, scope = validate_plan(
@@ -2841,32 +2849,14 @@ def initialize(
     root = root_path(root_raw)
     task_id = legacy.validate_task_id(task_id)
     graph = graph_contract()
-    if slice_budget is None:
-        effective_slice_budget = int(graph["limits"]["max_slices_per_run"])
-    else:
-        if implementation_strategy != "delegated-sequential":
-            raise GraphError("--slice-budget требует explicit delegated-sequential strategy.")
-        if (
-            isinstance(slice_budget, bool)
-            or not 1 <= slice_budget <= int(graph["limits"]["max_explicit_slices_per_run"])
-        ):
-            raise GraphError("--slice-budget вышел за bounded explicit slice limit.")
-        effective_slice_budget = slice_budget
-    profile_review_reserve = (
-        int(graph["profiles"][profile]["plan_reviewers"])
-        + int(graph["profiles"][profile]["result_reviewers"])
-        + (1 if profile == "critical" else 0)
+    if slice_budget is not None and (
+        not isinstance(slice_budget, int) or isinstance(slice_budget, bool) or slice_budget < 1
+    ):
+        raise GraphError("--slice-budget требует положительную оценку числа слайсов.")
+    effective_slice_budget = (
+        int(graph["delegation_policy"]["default_slice_estimate"])
+        if slice_budget is None else slice_budget
     )
-    profile_slice_ceiling = (
-        int(graph["limits"]["max_agents_per_run"])
-        - profile_review_reserve
-    )
-    if effective_slice_budget > profile_slice_ceiling:
-        raise GraphError(
-            f"--slice-budget {effective_slice_budget} не оставляет agent budget для "
-            f"{profile} review; максимум {profile_slice_ceiling}. "
-            "Условный verifier repair имеет отдельный бюджет и заранее normal slices не сокращает."
-        )
     policy = graph["delegation_policy"]
     strategy_request = "root-only" if mode == "plan" else implementation_strategy
     strategy_preferred = (
@@ -3136,9 +3126,8 @@ def ready(run_dir: Path) -> dict[str, Any]:
             "implementation_strategy": state.get("implementation_strategy", "root-only"),
             "implementation_strategy_request": state.get("implementation_strategy_request", "auto"),
             "implementation_strategy_preferred": state.get("implementation_strategy_preferred", "root-only"),
-            "slice_budget": state.get(
-                "slice_budget", graph_contract()["limits"]["max_slices_per_run"]
-            ),
+            "slice_budget": slice_estimate(state),
+            "slice_budget_kind": "estimate" if adaptive_delegation(state) else "limit",
             "engineering_standard": state.get("engineering_standard"),
             "context": state.get("context", {}),
             "scope_amendment_count": len(state.get("scope_amendments", [])),
@@ -3491,8 +3480,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
             if not isinstance(documentation_impact, dict):
                 documentation_impact = validate_documentation_impact(
                     work_artifact.get("documentation_impact"),
-                    current_contract=state.get("graph_version")
-                    == graph_contract()["graph_version"],
+                    current_contract=uses_code_first_contract(state),
                 )
             documentation_required = documentation_impact["class"] != "none"
             proposal = documentation_impact["summary"]
@@ -3561,7 +3549,7 @@ def status(run_dir: Path) -> dict[str, Any]:
     repair_work_sha = (
         verification_repair_work_sha(state)
         if (
-            state.get("graph_version") == graph_contract()["graph_version"]
+            uses_code_first_contract(state)
             and state.get("implementation_strategy") == "delegated-sequential"
         )
         else None
@@ -3585,9 +3573,8 @@ def status(run_dir: Path) -> dict[str, Any]:
             "implementation_strategy": state.get("implementation_strategy", "root-only"),
             "implementation_strategy_request": state.get("implementation_strategy_request", "auto"),
             "implementation_strategy_preferred": state.get("implementation_strategy_preferred", "root-only"),
-            "slice_budget": state.get(
-                "slice_budget", graph_contract()["limits"]["max_slices_per_run"]
-            ),
+            "slice_budget": slice_estimate(state),
+            "slice_budget_kind": "estimate" if adaptive_delegation(state) else "limit",
             "context": state.get("context", {}),
             "scope_amendment_count": len(state.get("scope_amendments", [])),
             "verification_repair_work_sha256": repair_work_sha,
@@ -3619,7 +3606,7 @@ def parser() -> argparse.ArgumentParser:
         choices=sorted(IMPLEMENTATION_STRATEGY_REQUESTS),
         default="auto",
     )
-    init.add_argument("--slice-budget", type=int)
+    init.add_argument("--slice-budget", type=int, help="Positive planning estimate, not a task-stop limit")
     ready_parser = sub.add_parser("ready")
     ready_parser.add_argument("--run", required=True)
     suspend_parser = sub.add_parser("suspend")

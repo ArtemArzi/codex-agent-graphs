@@ -53,7 +53,7 @@
 
 Не более двух пишущих агентов одновременно. Корневой исполнитель владеет общей архитектурой, интеграцией и итоговой проверкой. При грязном рабочем дереве предпочитай одного исполнителя.
 
-Текущий короткий graph использует [implementation-slices.md](implementation-slices.md) внутри `work`, не добавляя узлов. `root-only` — fast path для любого профиля. Последовательный bounded slice нужен только когда независимая область реально экономит root-контекст или wall time. Явный запрос пользователя на слайсы обязателен и передаётся runner через `init --implementation-strategy delegated-sequential`; заранее обоснованное разбиение может получить finite `--slice-budget`. Write-parallel fail-closed, пока runner не может доказать отдельные worktrees; разные названия директорий в общем checkout не являются изоляцией.
+Текущий короткий graph использует [implementation-slices.md](implementation-slices.md) внутри `work`, не добавляя узлов. `root-only` — fast path для любого профиля. Последовательный bounded slice нужен только когда независимая область реально экономит root-контекст или wall time. Этапы и слайсы сами по себе не требуют worker. Явный запрос на делегирование передаётся через `--implementation-strategy delegated-sequential`; `--slice-budget` в 3.9 — оценка, а не ограничение продолжения. Write-parallel fail-closed, пока runner не может доказать отдельные worktrees; разные названия директорий в общем checkout не являются изоляцией.
 
 ## Волна обзора
 

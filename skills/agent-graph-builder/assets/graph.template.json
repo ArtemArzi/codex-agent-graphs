@@ -5,10 +5,11 @@
   "default_mode": "__MODE__",
   "limits": {
     "max_node_retries": 1,
-    "max_verification_repairs": 1
+    "max_verification_repairs": 1,
+    "max_parallel_agents": 2
   },
   "work_policy": {
-    "schema_version": 1,
+    "schema_version": 2,
     "fast_path": "root-only",
     "capability_discovery": "need-based",
     "agent_admission": "independent-work-only",
@@ -17,7 +18,7 @@
     "documentation_followup": "impact-gated",
     "explicit_user_override": "bounded",
     "budgets": {
-      "max_agent_starts": 3,
+      "max_agent_starts": null,
       "max_review_starts": 1,
       "max_repair_cycles": 1,
       "max_no_new_evidence_iterations": 2,
@@ -34,9 +35,18 @@
     "schema_version": 1,
     "default_tier": "tracked",
     "tiers": {
-      "skill-only": {"controller": false, "verification": "self"},
-      "tracked": {"controller": true, "verification": "conditional"},
-      "verified": {"controller": true, "verification": "required"}
+      "skill-only": {
+        "controller": false,
+        "verification": "self"
+      },
+      "tracked": {
+        "controller": true,
+        "verification": "conditional"
+      },
+      "verified": {
+        "controller": true,
+        "verification": "required"
+      }
     },
     "admission": {
       "controller": "resumability-or-durable-evidence",
@@ -54,7 +64,9 @@
     "multiple_unfinished_tasks": "independent-per-task",
     "verified_completion_requires_healthy_control": true
   },
-  "optional_agents": ["__VERIFIER_ROLE__"],
+  "optional_agents": [
+    "__VERIFIER_ROLE__"
+  ],
   "mcp_policy": {
     "discovery": "when-relevant",
     "relevant_use": "required",

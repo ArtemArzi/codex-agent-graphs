@@ -120,8 +120,10 @@ It makes the root-only fast path, need-based capability discovery, independent
 agent admission, risk-based review, state-change-only progress, impact-gated
 documentation and bounded user overrides machine-checkable.
 
-Budgets bound agent starts, review starts, repair cycles, consecutive
-no-new-evidence iterations and logical receipts per work unit. Loop guards reject
+Schema 2 budgets leave cumulative agent starts uncapped (null) and require a
+finite concurrent-agent limit; schema 1 remains readable with its prior total
+limits. Review starts, repair cycles, consecutive no-new-evidence iterations
+and logical receipts per work unit remain bounded. Loop guards reject
 duplicate agent scopes, evidence-free retries and repairs that do not identify
 the first false assumption. See
 [efficiency-contract.md](efficiency-contract.md).

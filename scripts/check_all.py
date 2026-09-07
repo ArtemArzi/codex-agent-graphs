@@ -128,8 +128,8 @@ def main() -> int:
     task_graph = json.loads((ROOT / "skills" / "task-delivery" / "graph.json").read_text(encoding="utf-8"))
     if task_graph.get("schema_version") != 2 or task_graph.get("default_mode") != "full":
         raise RuntimeError("Task Delivery v3 must use schema 2 and full default mode")
-    if task_graph.get("graph_version") != "3.8.0":
-        raise RuntimeError("Task Delivery current graph must remain 3.8.0")
+    if task_graph.get("graph_version") != "3.9.0":
+        raise RuntimeError("Task Delivery current graph must remain 3.9.0")
     if set(task_graph.get("routes", {})) != {"plan", "implement", "full"}:
         raise RuntimeError("Task Delivery must expose plan, implement and full routes")
     for mode in ("plan", "implement", "full"):
@@ -144,11 +144,12 @@ def main() -> int:
     ):
         raise RuntimeError("Task Delivery result review must remain risk-triggered")
     limits = task_graph["limits"]
-    if limits["max_agents_per_run"] > 8 or limits["max_parallel_agents"] > 2:
+    if "max_agents_per_run" in limits or limits["max_parallel_agents"] > 2:
         raise RuntimeError("Task Delivery agent bounds are too high")
     if (
-        limits.get("max_slices_per_run") != 2
-        or limits.get("max_explicit_slices_per_run") != 6
+        task_graph["delegation_policy"].get("default_slice_estimate") != 2
+        or task_graph["work_policy"]["budgets"].get("max_agent_starts") is not None
+        or task_graph["work_policy"].get("schema_version") != 2
         or limits.get("max_verification_repair_slices") != 1
     ):
         raise RuntimeError("Task Delivery slice and verifier-repair bounds changed unexpectedly")
