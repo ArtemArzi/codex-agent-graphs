@@ -10,6 +10,7 @@ import json
 import os
 import re
 import shlex
+import stat
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,7 @@ IGNORED_TOP_LEVEL = {".git", ".agent-graphs", ".codex", ".project-start", "__pyc
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 RUN_ID = re.compile(r"^[0-9a-f]{16}$")
 LEGACY_ACTIVE_GRAPH_IDENTITIES = {
+    ("1.1.0", "27f3e6a3a2b8d1e7abcb88e88b54196b93387a062596f6fbefccc3669b1641f3"),
     ("1.0.0", "15e94e081ba7ee94f14f6e530b7075c4d4b542c8284c6105fdfde59797d36c2c"),
 }
 
@@ -102,7 +104,7 @@ def safe_join(root: Path, raw: Any, field: str, *, require_file: bool = False) -
     current = root
     for part in PurePosixPath(relative).parts:
         current = current / part
-        if current.exists() and current.is_symlink():
+        if current.is_symlink():
             raise GraphError(f"Unsafe symlink in {field}: {relative}")
     candidate = (root / relative).resolve(strict=False)
     try:
@@ -320,6 +322,8 @@ def ready(run_dir: Path) -> dict[str, Any]:
     current = state["current"]
     artifact = WORK_NAME if current == "work" else VERIFY_NAME if current == "verify" else None
     actions = [f"{runner_command()} complete --run {shlex.quote(str(run_dir))}"] if artifact is None else [f"Create {run_dir / artifact}", f"{runner_command()} record --run {shlex.quote(str(run_dir))} --node {current} --outcome <...>"]
+    if state["graph_version"] == "1.2.0" and current == "work":
+        actions.insert(0, f"{runner_command()} history --root {shlex.quote(state['root'])}")
     return result(
         "ready",
         f"Ready for {current}.",
@@ -376,7 +380,7 @@ def mcp_capability(capabilities: Any) -> list[str]:
     return values
 
 
-def validate_candidate(value: Any) -> dict[str, Any]:
+def validate_candidate(value: Any, *, require_benefit: bool = True) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise GraphError("candidate must be an object.")
     for field in ("candidate_id", "title"):
@@ -395,6 +399,15 @@ def validate_candidate(value: Any) -> dict[str, Any]:
         raise GraphError("candidate.evidence must contain concrete observations.")
     strings(value.get("reproduction_commands"), "candidate.reproduction_commands", nonempty=True)
     strings(value.get("acceptance"), "candidate.acceptance", nonempty=True)
+    if require_benefit:
+        benefit = value.get("benefit")
+        if not isinstance(benefit, dict) or any(
+            not isinstance(benefit.get(field), str) or len(benefit[field].strip()) < 8
+            for field in ("affected", "consequence", "frequency", "why_now")
+        ):
+            raise GraphError("candidate.benefit requires substantive affected, consequence, frequency and why_now.")
+        if benefit.get("effort") not in {"small", "medium", "large"}:
+            raise GraphError("candidate.benefit.effort must be small|medium|large.")
     return {"source_kind": value["source_kind"], "risk": value["risk"], "protected_domains": domains, "scope": scope}
 
 
@@ -419,6 +432,13 @@ def relative_existing(root: Path, raw: Any, field: str) -> Path:
     except ValueError as exc:
         raise GraphError(f"{field} escapes repository.") from exc
     return safe_join(root, relative, field, require_file=True)
+
+
+def validate_task_id(value: Any, graph_version: str) -> str:
+    pattern = r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}" if graph_version == "1.2.0" else r"[A-Z][A-Z0-9-]{2,127}"
+    if not isinstance(value, str) or not re.fullmatch(pattern, value):
+        raise GraphError("Task Delivery task id is invalid.")
+    return value
 
 
 def validate_task_delivery(root: Path, state: dict[str, Any], receipt: Any, changed: list[str], scope: list[str]) -> None:
@@ -452,9 +472,7 @@ def validate_task_delivery(root: Path, state: dict[str, Any], receipt: Any, chan
         raise GraphError("Task Delivery task receipt is tampered or mismatched.")
     if sorted(safe_paths(work_receipt.get("changed_paths"), "Task Delivery changed_paths", nonempty=True)) != sorted(safe_paths(receipt.get("changed_paths"), "task_delivery.changed_paths", nonempty=True)):
         raise GraphError("Task Delivery changed paths do not bind its immutable work receipt.")
-    task_id = td.get("task_id")
-    if not isinstance(task_id, str) or not re.fullmatch(r"[A-Z][A-Z0-9-]{2,127}", task_id):
-        raise GraphError("Task Delivery task id is invalid.")
+    task_id = validate_task_id(td.get("task_id"), state["graph_version"])
     task_path = safe_join(root, f".codex/task-delivery/{task_id}/state.json", "Task Delivery task state", require_file=True)
     task = load_json(task_path)
     checkpoint = task.get("checkpoints", {}).get("handoff") if isinstance(task.get("checkpoints"), dict) else None
@@ -512,12 +530,14 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any]) -> dict[str, 
         if any(artifact.get(key) is not None for key in ("candidate", "issue", "task_delivery", "git")) or not isinstance(scan.get("no_candidate_reason"), str) or len(scan["no_candidate_reason"].strip()) < 8 or changed:
             raise GraphError("no-op requires substantive no-candidate evidence and zero repository drift.")
     else:
-        candidate = validate_candidate(artifact.get("candidate"))
+        candidate = validate_candidate(artifact.get("candidate"), require_benefit=state["graph_version"] == "1.2.0")
         if disposition == "issue-ready":
             issue = artifact.get("issue")
             if not isinstance(issue, dict) or any(not isinstance(issue.get(key), str) or len(issue[key].strip()) < 4 for key in ("title", "body", "reason")) or artifact.get("task_delivery") is not None or artifact.get("git") is not None or changed:
                 raise GraphError("issue-ready requires an issue and zero repository drift.")
         else:
+            if state["graph_version"] == "1.2.0" and artifact["candidate"]["benefit"]["effort"] != "small":
+                raise GraphError("delivered requires small justified candidate.benefit.effort.")
             policy = graph_contract()["candidate_policy"]
             if state["mode"] != "full" or candidate["risk"] != "low" or candidate["protected_domains"] or candidate["source_kind"] not in policy["delivery_source_kinds"]:
                 raise GraphError("delivered violates the low-risk candidate boundary.")
@@ -603,7 +623,7 @@ def retry(run_dir: Path, node: str) -> dict[str, Any]:
     return ready(run_dir)
 
 
-def completion_markdown(artifact: dict[str, Any], changed: list[str]) -> str:
+def completion_markdown(artifact: dict[str, Any], changed: list[str], *, include_benefit: bool = True) -> str:
     lines = [
         "# Continuous Improvement result",
         "",
@@ -621,6 +641,8 @@ def completion_markdown(artifact: dict[str, Any], changed: list[str]) -> str:
     if isinstance(candidate, dict):
         lines.append(f"- Candidate: {candidate['title']} ({candidate['source_kind']}, risk={candidate['risk']})")
         lines.extend(f"- {item['kind']}: {item['reference']} — {item['observation']}" for item in candidate["evidence"])
+        if include_benefit and isinstance(candidate.get("benefit"), dict):
+            lines.extend(f"- Benefit {field}: {value}" for field, value in candidate["benefit"].items())
     elif artifact["disposition"] == "no-op":
         lines.append(f"- No candidate: {artifact['scan']['no_candidate_reason']}")
     lines += ["", "## Changed paths", ""]
@@ -657,7 +679,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
             if sha256_file(verify_path) != verify["receipts"][-1]["sha256"]:
                 raise GraphError("Verification receipt was tampered.")
         output = run_dir / COMPLETE_NAME
-        atomic_text(output, completion_markdown(artifact, details["changed_paths"]))
+        atomic_text(output, completion_markdown(artifact, details["changed_paths"], include_benefit=state["graph_version"] == "1.2.0"))
         complete_sha = sha256_file(output)
         if sha256_file(output) != complete_sha:
             raise GraphError("Completion artifact cannot be rechecked.")
@@ -670,9 +692,147 @@ def status(run_dir: Path) -> dict[str, Any]:
     return result(state["status"], "Continuous Improvement state read without mutation.", artifacts=[str(run_dir / STATE_NAME)], data={"run_id": state["run_id"], "mode": state["mode"], "current": state["current"], "verification_repairs": state["verification_repairs"]})
 
 
+def history_summary(root: Path, run_id: str) -> dict[str, Any]:
+    """Verify historical artifacts only; current repository/external relevance is unproven."""
+    run = run_directory(root, run_id)
+    state_path = safe_join(root, f"{RUNS_REL}/{run_id}/{STATE_NAME}", "history state", require_file=True)
+    state = load_state(run)
+    if state["root"] != str(root) or state["status"] != "completed" or state["nodes"]["complete"]["status"] != "completed":
+        raise GraphError("Raw run is incomplete or belongs to another root.")
+    complete_path = safe_join(root, f"{RUNS_REL}/{run_id}/{COMPLETE_NAME}", "history completion", require_file=True)
+    if sha256_file(complete_path) != digest(state.get("complete_sha256"), "completion sha"):
+        raise GraphError("Historical completion is tampered.")
+
+    def receipt(node: str) -> tuple[dict[str, Any], Path, dict[str, Any]]:
+        record = state["nodes"][node]["receipts"][-1]
+        raw = Path(record["path"])
+        relative = raw.relative_to(root).as_posix() if raw.is_absolute() else str(raw)
+        path = safe_join(root, relative, "history receipt", require_file=True)
+        if path.parent != run / "receipts" or sha256_file(path) != digest(record.get("sha256"), "receipt sha"):
+            raise GraphError("Historical immutable receipt is outside its run or tampered.")
+        return load_json(path), path, record
+
+    artifact, work_path, work = receipt("work")
+    if state["nodes"]["work"]["status"] != "completed" or any(artifact.get(k) != state.get(k) for k in ("run_id", "mode", "focus")):
+        raise GraphError("Historical work identity is mismatched.")
+    if artifact.get("disposition") not in {"no-op", "issue-ready", "delivered"} or artifact["disposition"] != work.get("disposition"):
+        raise GraphError("Historical disposition is invalid.")
+    if artifact.get("schema_version") != 1:
+        raise GraphError("Historical work schema is invalid.")
+    candidate = artifact.get("candidate")
+    if (artifact["disposition"] == "no-op") != (candidate is None):
+        raise GraphError("Historical candidate and disposition are incompatible.")
+    if candidate is not None:
+        validate_candidate(candidate, require_benefit=state["graph_version"] == "1.2.0")
+    if state["verification_required"]:
+        verification, _, verified = receipt("verify")
+        if state["nodes"]["verify"]["status"] != "completed" or verified.get("work_sha256") != work["sha256"]:
+            raise GraphError("Historical verifier chain is mismatched.")
+        validate_verification(state, verification, "succeeded")
+    if complete_path.read_text(encoding="utf-8") != completion_markdown(artifact, work["changed_paths"], include_benefit=state["graph_version"] == "1.2.0"):
+        raise GraphError("Historical completion does not match its immutable work.")
+    final_relative = f".agent-graphs/history/continuous-improvement/{run_id}/FINAL.json"
+    final_path = safe_join(root, final_relative, "history final receipt")
+    final_reference = None
+    if final_path.exists():
+        final_path = safe_join(root, final_relative, "history final receipt", require_file=True)
+        final = load_json(final_path)
+        if final.get("schema_version") != 1 or final.get("kind") != "agent-graph-final" or final.get("terminal_status") != "completed":
+            raise GraphError("Compacted final receipt is incompatible.")
+        if (final.get("graph_id"), final.get("run_id"), final.get("state_sha256"), final.get("source_run")) != (
+            "continuous-improvement", run_id, sha256_file(state_path), f"{RUNS_REL}/{run_id}"
+        ):
+            raise GraphError("Compacted final receipt does not bind the raw state.")
+        final_reference = {"path": final_relative, "sha256": sha256_file(final_path)}
+    summary = {
+        "focus": artifact["focus"], "scan": artifact["scan"],
+        "candidate": {key: candidate.get(key) for key in (
+            "candidate_id", "title", "source_kind", "risk", "protected_domains", "scope", "evidence",
+            "reproduction_commands", "acceptance", "benefit",
+        )} if isinstance(candidate, dict) else None,
+        "issue": {key: artifact["issue"].get(key) for key in ("title", "reason")} if isinstance(artifact.get("issue"), dict) else None,
+        "residual_risks": artifact.get("residual_risks", []),
+    }
+    # Bound model-authored payload independently of the immutable provenance fields.
+    truncated = False
+    remaining = 2500
+    def compact(value: Any, depth: int = 0) -> Any:
+        nonlocal truncated, remaining
+        if depth > 6 or remaining <= 0:
+            truncated = True
+            return "[truncated]"
+        if isinstance(value, str):
+            limit = min(320, remaining)
+            remaining -= min(len(value), limit)
+            if len(value) > limit:
+                truncated = True
+                return value[:limit] + "[truncated]"
+            return value
+        if isinstance(value, list):
+            truncated |= len(value) > 5
+            return [compact(item, depth + 1) for item in value[:5]]
+        if isinstance(value, dict):
+            truncated |= len(value) > 12
+            return {str(key)[:80]: compact(item, depth + 1) for key, item in list(value.items())[:12]}
+        return value if value is None or isinstance(value, (bool, int)) else "[unsupported]"
+    bounded = compact(summary)
+    return {
+        "run_id": run_id, "status": "historical_only", "disposition": artifact["disposition"],
+        "reuse": "Requires current relevant-code checks and refreshed external signals; never automatically skips discovery or delivery gates.",
+        "graph_version": state["graph_version"], "baseline_repo_digest": state["baseline_repo_digest"],
+        "baseline_git_head": str(state.get("git", {}).get("head"))[:64] if state.get("git", {}).get("head") else None,
+        "state": {"path": state_path.relative_to(root).as_posix(), "sha256": sha256_file(state_path)},
+        "work_receipt": {"path": work_path.relative_to(root).as_posix(), "sha256": work["sha256"]},
+        "completion": {"path": complete_path.relative_to(root).as_posix(), "sha256": state["complete_sha256"]},
+        "final_receipt": final_reference, "summary": bounded, "truncated": truncated,
+    }
+
+
+def history(root_raw: str, limit: int = 10) -> dict[str, Any]:
+    if type(limit) is not int or not 1 <= limit <= 20:
+        raise GraphError("history limit must be between 1 and 20.")
+    root = root_path(root_raw)
+    ids: set[str] = set()
+    problems = []
+    for relative in (str(RUNS_REL), ".agent-graphs/history/continuous-improvement"):
+        try:
+            directory = safe_join(root, relative, "history directory")
+            if directory.exists():
+                for entry in directory.iterdir():
+                    if RUN_ID.fullmatch(entry.name):
+                        ids.add(entry.name)
+                    else:
+                        problems.append("Unrecognized history entry in " + relative)
+        except (GraphError, OSError) as exc:
+            problems.append(str(exc)[:320])
+    def recency(run_id: str) -> tuple[int, str]:
+        timestamps = []
+        for relative in (f"{RUNS_REL}/{run_id}/{STATE_NAME}", f".agent-graphs/history/continuous-improvement/{run_id}/FINAL.json"):
+            try:
+                path = safe_join(root, relative, "history ordering artifact")
+                metadata = path.lstat()
+                if stat.S_ISREG(metadata.st_mode):
+                    timestamps.append(metadata.st_mtime_ns)
+            except (GraphError, OSError):
+                continue
+        return (max(timestamps, default=0), run_id)
+
+    entries = []
+    for run_id in sorted(ids, key=recency, reverse=True)[:limit]:
+        try:
+            entries.append(history_summary(root, run_id))
+        except (GraphError, OSError, ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
+            entries.append({"run_id": run_id, "status": "unavailable", "reason": str(exc)[:320] or "Invalid historical structure; raw artifacts required for reuse."})
+    return result("ok", "Historical evidence only; current relevance is not verified.", data={
+        "runs": entries, "limit": limit, "order": "latest_artifact_mtime", "omitted": max(0, len(ids) - limit),
+        "unavailable": problems[:5], "unavailable_truncated": len(problems) > 5,
+    })
+
+
 def parser() -> argparse.ArgumentParser:
     command_parser = argparse.ArgumentParser(description=__doc__)
     sub = command_parser.add_subparsers(dest="command", required=True)
+    history_parser = sub.add_parser("history"); history_parser.add_argument("--root", required=True); history_parser.add_argument("--limit", type=int, default=10)
     init = sub.add_parser("init"); init.add_argument("--root", required=True); init.add_argument("--mode", choices=("full", "audit"), default="full"); init.add_argument("--focus", required=True)
     for name in ("ready", "status", "complete"):
         item = sub.add_parser(name); item.add_argument("--run", required=True)
@@ -684,7 +844,8 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
-        if args.command == "init": payload = initialize(args.root, args.mode, args.focus)
+        if args.command == "history": payload = history(args.root, args.limit)
+        elif args.command == "init": payload = initialize(args.root, args.mode, args.focus)
         else:
             run_dir = Path(args.run).expanduser().resolve()
             if not run_dir.is_dir() or not (run_dir / STATE_NAME).is_file(): raise GraphError("Run directory not found.")

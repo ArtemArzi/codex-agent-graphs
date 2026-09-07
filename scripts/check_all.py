@@ -232,8 +232,8 @@ def main() -> int:
     improvement_graph = json.loads((improvement_root / "graph.json").read_text(encoding="utf-8"))
     if improvement_graph.get("schema_version") != 2 or improvement_graph.get("default_mode") != "full":
         raise RuntimeError("Continuous Improvement v1 must use schema 2 and full default mode")
-    if improvement_graph.get("graph_version") != "1.1.0":
-        raise RuntimeError("Continuous Improvement current graph must remain 1.1.0")
+    if improvement_graph.get("graph_version") != "1.2.0":
+        raise RuntimeError("Continuous Improvement current graph must remain 1.2.0")
     if (
         improvement_graph.get("execution_policy", {}).get("default_tier") != "tracked"
         or improvement_graph.get("work_policy", {}).get("fast_path") != "root-only"

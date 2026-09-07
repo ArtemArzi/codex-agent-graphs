@@ -1,18 +1,17 @@
 {
   "schema_version": 2,
   "graph_id": "continuous-improvement",
-  "graph_version": "1.2.0",
+  "graph_version": "1.1.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
     "max_verification_repairs": 1,
     "max_candidates_per_run": 1,
     "max_changed_files": 8,
-    "max_parallel_explorers": 1,
-    "max_parallel_agents": 2
+    "max_parallel_explorers": 1
   },
   "work_policy": {
-    "schema_version": 2,
+    "schema_version": 1,
     "fast_path": "root-only",
     "capability_discovery": "need-based",
     "agent_admission": "independent-work-only",
@@ -21,7 +20,7 @@
     "documentation_followup": "impact-gated",
     "explicit_user_override": "bounded",
     "budgets": {
-      "max_agent_starts": null,
+      "max_agent_starts": 2,
       "max_review_starts": 1,
       "max_repair_cycles": 1,
       "max_no_new_evidence_iterations": 2,
@@ -38,24 +37,15 @@
     "schema_version": 1,
     "default_tier": "tracked",
     "tiers": {
-      "tracked": {
-        "controller": true,
-        "verification": "conditional"
-      },
-      "verified": {
-        "controller": true,
-        "verification": "required"
-      }
+      "tracked": {"controller": true, "verification": "conditional"},
+      "verified": {"controller": true, "verification": "required"}
     },
     "admission": {
       "controller": "resumability-or-durable-evidence",
       "verification": "risk-or-uncertainty"
     }
   },
-  "optional_agents": [
-    "explorer",
-    "improvement_verifier"
-  ],
+  "optional_agents": ["explorer", "improvement_verifier"],
   "mcp_policy": {
     "discovery": "when-relevant",
     "relevant_use": "required",
@@ -107,11 +97,7 @@
   "delivery_policy": {
     "required_skill": "task-delivery",
     "minimum_profile": "standard",
-    "default_branches": [
-      "main",
-      "master",
-      "trunk"
-    ],
+    "default_branches": ["main", "master", "trunk"],
     "branch_prefix": "codex/continuous-improvement-",
     "allow_push": false,
     "allow_merge": false,
