@@ -47,9 +47,16 @@ work → complete
 
 Every route contains exactly:
 
-- `work`: root model owns discovery, applicable skills/MCP, planning, execution and candidate evidence;
+- `work`: root model owns decisions, integration, reconciliation and final truth;
+  auxiliary agents may perform bounded independent discovery, preparation,
+  implementation or synthesis and return candidate evidence;
 - `verify`: a conditional independent role checks the exact immutable candidate;
 - `complete`: root commits the durable completion artifact and state.
+
+The topology is deterministic controller structure only. When inherited host
+policy applies, a substantive plan is accepted by a fresh whole-plan reviewer
+before execution and the completed artifact by a different fresh whole-result
+reviewer after execution; these are operations inside `work`, not extra nodes.
 
 A user decision may pause `work`, but it does not need a permanent decision node. A slice packet, research branch, plan review or capability call is an operation inside `work` unless it has its own durable lifecycle across most runs.
 
@@ -116,9 +123,11 @@ Do not encode model reasoning as dozens of mandatory flags. Do not let model pro
 ## Work efficiency
 
 Every new or materially refactored graph declares the shared `work_policy`.
-It makes the root-only fast path, need-based capability discovery, independent
-agent admission, risk-based review, state-change-only progress, impact-gated
-documentation and bounded user overrides machine-checkable.
+It makes declared controller metadata for the fast path, capability discovery,
+agent admission, controller review, progress, documentation and user overrides
+machine-checkable. Host-policy acceptance dispatch remains an agent instruction;
+the existing work policy does not prove that native acceptors were dispatched
+or that they accepted the result. Preserve and inspect their separate evidence.
 
 Schema 2 budgets leave cumulative agent starts uncapped (null) and require a
 finite concurrent-agent limit; schema 1 remains readable with its prior total
@@ -136,9 +145,15 @@ but `--require-work-policy` is the release gate for new or migrated graphs.
 The skill is the interface; the controller is an admitted reliability layer.
 Declare `execution_policy` with the shared tiers:
 
-- `skill-only`: one root loop, no durable run and self-verification;
-- `tracked`: controller state, baseline/scope/evidence and conditional review;
-- `verified`: tracked execution plus required independent exact-candidate review.
+- `skill-only`: one root loop and no durable run; use self-verification only
+  without an inherited policy that requires independent acceptance. Under that
+  policy, required plan/result acceptors may run inside `work` without durable
+  controller state;
+- `tracked`: controller state, baseline/scope/evidence and conditional
+  controller review;
+- `verified`: tracked execution plus required independent exact-candidate
+  controller review. Host-policy acceptors may still run inside `work` on either
+  non-durable tier.
 
 Use `skill-only` only when the work is bounded to one session, reversible, clear
 and does not need durable handoff. Admit `tracked` for resumability, multi-session
@@ -175,7 +190,10 @@ The verifier receives the exact work receipt and candidate digests. Completion r
 
 ## Agents and capabilities
 
-Root remains the sole graph orchestrator and synthesis owner. Use zero agents on the fast path. Add agents only for independent read-only discovery, a bounded implementation slice or independent review.
+Root remains the sole graph orchestrator and final-synthesis owner. Use zero
+non-required agents on the fast path; inherited policy acceptors are the explicit
+exception. Add other agents only for independent read-only discovery, bounded
+preparation/implementation/synthesis or independent review.
 
 Agent requirements:
 
@@ -190,7 +208,12 @@ Skills and MCP are capabilities inside `work`. Select only applicable skills and
 
 ## Modes and profiles
 
-Use modes when the same stable workflow has different terminal outcomes, such as plan-only, implement-only and full delivery. Use profiles when risk changes review depth or limits without changing the fundamental route. Execution tiers decide whether the controller or verifier is admitted at all; modes and profiles do not automatically justify extra agents.
+Use modes when the same stable workflow has different terminal outcomes, such as
+plan-only, implement-only and full delivery. Use profiles when risk changes
+controller review depth or limits without changing the fundamental route.
+Execution tiers decide whether the controller or its verifier is admitted at
+all; inherited policy acceptance remains instruction-level, and modes/profiles do
+not suppress it.
 
 Do not duplicate routes merely to restate identical nodes. Keep per-mode differences in artifacts, guards and conditional policies. Auto-routing should be explainable and explicit user commands should override heuristics where safe.
 
@@ -209,7 +232,9 @@ Never weaken current artifact checks merely to accept legacy state. Isolate comp
 ## Lessons from the current graphs
 
 - Project Start shows that bootstrap and maintenance can share one three-node topology while owning different documentation outcomes.
-- Research shows that fast/deep search, source checkpoints and optional multi-agent branches belong inside `work`, not in ten permanent nodes.
+- Research shows that fast/deep search, source checkpoints and bounded
+  multi-agent branches belong inside `work`, not in ten permanent nodes; required
+  independent acceptance follows the host policy without adding nodes.
 - Task Delivery shows that plan/implement/full modes, risk profiles and delegated slices can remain operations and guards inside the same short route.
 
 These are examples, not domain templates. Reuse the contract and adapt the artifacts.

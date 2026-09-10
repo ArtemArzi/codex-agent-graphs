@@ -13,10 +13,14 @@
 - `graph_contract.py validate --require-work-policy` passes for a new or migrated graph.
 - Every route contains only `work`, `verify`, `complete` unless an explicit tested exception is documented.
 - Retry and verification-repair budgets are bounded.
-- Work budgets and loop guards enforce the root-only fast path, need-based
-  capabilities, independent agent scopes and two-iteration no-new-evidence stop.
+- Work budgets and loop guards enforce the root-only domain-work fast path,
+  need-based capabilities, independent agent scopes and two-iteration
+  no-new-evidence stop. Required host-policy plan/result acceptors remain
+  allowed even when domain work is otherwise root-only.
 - Adaptive execution declares whether the default is skill-only or tracked and
-  keeps verified execution risk-triggered.
+  keeps legacy controller verified execution risk-triggered; it must also state
+  that inherited policy acceptance is instruction-level and may be required on
+  skill-only.
 - `agents/openai.yaml` names the skill in `default_prompt`.
 - No TODO, placeholder or hard-coded model remains.
 - A fresh `$skill-creator` template fails graph scaffold until its TODOs and final metadata are resolved.
@@ -29,7 +33,9 @@ Test at least:
 1. initialization creates canonical state and returns the next real command;
 2. resume/status does not mutate evidence;
 3. native happy path completes without unnecessary agents;
-4. conditional verify binds to the exact candidate;
+4. conditional controller verify binds to the exact candidate, while any
+   host-policy acceptors bind to the same candidate and remain distinct from
+   root self-review;
 5. rejected verification has one bounded repair path;
 6. invalid transition and exhausted retry fail closed;
 7. artifact, graph or receipt tampering is rejected;
@@ -50,7 +56,8 @@ Observe:
 
 - whether the skill triggers correctly;
 - whether the root keeps semantic work native;
-- whether agents are called only when useful;
+- whether non-required agents are called only when useful and required
+  acceptors are still dispatched when the host policy applies;
 - whether skills/MCP context is used when relevant and local-only work avoids
   ritual capability discovery;
 - whether commands are executable from the installed path;

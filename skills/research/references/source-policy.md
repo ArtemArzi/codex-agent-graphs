@@ -1,10 +1,14 @@
 # Minimal control receipt
 
-The model owns research reasoning. The runner records only enough information to resume, bound optional fan-out, and prove which report and sources completed.
+The model owns research reasoning. The runner records only enough information to
+resume, bound optional discovery fan-out, and prove which report and sources
+completed. An inherited user-level policy may require independent plan/result
+acceptance even when no durable runner state is created.
 
 ## `research.json`
 
-Write this small artifact after the report is complete:
+For a tracked run, write this small artifact after the report and required
+native reviews are complete. Skill-only work does not create it:
 
 ```json
 {
@@ -22,18 +26,27 @@ Write this small artifact after the report is complete:
 }
 ```
 
-Use only these required fields. Allowed modes are `fast` and `deep`; verification is `self` or `independent`; confidence is `high`, `medium`, or `low`.
+Use only these required fields. Allowed modes are `fast` and `deep`; verification
+is `self` or `independent`; confidence is `high`, `medium`, or `low`. This field
+describes controller routing: fast mode uses `self`/outcome `succeeded` after
+native policy acceptance, with that acceptance recorded separately. Only the
+deep controller verifier route uses `independent`/outcome `verify`.
 
 - `reason`: one short explanation for the chosen depth.
 - `capabilities`: installed skills, MCP/apps, native tools, or local-source
   paths materially used. Include exactly one MCP status:
   `mcp:<server>` after relevant use, `mcp:fallback:<reason>` after a relevant
   path fails, or `mcp:not-applicable:<reason>` for local-only evidence.
-- `agents`: optional internal role names; keep empty in fast mode.
+- `agents`: only supported discovery roles used in deep mode
+  (`research_planner`, `research_scout`, `research_synthesizer`); always `[]` in
+  fast mode. Plan/result acceptors never belong in this controller field.
 - `sources`: only sources actually cited in the report. Use HTTP(S) URLs or absolute readable local-file paths.
 - `gaps`: only decision-relevant unknowns, not generic caveats.
 
 Do not create a separate plan, capability inventory, claim ledger, collection artifact, reconciliation artifact, or draft receipt.
+Keep required native acceptance identities and receipts in the existing report,
+handoff or root task record; follow [control-artifact.md](control-artifact.md)
+for the separate meaning of controller `agents` and `verification` fields.
 
 ## Source behavior
 
@@ -51,7 +64,10 @@ Write the answer directly to the requested output. Give the direct conclusion fi
 
 ## `verification.json`
 
-When independent verification is required, write:
+Only for an existing deep controller verify node, the reviewer returns this
+payload and the root writes it. Native policy acceptance outside that node
+returns a verdict, unique receipt, checked claims and evidence references,
+residual risks and repairs; it does not require `verification.json`:
 
 ```json
 {
@@ -62,4 +78,4 @@ When independent verification is required, write:
 }
 ```
 
-Use verdict `reject` with a non-empty `repair_list` when repair is required. Verify only material claims and the stated depth reason. Do not broaden the research.
+Use verdict `reject` with a non-empty `repair_list` when repair is required. Check the complete assigned report against the request and sources, including material omissions and the depth reason. Do not broaden the research.

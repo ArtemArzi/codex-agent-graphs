@@ -2,17 +2,30 @@
 
 ## Матрица
 
+Матрица ниже описывает legacy controller defaults. Если унаследованная
+user-level policy требует independent acceptance, она имеет приоритет над
+self/risk-triggered ячейками: для каждого substantive плана нужен свежий
+`task_plan_reviewer`, а завершённый результат принимает другой свежий
+whole-result reviewer. Эти review operations выполняются внутри `work`, поэтому
+обязательная приёмка не требует нового graph node или controller run.
+
 | Профиль | План | Реализация | Итог | Независимых запусков |
 |---|---|---|---|---:|
-| `light` | self | root | self | 0 |
-| `standard` | self | root; worker только для независимого slice | self либо risk-triggered verifier | 0–2 |
-| `complex` | self либо uncertainty-triggered plan reviewer | root; worker только для независимого slice | self либо risk-triggered verifier | 0–3 |
-| `critical` | self либо uncertainty-triggered plan reviewer | root + `task_risk_reviewer`; worker только для независимого slice | `task_result_reviewer` | 2–4 |
+| `light` | self* | root | self* | 0 |
+| `standard` | self* | root; worker только для независимого slice | self* либо risk-triggered verifier | 0–2 |
+| `complex` | self* либо uncertainty-triggered plan reviewer | root; worker только для независимого slice | self* либо risk-triggered verifier | 0–3 |
+| `critical` | self* либо uncertainty-triggered plan reviewer | root + `task_risk_reviewer`; worker только для независимого slice | `task_result_reviewer` | 2–4 |
 
-Режим `plan` не получает reviewer только из-за профиля. Plan reviewer нужен
-при реальной неоднозначности архитектуры, evidence или acceptance либо по явному
-запросу. `standard/complex` result reviewer также risk-triggered; `critical`
-сохраняет risk review и итоговый verifier.
+`*` означает fallback только без унаследованной policy. При активной policy
+вместо self используется свежий whole-plan/whole-result independent acceptance
+с разными reviewer identities.
+
+Без унаследованной policy режим `plan` не получает reviewer только из-за
+профиля. Plan reviewer нужен при реальной неоднозначности архитектуры,
+evidence или acceptance либо по явному запросу. `standard/complex` result
+reviewer также risk-triggered; `critical` сохраняет risk review и итоговый
+verifier. При активной policy `task_plan_reviewer` и другой whole-result
+acceptor обязательны для substantive работы независимо от профиля.
 
 ## Дополнительные роли
 
@@ -24,13 +37,18 @@
 
 ## Общие пределы
 
-- Root-only — fast path для любого профиля. Не запускай worker только из-за размера задачи или свободного слота.
+- Root-only — fast path для domain work любого профиля. Не запускай worker
+  только из-за размера задачи или свободного слота; обязательные policy
+  acceptors остаются отдельным исключением и не заменяются self-review.
 - Считай только фактические agent starts. Не резервируй агента под возможный
   repair и не приравнивай read-only/evidence/controller этап плана к worker
   slice.
 - В graph 3.9 суммарные запуски учитываются как расход; фиксированного потолка на всю задачу нет. Каждый запуск должен оправдывать стоимость передачи и приёмки. Активные 3.8 runs сохраняют прежние границы.
 - По умолчанию не более 2 одновременно активных субагентов. Ограничения хоста сохраняются; при недоступности делегирования продолжай локальную работу и явно сохраняй пробел независимой проверки.
-- Ровно один агент каждой review-роли. Несколько block reviewers допустимы только по явному deep/multi-review запросу вне обычного Task Delivery receipt.
+- Ровно один свежий агент каждой обязательной whole-review роли. Focused/block
+  reviewers могут идти рядом с acceptor над тем же кандидатом, если закрывают
+  конкретный риск; несколько одинаковых focused reviewers допустимы только по
+  явному deep/multi-review запросу.
 - Не создавай агента на каждый файл, дублирующий scout или обзор обзора.
 - Один verifier repair; повторный reject блокирует граф.
 - Same-scope retry обязан назвать новое evidence; две подряд безуспешные попытки блокируют граф независимо от общего slice budget.

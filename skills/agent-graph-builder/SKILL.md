@@ -26,6 +26,31 @@ act or verify something; translate and explain it on first use. Put hashes, exac
 artifact names and protocol details in an optional `Technical details:` block
 after the plain explanation. Keep ordinary progress to one short paragraph.
 
+## Inherited routing and acceptance policy
+
+The effective user-level policy is the sole authority for model and effort
+selection; graph skills must not name or override those settings. It also
+overrides optional/self-review defaults for substantive work: the root owns
+decisions and integration, while auxiliary discovery, preparation,
+implementation, synthesis and focused-review agents receive fresh bounded
+packets and remain leaf-only.
+
+Before execution, a substantive plan needs a fresh whole-plan
+`task_plan_reviewer`; after the candidate is complete, a different fresh
+workflow-specific whole-result acceptor accepts the entire artifact. Focused
+checks may run beside either acceptor over the same candidate, but all selected
+checks must finish and material findings must be reconciled with sources before
+PASS. Same-scope repair returns to the same reviewer; materially new scope gets
+a fresh assignment. Root self-review is not independent acceptance.
+
+These are instruction-level operations inside `work`, not new deterministic
+controller nodes. Skill-only/quick may perform them without initializing a
+controller only to record model calls. If an existing tracked/verified graph is
+used, select its verified path and preserve the supported final receipt,
+identity and schema. Nested skills reuse exact-scope acceptance evidence instead
+of adding duplicate reviews solely because a skill changed. Ordinary status or
+acknowledgement is not a new delivery cycle.
+
 ## Mandatory dependency
 
 1. Invoke `$skill-creator` and read its complete `SKILL.md` before creating or restructuring a graph skill.
@@ -37,7 +62,11 @@ The machine-readable dependency is `skill-dependencies.json`. Do not move the de
 
 ## Decide whether a graph is justified
 
-Create a graph only for a repeated workflow that benefits from durable state, resumability, bounded repair, evidence handoffs or conditional independent review. Keep a normal skill or prompt when the work is local, one-shot or safely handled by model judgment alone.
+Create a graph only for a repeated workflow that benefits from durable state,
+resumability, bounded repair, evidence handoffs or bounded independent review
+when the workflow needs it. Keep a normal skill or prompt when the work is local,
+one-shot or safely handled by model judgment alone; required policy acceptance
+does not by itself justify a controller.
 
 Do not create one graph per task. Prefer a small stable family of graphs with modes or profiles inside the existing `work` loop.
 
@@ -56,13 +85,32 @@ python3 scripts/graph_contract.py scaffold \
 
 The scaffold refuses to overwrite existing graph or control-artifact files. It does not invent the domain controller.
 
-4. Keep the default control topology `work → optional verify → complete`. Planning, research, capability selection, implementation and synthesis normally stay inside `work`; they are not graph nodes merely because they occur in sequence.
+4. Keep the default control topology `work → optional verify → complete`.
+   `optional verify` describes only controller admission; an inherited policy may
+   require plan/result acceptors inside `work` even when that node is skipped.
+   Planning, research, capability selection, implementation and synthesis
+   normally stay inside `work`; they are not graph nodes merely because they
+   occur in sequence.
 5. Declare a code-first control boundary. Domain work reads project instructions, architecture, source and tests before controller detail. Protocol failure gets one bounded repair, then degrades control without blocking authorized domain work. Only authority, semantic contract, safety, data or external-state boundaries may interrupt the user; degraded control may refuse verified completion.
 6. Keep task state separate from controller health. When resumability matters, provide one compact suspend checkpoint and allow unrelated unfinished tasks to proceed independently; do not model suspension, compaction or task switching as graph nodes.
 7. Put judgment in the root model. Put path safety, state transitions, retry bounds, immutable receipts, SHA-256 binding, compatibility and completion checks in standard-library code.
-8. Apply [efficiency-contract.md](references/efficiency-contract.md). Start root-only; admit an agent or reviewer only for a concrete independent evidence gap; stop duplicate scopes and no-new-evidence retries at their declared budgets. An explicit user override must remain finite.
-9. Declare `execution_policy`: `skill-only` does not initialize durable state, `tracked` uses the controller without mandatory review, and `verified` adds exact-candidate independent verification. A graph whose core purpose is durable lifecycle may expose only `tracked` and `verified`; do not invent a fake quick path.
-10. Make agents conditional capabilities, not mandatory stages. Root owns synthesis and final truth; subagents receive bounded packets and remain leaf workers. Never hard-code model names in the graph skill.
+8. Apply [efficiency-contract.md](references/efficiency-contract.md). Start
+   root-only for domain work; admit required policy acceptors as the explicit
+   independent-review exception, and admit other agents only for a concrete
+   independent evidence gap. Stop duplicate scopes and no-new-evidence retries
+   at their declared budgets. An explicit user override must remain finite.
+9. Declare `execution_policy`: `skill-only` does not initialize durable state;
+   `tracked` and `verified` describe controller admission and its supported
+   receipts. Neither tier can suppress a host-policy acceptance operation, and
+   `verified` remains the graph path for an exact-candidate controller review.
+   A graph whose core purpose is durable lifecycle may expose only `tracked` and
+   `verified`; do not invent a fake quick path.
+10. Make domain agents conditional capabilities, not mandatory graph stages.
+    Root owns final synthesis and truth; subagents may return bounded independent
+    discovery, preparation, implementation or synthesis packets and remain leaf
+    workers. Host-policy acceptors are mandatory operations when the policy
+    applies, but are not new graph nodes. Never hard-code model names in the
+    graph skill.
     A request for stages or slices is not a request for subagents. New work_policy v2 graphs cap concurrency and no-progress retries, not total useful starts over a long task. At host capacity, continue permitted local work and keep missing independent verification explicit.
 11. Route applicable installed skills and relevant MCP context inside `work`. Discover MCP only when the task can benefit from external, provider, library or live-system context. Record an actual receipt, a checked fallback or `mcp:not-applicable:<reason>` for local-only work; never add a separate MCP node.
 12. Version `graph.json` and the durable state schema. Pin active runs to the graph identity and add an explicit compatibility or migration path before changing a released contract.

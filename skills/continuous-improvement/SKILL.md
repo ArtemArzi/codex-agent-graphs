@@ -26,9 +26,38 @@ description: >-
 состояние протокола выноси после понятного сообщения в необязательный блок
 `Технически:`. Обычный статус — один короткий абзац.
 
+## Наследуемая политика маршрутизации и приёмки
+
+Имена моделей и степень рассуждения выбираются только унаследованной
+user-level routing policy; этот skill не переопределяет их. Для substantive
+full/audit результата root владеет решением, интеграцией и reconciliation с
+исходниками, а auxiliary explorer, implementation, synthesis и focused-review
+agents получают свежий bounded context и остаются leaf-only.
+
+До исполнения каждого substantive плана нужен свежий whole-plan
+`task_plan_reviewer`. После завершения кандидата или доказательного no-op
+другой свежий `improvement_verifier` принимает весь improvement artifact, а не
+отдельную claim. Focused checks могут идти рядом с acceptor над тем же
+кандидатом; дождись всех выбранных checks и сверь material findings с
+исходниками до PASS. Same-scope repair возвращается тому же reviewer,
+существенный новый scope получает fresh assignment. Root self-review не
+является independent acceptance.
+
+Это instruction-level dispatch внутри `work`, не новый graph node и не причина
+запускать второй controller. Если используется существующий tracked/verified
+graph, выбери его verified path и сохрани поддержанную final receipt без
+изменения graph identity или schema. Вложенный Task Delivery переиспользует
+действительное exact-scope acceptance evidence; новый review нужен только при
+изменении scope/candidate. Обычный status/acknowledgement не создаёт новый
+delivery cycle. Без унаследованной policy остаётся conditional verifier fallback
+ниже.
+
 ## Маршрут
 
-Оба режима используют `work → complete` либо при сомнительном доказательстве `work → verify → complete`.
+Оба режима используют controller route `work → complete` либо при сомнительном
+доказательстве `work → verify → complete`. При активной policy обязательные
+plan/result acceptors остаются операциями внутри `work`, даже если controller
+остаётся на `work → complete`.
 
 Continuous Improvement по умолчанию остаётся `tracked`: отбор автономного
 кандидата, clean baseline и передача в Task Delivery должны быть
@@ -38,7 +67,11 @@ Continuous Improvement по умолчанию остаётся `tracked`: от�
 - `full` — режим по умолчанию: найти одного кандидата, исправить только доказанный низкорисковый дефект через Task Delivery и подготовить отдельный commit; иначе завершить `no-op` или `issue-ready`.
 - `audit` — только исследование: не менять код и не создавать commit; вернуть `no-op` или `issue-ready`.
 
-Внутри `work` корневой агент сам выбирает источники сигнала, исследует, воспроизводит и оценивает риск. Не превращай эти действия в узлы графа.
+Внутри `work` корневой агент координирует выбор источника сигнала,
+исследование, воспроизведение, оценку риска и интеграцию. При активной policy
+bounded auxiliary agents могут вернуть самостоятельные discovery, preparation,
+implementation, synthesis или focused-review результаты; root сверяет их с
+исходниками. Не превращай эти действия в узлы графа.
 
 ## Начни запуск
 
@@ -82,7 +115,7 @@ python3 scripts/continuous_improvement_graph.py init \
 4. Подключай только применимые skills. `$research` нужен для внешнего меняющегося факта; локальный поиск и тесты — для кода. `$development-recovery` срабатывает при расхождении спецификации и наблюдений. Project Start обновится через handoff Task Delivery, а не отдельный вложенный цикл.
 5. Воспроизведи проблему командой или наблюдением, сформулируй acceptance и минимальный scope. Если доказательства недостаточны — `no-op` либо `issue-ready`, но не код.
 6. Классифицируй риск. Автономная доставка разрешена только для `low` без protected domains. Данные и миграции, auth/permissions/security, billing/payments, secrets, deployment/infrastructure, публичные контракты и широкая бизнес-семантика всегда становятся `issue-ready`.
-7. В `audit` остановись на `no-op` или `issue-ready`. В `full` доставляй только кандидата с обоснованным небольшим объёмом (`benefit.effort=small`). Создай отдельную ветку `codex/continuous-improvement-<run-id>` и продолжи тем же корневым агентом через `$task-delivery` в `full`; передача между навыками сама по себе не требует нового агента. В его план передай точный кандидат, пользу, актуальное воспроизведение, ссылки на доказательства, acceptance и bounded scope. Не повторяй уже доказанное стабильное исследование: Task Delivery проверяет текущие инструкции, применимость находки и необходимые неизвестные, создаёт собственный актуальный baseline и выполняет проверки исправления. Старые тесты и квитанции не заменяют текущее подтверждение. План должен лежать в `.agent-graphs/continuous-improvement-runs/<run-id>/task-delivery/PLAN.md`, чтобы служебный контроллер не попадал в продуктовый diff. Профиль Task Delivery должен быть не ниже `standard`; дождись его полного результата и проверь реальный diff, тесты и handoff.
+7. В `audit` остановись на `no-op` или `issue-ready`. В `full` доставляй только кандидата с обоснованным небольшим объёмом (`benefit.effort=small`). Создай отдельную ветку `codex/continuous-improvement-<run-id>` и продолжи тем же корневым агентом через `$task-delivery` в `full`; передача между навыками сама по себе не требует нового агента. В его план передай точный кандидат, пользу, актуальное воспроизведение, ссылки на доказательства, acceptance и bounded scope; при активной policy дождись свежего `task_plan_reviewer` до изменений. Не повторяй уже доказанное стабильное исследование: Task Delivery проверяет текущие инструкции, применимость находки и необходимые неизвестные, создаёт собственный актуальный baseline и выполняет проверки исправления. Старые тесты и квитанции не заменяют текущее подтверждение. План должен лежать в `.agent-graphs/continuous-improvement-runs/<run-id>/task-delivery/PLAN.md`, чтобы служебный контроллер не попадал в продуктовый diff. Профиль Task Delivery должен быть не ниже `standard`; дождись его полного результата и проверь реальный diff, тесты и handoff.
 8. Создай один commit только из точных `changed_paths` Task Delivery. Не коммить control artifacts, не push, не merge и не deploy: публикация остаётся отдельным явно разрешённым действием вне этого запуска.
 9. Создай `improvement.json` по [control-artifact.md](references/control-artifact.md) и зафиксируй `work`.
 
@@ -93,7 +126,14 @@ python3 scripts/continuous_improvement_graph.py record \
 
 ## Условная проверка
 
-Вызови `improvement_verifier`, если уверенность не `high`, доказательство неоднозначно, кандидат пришёл из слабого сигнала или root сам эскалировал риск. Передай точные SHA-256 `improvement.json`, candidate evidence и Task Delivery receipt при наличии. Проверяющий не перепроводит разработку и не расширяет scope; root сохраняет возвращённый `verification.json`.
+Без унаследованной policy вызови `improvement_verifier`, если уверенность не
+`high`, доказательство неоднозначно, кандидат пришёл из слабого сигнала или
+root сам эскалировал риск. При активной policy вызови его для каждого
+substantive completed candidate/no-op как свежего whole-artifact acceptor,
+даже если controller fast path не требует `verify`. Передай точные SHA-256
+`improvement.json`, candidate evidence и Task Delivery receipt при наличии.
+Проверяющий не перепроводит разработку и не расширяет scope; root сохраняет
+возвращённый `verification.json` после reconciliation всех выбранных checks.
 
 ```bash
 python3 scripts/continuous_improvement_graph.py record \

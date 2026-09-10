@@ -2,15 +2,26 @@
 
 ## Default execution: skill-only
 
-Use one root agent without controller state for a normal one-session answer.
+Use one root agent without controller state for a normal one-session answer;
+required policy acceptors and separately useful bounded branches may still run
+inside `work`.
 The source checkpoints below are proportionality guidance, not a requirement to
 create a tracked run. Admit the controller only for resumability, a persistent
-report/source ledger, durable handoff, explicit tracking, or independent
-verification.
+report/source ledger, durable handoff or explicit tracking. An inherited policy
+may still require independent plan/result acceptors on the skill-only route;
+those are operations inside `work`, not a reason to create controller state.
 
 ## Tracked depth default: fast
 
-Use one root agent, usually 4-6 opened sources, no internal agents, and no independent verifier. Expand toward 10 only when the coverage check below finds a concrete gap. Treat every source checkpoint as a decision point, the maximum as a hard ceiling, and the time value as a soft stop; none is a quota to consume.
+Use one root agent, usually 4-6 opened sources, no discovery fan-out agents,
+and no independent verifier without the inherited policy or a concrete signal.
+The policy-required whole-result acceptor and plan acceptor run as native
+reviews outside the fast controller's agent/verification metadata. Keep
+`research.json.agents=[]`, `verification="self"` and controller outcome
+`succeeded` after those reviews pass; retain their evidence in the report,
+handoff or root task record. Expand toward 10 only when coverage finds a gap.
+Treat every source checkpoint as a decision point, the maximum as a hard ceiling,
+and the time value as a soft stop; none is a quota to consume.
 
 The root may use any relevant installed skill or exposed tool. Capability use does not change the graph topology.
 
@@ -72,7 +83,8 @@ Record the controlling signal briefly in `reason`. Continue using evidence alrea
 
 ## Request independent verification
 
-Set `verification` to `independent` and record `work` with outcome `verify` when any of these apply:
+For a deep tracked run, set `verification` to `independent` and record `work`
+with outcome `verify` when any of these apply:
 
 - high-stakes consequence;
 - material contradiction remains or was resolved by judgment;
@@ -80,7 +92,15 @@ Set `verification` to `independent` and record `work` with outcome `verify` when
 - the user requests independent verification;
 - a consequential report contains several material claims across independent branches.
 
-Do not request independent verification merely because a report is long. A deep multi-source answer may still complete with root self-check when its primary evidence is direct, consistent, and low-risk.
+Without the inherited policy, do not request independent verification merely
+because a report is long. A deep multi-source answer may still complete with
+root self-check when its primary evidence is direct, consistent, and low-risk.
+With the policy, every substantive completed report uses the fresh
+`research_verifier` whole-artifact acceptor even when the evidence is direct and
+the route is fast. In fast or skill-only work return its native verdict and
+receipt outside controller metadata; do not use the deep-only `verify` outcome
+or populate `research.json.agents` with acceptors. Native policy review alone
+does not justify changing the research depth.
 
 ## Stop
 

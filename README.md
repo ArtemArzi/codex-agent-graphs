@@ -76,6 +76,28 @@ Three supporting capabilities keep those workflows healthy:
 | `$development-recovery` | Recovers when specification, plan, code, tests, or observed behavior diverge; it is a conditional non-graph skill |
 | Large-codebase discovery | A managed global policy that bounds repository exploration and joins the evidence before planning; it deliberately adds no new skill or graph |
 
+## Shared Codex routing
+
+[policies/model-routing.toml](policies/model-routing.toml) is the single source
+for the main model, auxiliary models, independent acceptance models, role
+classification and compatible profile names. The installer generates all 19
+Codex role files, global AGENTS guidance and the native multi-agent usage hint.
+Edit the manifest, then run `python3 scripts/install.py install --all` and
+`python3 scripts/install.py verify --all` to synchronize WSL and Desktop.
+
+Existing baseline/experiment profile names become aliases that inherit the
+shared defaults; original files are backed up under each Codex home. Unrelated
+settings remain intact, and unknown routing overrides fail preflight. Backups
+may contain private configuration and must stay in the local Codex home.
+
+The host policy requires a fresh whole-plan acceptance before execution and a
+different fresh whole-result acceptance before completion, with focused auxiliary
+checks at either boundary when useful. This overrides generic optional-review
+defaults in the workflow contracts. The plan review is an agent instruction;
+no new deterministic controller gate or graph identity is introduced. Start a
+new session to load new role instructions; running sessions are not restarted.
+Claude provider choices remain explicit and independent in the same manifest.
+
 ## Quick start
 
 ### Requirements

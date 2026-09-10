@@ -2,9 +2,13 @@
 
 ## Состояния
 
-- `running/work` — корневой агент изучает проект и редактирует документы.
+- `running/work` — корневой агент координирует изучение и интегрирует документы;
+  при активной policy bounded auxiliary agents могут выполнять самостоятельные
+  части discovery, preparation, implementation, synthesis или focused review.
 - `decision-required` — ожидается одно существенное решение; документы ещё не содержат неразрешённую семантическую правку.
-- `running/verify` — независимая проверка оправдана риском.
+- `running/verify` — controller-проверка включена legacy risk/uncertainty route;
+  instruction-level policy acceptance может быть обязательной внутри `work` и
+  не требует отдельного graph node.
 - `running/complete` — модельная работа закончена, осталась детерминированная проверка целостности.
 - `blocked` — узел завершился ошибкой или исчерпан repair; повтор ограничен.
 - `completed` — квитанции и документы связаны SHA-256, общее состояние обновлено.
@@ -12,6 +16,10 @@
 - `restart-required` — run закрыт, Project Start остаётся fail-closed до успешного replacement run. Независимая Task Delivery допускается только когда нет document drift и verifier requirement; все семантические и evidence obligations продолжают блокировать её.
 
 ## Переходы
+
+Диаграмма ниже описывает только legacy controller transitions. Унаследованная
+policy-required plan/result acceptance выполняется внутри `work` и не меняет
+эти graph identities.
 
 ```text
 work --self--> complete
@@ -21,7 +29,11 @@ verify --reject once--> work
 work|verify --failure--> blocked --retry once--> same node
 ```
 
-Решение модели определяет глубину исследования, выбранные навыки, структуру документов и необходимость verifier. Runner проверяет только допустимые переходы, пути, точную document delta, лимиты, квитанции и дрейф после записи.
+Без унаследованной policy решение модели определяет глубину исследования,
+выбранные навыки, структуру документов и необходимость controller verifier.
+При активной policy substantive plan/result acceptance обязательна независимо от
+этого перехода. Runner по-прежнему проверяет только допустимые переходы, пути,
+точную document delta, лимиты, квитанции и дрейф после записи.
 
 ## Остановка
 

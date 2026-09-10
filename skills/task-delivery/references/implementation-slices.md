@@ -2,6 +2,15 @@
 
 Этот протокол живёт внутри одного узла `work`. Он добавляет проверяемые handoff-границы, но не превращает Task Delivery в длинный граф.
 
+Если унаследованная user-level policy активна, packet создаётся только после
+свежего whole-plan PASS от `task_plan_reviewer`, а завершённый результат
+принимает другой свежий whole-result reviewer. `root-acceptance` подтверждает
+slice provenance и не является independent acceptance. Focused checks могут
+идти рядом с acceptor над тем же кандидатом; их findings нужно завершить и
+сверить с исходниками до PASS. В skill-only/quick это операции внутри `work`,
+не причина инициализировать controller. Без policy self/risk-based defaults
+ниже сохраняются для legacy routes.
+
 Ниже описан v2 slice contract для graph `3.4+` runs. Активный `3.3.0` run сохраняет v1 packet/receipt и inline root acceptance без `slice-accept`, checkpoint, scope amendment и verifier-repair команд.
 
 ## Стратегии и режимы
@@ -45,7 +54,7 @@ python3 scripts/task_graph.py slice-create --run <run-dir> --packet <draft.json>
   "schema_version": 2,
   "slice_id": "implementation-api",
   "strategy": "delegated-sequential",
-  "plan_review": {"mode": "self", "receipt": "root:self-review"},
+    "plan_review": {"mode": "independent", "receipt": "/root/task_plan_review"},
   "objective": "Наблюдаемый результат слайса.",
   "owned_paths": ["src/api/", "tests/api/"],
   "excluded_paths": ["src/schema/"],
@@ -167,7 +176,7 @@ Repair packet связан с exact отклонённым `task.json`, испо
 {
   "schema_version": 1,
   "authority": "root-technical",
-  "plan_review_receipt": "root:self-review",
+    "plan_review_receipt": "/root/task_plan_review",
   "added_paths": ["src/api/adapter.ts"],
   "evidence_paths": ["src/api/contract.ts"],
   "reason": "Trace доказал обязательный implementation owner.",
@@ -190,4 +199,11 @@ Runner связывает amendment с exact reviewed base, добавляет �
 
 ## Повтор и durable facts
 
-Для same-scope correction после первого `needs_context|blocked` создай второй normal packet с новым `slice_id`, exact `supersedes` и содержательным `retry_evidence`. Второй неуспешный packet в этой цепочке является явной терминальной остановкой. Root переносит в checkpoint только проверенные discoveries. Durable факт попадает в каноническую документацию только через `HANDOFF → Project Start maintenance`, когда `documentation_impact.class` равен `factual` или `semantic`.
+Для same-scope correction после первого `needs_context|blocked` создай второй
+normal packet с новым `slice_id`, exact `supersedes` и содержательным
+`retry_evidence`; policy-required repair возвращается тому же reviewer. Новый
+substantive scope получает fresh assignment и fresh review. Второй неуспешный
+packet в этой цепочке является явной терминальной остановкой. Root переносит в
+checkpoint только проверенные discoveries. Durable факт попадает в каноническую
+документацию только через `HANDOFF → Project Start maintenance`, когда
+`documentation_impact.class` равен `factual` или `semantic`.

@@ -25,11 +25,15 @@ Every new or materially refactored graph declares `work_policy` in `graph.json`.
 
 ## Fast path
 
-- Start root-only. A skill, MCP call, subagent or reviewer must close a concrete
-  evidence gap; availability alone is not a reason to invoke it.
+- Start root-only for domain work. A skill, MCP call, subagent or non-required
+  reviewer must close a concrete evidence gap; availability alone is not a
+  reason to invoke it. An inherited policy-required plan/result acceptor is an
+  explicit independent-acceptance exception.
 - Choose the cheapest execution tier that preserves the needed guarantee:
   `skill-only` for bounded one-session work, `tracked` for resumability or
-  durable evidence, and `verified` only for material risk or uncertainty.
+  durable evidence, and `verified` for material risk, uncertainty or a
+  controller-level independent-review requirement. Host-policy reviews may run
+  inside skill-only without controller state.
 - Do not initialize a controller merely to record that a small local task
   happened. Do not bypass a controller when interrupted state, scope/baseline
   binding or a durable handoff is part of the requested outcome.
@@ -52,10 +56,13 @@ briefly in the dispatch, not a new artifact. A stage or slice is not an agent.
 Do not duplicate a live or completed scope. A same-scope retry must identify
 new evidence or a new discriminating check.
 
-Start independent review only when risk, uncertainty, an explicit user request
-or a release gate needs a counterexample search. One reviewer is the default.
-Parallel block review is an explicit deep-review mode, not an automatic response
-to task size.
+Start independent review when risk, uncertainty, an explicit user request, a
+release gate or inherited host policy needs it. Under that policy, a fresh
+whole-plan acceptor precedes substantive execution and a different fresh
+whole-result acceptor follows it. Focused/block reviews may run beside either
+acceptor against the same candidate, but all selected checks must finish before
+acceptance. Without the policy, one reviewer is the default and parallel block
+review is an explicit deep-review mode, not an automatic response to task size.
 
 An explicit user request may raise a normal budget, but the run must record the
 finite override. It never disables integrity, evidence or stop guards.

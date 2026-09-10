@@ -59,7 +59,7 @@
     "agent_context": "AGENTS.md",
     "skill_contract": "docs/agents/domain.md"
   },
-  "verification": "self",
+  "verification": "independent",
   "confidence": "high",
   "gaps": [],
   "decision": null
@@ -81,6 +81,14 @@ Maintenance использует `classification: no-change|factual|semantic` и
 `project-start:engineering-standard-fallback`). Maintenance требует
 соответствующий provider только при изменении принадлежащего ему слоя.
 `evidence` содержит существующие пути внутри репозитория.
+
+При унаследованной user-level policy `verification: independent` означает
+fresh whole-artifact acceptance от `project_docs_verifier` после отдельного
+fresh `task_plan_reviewer`. Focused checks могут быть записаны рядом, но PASS
+допустим только после их завершения и reconciliation существенных findings с
+исходниками. `self` остаётся совместимым legacy fallback только когда policy не
+требует independent acceptance; это instruction-level правило и не меняет
+schema или graph identity.
 
 Для запроса существенного решения в maintenance:
 

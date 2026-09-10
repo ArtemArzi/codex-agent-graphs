@@ -121,10 +121,13 @@ class InstallerTests(unittest.TestCase):
         (self.home / "config.toml").write_text(original, encoding="utf-8")
         installer.install_environment(self.home)
         installer.install_environment(self.home)
-        self.assertIn(original.rstrip(), (self.home / "config.toml").read_text(encoding="utf-8"))
-        for role, effort in (("task_worker", "low"), ("task_plan_reviewer", "high"), ("task_result_reviewer", "high")):
+        updated = installer.tomllib.loads((self.home / "config.toml").read_text(encoding="utf-8"))
+        self.assertEqual(updated["agents"]["max_threads"], 6)
+        self.assertEqual(updated["agents"]["max_depth"], 1)
+        self.assertEqual(updated["history"], {"persistence": "save-all"})
+        for role, effort in (("task_worker", "max"), ("task_plan_reviewer", "high"), ("task_result_reviewer", "high")):
             spec = installer.tomllib.loads((self.home / "agents" / f"{role}.toml").read_text(encoding="utf-8"))
-            self.assertEqual(("gpt-6-astra", effort), (spec["model"], spec["model_reasoning_effort"]))
+            self.assertEqual(("gpt-5.6-luna" if role == "task_worker" else "gpt-6-astra", effort), (spec["model"], spec["model_reasoning_effort"]))
 
     def test_embedded_discovery_policy_marker_is_rejected(self) -> None:
         (self.home / "AGENTS.md").write_text(
@@ -254,7 +257,7 @@ class InstallerTests(unittest.TestCase):
     def test_modified_unmarked_managed_block_remains_a_conflict(self) -> None:
         config = self.home / "config.toml"
         modified = installer.exact_unmarked_managed_block().replace(
-            "Conditional Continuous Improvement candidate verifier.",
+            "Independent whole-candidate Continuous Improvement acceptor.",
             "My custom verifier.",
         )
         config.write_text(modified + "\n", encoding="utf-8")

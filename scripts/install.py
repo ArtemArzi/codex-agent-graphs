@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -33,21 +34,12 @@ SKILLS = (
     "research",
     "task-delivery",
 )
-AGENT_ROLES = (
-    "improvement_verifier",
-    "project_docs_auditor",
-    "project_docs_curator",
-    "project_docs_verifier",
-    "research_planner",
-    "research_scout",
-    "research_synthesizer",
-    "research_verifier",
-    "task_explorer",
-    "task_worker",
-    "task_plan_reviewer",
-    "task_result_reviewer",
-    "task_risk_reviewer",
-)
+_routing_spec = importlib.util.spec_from_file_location("codex_model_routing", REPO_ROOT / "scripts/model_routing.py")
+assert _routing_spec and _routing_spec.loader
+routing = importlib.util.module_from_spec(_routing_spec)
+_routing_spec.loader.exec_module(routing)
+AGENT_ROLES = tuple(routing.load_policy()["roles"])
+NATIVE_ROLES = {role for role, spec in routing.load_policy()["roles"].items() if "/native/" in spec["template"]}
 BLOCK_START = "# BEGIN codex-agent-graphs: graph agents"
 BLOCK_END = "# END codex-agent-graphs: graph agents"
 LEGACY_BLOCK_START = "# BEGIN codex-agent-graphs: research agents"
@@ -122,23 +114,30 @@ def file_status(source: Path, target: Path) -> str:
     return "in-sync" if sha256_file(source) == sha256_file(target) else "drift"
 
 
-def managed_block() -> str:
-    lines = [BLOCK_START]
+def role_descriptions() -> dict[str, str]:
     descriptions = {
-        "improvement_verifier": "Conditional Continuous Improvement candidate verifier.",
+        "improvement_verifier": "Independent whole-candidate Continuous Improvement acceptor.",
         "project_docs_auditor": "Legacy v2 Project Start drift auditor.",
         "project_docs_curator": "Legacy v2 Project Start factual updater.",
-        "project_docs_verifier": "Conditional Project Start v3 documentation verifier.",
+        "project_docs_verifier": "Independent whole-result Project Start documentation acceptor.",
         "research_planner": "Optional deep-research decomposition helper.",
         "research_scout": "Optional read-only deep-research branch scout.",
         "research_synthesizer": "Optional deep-research evidence synthesizer.",
-        "research_verifier": "Conditional bounded research claim verifier.",
+        "research_verifier": "Independent whole-result research acceptor.",
         "task_explorer": "Optional read-only Task Delivery codebase explorer.",
         "task_worker": "Optional bounded Task Delivery implementation worker.",
-        "task_plan_reviewer": "Conditional Task Delivery plan reviewer.",
-        "task_result_reviewer": "Conditional Task Delivery final verifier.",
-        "task_risk_reviewer": "Critical-only Task Delivery risk reviewer.",
+        "task_plan_reviewer": "Fresh independent whole-plan acceptor for any substantive workflow.",
+        "task_result_reviewer": "Fresh independent whole-result Task Delivery acceptor.",
+        "task_risk_reviewer": "Focused risk reviewer supporting independent acceptance.",
     }
+    for role in NATIVE_ROLES:
+        descriptions[role] = tomllib.loads(routing.role_template(role).read_text(encoding="utf-8"))["description"]
+    return descriptions
+
+
+def managed_block(extras: dict[str, dict] | None = None) -> str:
+    lines = [BLOCK_START]
+    descriptions = role_descriptions()
     for role in AGENT_ROLES:
         lines.extend(
             [
@@ -148,6 +147,8 @@ def managed_block() -> str:
                 f'config_file = "./agents/{role}.toml"',
             ]
         )
+        for key, value in (extras or {}).get(role, {}).items():
+            lines.append(f"{key} = {json.dumps(value, ensure_ascii=False)}")
     lines.extend(["", BLOCK_END, ""])
     return "\n".join(lines)
 
@@ -159,24 +160,54 @@ def exact_unmarked_managed_block() -> str:
 
 
 def config_with_block(original: str) -> str:
-    without_managed = MANAGED_RE.sub("", original).rstrip()
+    try:
+        parsed = tomllib.loads(original)
+    except tomllib.TOMLDecodeError as exc:
+        raise InstallError(f"Invalid original config TOML: {exc}") from exc
+    extras = {role: {"nickname_candidates": spec["nickname_candidates"]}
+              for role, spec in parsed.get("agents", {}).items()
+              if role in AGENT_ROLES and isinstance(spec, dict) and "nickname_candidates" in spec}
+    # Only standalone structural comments are markers, never prompt examples.
+    markers = {BLOCK_START: BLOCK_END, LEGACY_BLOCK_START: LEGACY_BLOCK_END}
+    opened = None
+    removed: set[int] = set()
+    seen = 0
+    for number, line in routing._structural_lines(original):
+        token = line.strip()
+        if token in markers:
+            if opened is not None or seen:
+                raise InstallError("Duplicate or nested managed config block")
+            opened = (number, markers[token])
+            seen += 1
+        elif token in markers.values():
+            if opened is None or token != opened[1]:
+                raise InstallError("Mismatched managed config block")
+            removed.update(range(opened[0], number + 1))
+            opened = None
+        elif any(marker in line for marker in (*markers, *markers.values())):
+            raise InstallError("Embedded managed config marker")
+    if opened is not None:
+        raise InstallError("Unclosed managed config block")
+    without_managed = "".join(line for number, line in enumerate(original.splitlines(keepends=True))
+                              if number not in removed).rstrip()
     exact_unmarked = exact_unmarked_managed_block()
     if BLOCK_START not in original and without_managed.count(exact_unmarked) == 1:
         without_unmarked = without_managed.replace(exact_unmarked, "", 1).rstrip()
-        adopted = (
-            f"{without_unmarked}\n\n{managed_block()}"
-            if without_unmarked
-            else managed_block()
-        )
+        adopted = routing.config_defaults(without_unmarked).rstrip() + "\n\n" + managed_block(extras)
         try:
             tomllib.loads(adopted)
         except tomllib.TOMLDecodeError as exc:
             raise InstallError(f"Adopted managed config would be invalid TOML: {exc}") from exc
         return adopted
+    try:
+        without_managed, _ = routing.adopt_native_registrations(without_managed, NATIVE_ROLES)
+    except ValueError as exc:
+        raise InstallError(str(exc)) from exc
+    remaining = tomllib.loads(without_managed)
     for role in AGENT_ROLES:
-        if re.search(rf"(?m)^\s*\[agents\.{re.escape(role)}\]\s*$", without_managed):
+        if role in remaining.get("agents", {}):
             raise InstallError(f"Unmanaged config already defines [agents.{role}]")
-    candidate = f"{without_managed}\n\n{managed_block()}" if without_managed else managed_block()
+    candidate = routing.config_defaults(without_managed).rstrip() + "\n\n" + managed_block(extras)
     try:
         tomllib.loads(candidate)
     except tomllib.TOMLDecodeError as exc:
@@ -205,6 +236,8 @@ def policy_block(source: Path, start: str, end: str) -> str:
         DISCOVERY_POLICY_BLOCK_END,
         ORCHESTRATION_POLICY_BLOCK_START,
         ORCHESTRATION_POLICY_BLOCK_END,
+        routing.POLICY_START,
+        routing.POLICY_END,
     )
     if any(marker in policy for marker in managed_markers):
         raise InstallError(f"Global policy source contains a managed marker: {source}")
@@ -233,6 +266,12 @@ def agents_with_policy(original: str) -> str:
             raise InstallError("Unrecognized local orchestration policy; inspect drift before adoption")
         original = "" if boundary < 0 else original[boundary:]
     managed = (
+        (
+            "model-routing",
+            routing.POLICY_START,
+            routing.POLICY_END,
+            re.compile(rf"(?ms)^[ \t]*{re.escape(routing.POLICY_START)}[ \t]*\r?\n.*?^[ \t]*{re.escape(routing.POLICY_END)}[ \t]*(?:\r?\n|$)"),
+        ),
         (
             "orchestration",
             ORCHESTRATION_POLICY_BLOCK_START,
@@ -265,7 +304,8 @@ def agents_with_policy(original: str) -> str:
     orchestration = policy_block(
         ORCHESTRATION_POLICY_SOURCE, ORCHESTRATION_POLICY_BLOCK_START, ORCHESTRATION_POLICY_BLOCK_END
     )
-    blocks = f"{orchestration}\n{global_policy_block()}\n{discovery_policy_block()}"
+    model_policy = f"{routing.POLICY_START}\n{routing.render_policy()}{routing.POLICY_END}\n"
+    blocks = f"{model_policy}\n{orchestration}\n{global_policy_block()}\n{discovery_policy_block()}"
     return f"{without_managed}\n\n{blocks}" if without_managed else blocks
 
 
@@ -344,19 +384,84 @@ def replace_file(source: Path, target: Path, backup: Path) -> str:
     return "installed"
 
 
+def generated_status(content: str, target: Path) -> str:
+    if target.is_symlink():
+        raise InstallError(f"Symlinked generated file is not managed automatically: {target}")
+    if not target.exists():
+        return "missing"
+    if not target.is_file():
+        raise InstallError(f"Generated target is not a regular file: {target}")
+    return "in-sync" if target.read_text(encoding="utf-8") == content else "drift"
+
+
+def replace_generated(content: str, target: Path, backup: Path) -> str:
+    if generated_status(content, target) == "in-sync":
+        return "in-sync"
+    if target.exists():
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(target, backup)
+    atomic_write(target, content)
+    return "installed"
+
+
+def generated_files(codex_home: Path) -> dict[Path, tuple[str, str]]:
+    files = {Path(routing.POLICY_TARGET): ("routing-policy", routing.POLICY_PATH.read_text(encoding="utf-8"))}
+    for role, description in role_descriptions().items():
+        files[Path("agents") / f"{role}.toml"] = ("agent", routing.render_agent(role, description))
+    for alias in routing.load_policy()["profile_aliases"]:
+        path = Path(f"{alias}.config.toml")
+        target = codex_home / path
+        if target.is_symlink():
+            raise InstallError(f"Symlinked profile is not managed automatically: {target}")
+        original = target.read_text(encoding="utf-8") if target.exists() else ""
+        try:
+            candidate = routing.profile_candidate(original, alias)
+        except ValueError as exc:
+            raise InstallError(str(exc)) from exc
+        files[path] = ("profile", candidate)
+    return files
+
+
+def validate_install_parents(codex_home: Path) -> None:
+    # A linked parent can redirect otherwise regular targets outside this home.
+    for relative in ("agents", "skills", "backups", "backups/agent-graphs"):
+        parent = codex_home / relative
+        if parent.is_symlink() or (parent.exists() and not parent.is_dir()):
+            raise InstallError(f"Unsafe install parent: {parent}")
+
+
+def validate_routing_environment(codex_home: Path) -> None:
+    validate_install_parents(codex_home)
+    known_profiles = set(routing.load_policy()["profile_aliases"])
+    for profile in codex_home.glob("*.config.toml"):
+        if profile.name.removesuffix(".config.toml") in known_profiles:
+            continue
+        if profile.is_symlink() or not profile.is_file():
+            raise InstallError(f"Unmanaged profile is not a regular file: {profile}")
+        try:
+            overlay = tomllib.loads(profile.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise InstallError(f"Cannot inspect unmanaged profile: {profile}") from exc
+        if routing.has_routing_override(overlay):
+            raise InstallError(f"Unmanaged profile contains routing overrides: {profile}")
+
+
 def preflight_environment(codex_home: Path) -> tuple[str, str, str, str]:
     codex_home = codex_home.expanduser().resolve()
+    validate_routing_environment(codex_home)
     manifest(GRAPH_RUNTIME_ROOT)
     for skill in SKILLS:
         manifest(SKILLS_ROOT / skill)
     for role in AGENT_ROLES:
-        source = AGENTS_ROOT / f"{role}.toml"
+        source = routing.role_template(role)
         if not source.is_file() or source.is_symlink():
             raise InstallError(f"Invalid agent source: {source}")
         try:
             tomllib.loads(source.read_text(encoding="utf-8"))
         except tomllib.TOMLDecodeError as exc:
             raise InstallError(f"Invalid agent TOML {source}: {exc}") from exc
+    for relative, (_, content) in generated_files(codex_home).items():
+        generated_status(content, codex_home / relative)
     config = codex_home / "config.toml"
     if config.is_symlink():
         raise InstallError(f"Symlinked config.toml is not managed automatically: {config}")
@@ -377,72 +482,82 @@ def install_environment(codex_home: Path) -> dict[str, Any]:
     agents_file = codex_home / "AGENTS.md"
     backup = backup_root(codex_home)
     changes: list[dict[str, str]] = []
-    runtime_target = codex_home / GRAPH_RUNTIME_TARGET
-    runtime_status = replace_directory(
-        GRAPH_RUNTIME_ROOT,
-        runtime_target,
-        backup / GRAPH_RUNTIME_TARGET,
-    )
-    changes.append(
-        {
-            "kind": "runtime",
-            "name": GRAPH_RUNTIME_TARGET,
-            "status": runtime_status,
-            "target": str(runtime_target),
-        }
-    )
-    for skill in SKILLS:
-        source = SKILLS_ROOT / skill
-        target = codex_home / "skills" / skill
-        status = replace_directory(source, target, backup / "skills" / skill)
-        changes.append({"kind": "skill", "name": skill, "status": status, "target": str(target)})
-    for role in AGENT_ROLES:
-        source = AGENTS_ROOT / f"{role}.toml"
-        target = codex_home / "agents" / f"{role}.toml"
-        status = replace_file(source, target, backup / "agents" / f"{role}.toml")
-        changes.append({"kind": "agent", "name": role, "status": status, "target": str(target)})
+    try:
+        runtime_target = codex_home / GRAPH_RUNTIME_TARGET
+        runtime_status = replace_directory(
+            GRAPH_RUNTIME_ROOT,
+            runtime_target,
+            backup / GRAPH_RUNTIME_TARGET,
+        )
+        changes.append(
+            {
+                "kind": "runtime",
+                "name": GRAPH_RUNTIME_TARGET,
+                "status": runtime_status,
+                "target": str(runtime_target),
+            }
+        )
+        for skill in SKILLS:
+            source = SKILLS_ROOT / skill
+            target = codex_home / "skills" / skill
+            status = replace_directory(source, target, backup / "skills" / skill)
+            changes.append({"kind": "skill", "name": skill, "status": status, "target": str(target)})
+        for relative, (kind, content) in generated_files(codex_home).items():
+            target = codex_home / relative
+            status = replace_generated(content, target, backup / relative)
+            changes.append({"kind": kind, "name": relative.stem, "status": status, "target": str(target)})
 
-    if candidate == original:
-        config_change = "in-sync"
-    else:
-        if config.exists():
-            config_backup = backup / "config.toml"
-            config_backup.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(config, config_backup)
-        atomic_write(config, candidate)
-        config_change = "installed"
-    changes.append({"kind": "config", "name": "managed-agent-block", "status": config_change, "target": str(config)})
+        if candidate == original:
+            config_change = "in-sync"
+        else:
+            if config.exists():
+                config_backup = backup / "config.toml"
+                config_backup.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(config, config_backup)
+            atomic_write(config, candidate)
+            config_change = "installed"
+        changes.append({"kind": "config", "name": "managed-agent-block", "status": config_change, "target": str(config)})
 
-    if agents_candidate == agents_original:
-        policy_change = "in-sync"
-    else:
-        if agents_file.exists():
-            agents_backup = backup / "AGENTS.md"
-            agents_backup.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(agents_file, agents_backup)
-        atomic_write(agents_file, agents_candidate)
-        policy_change = "installed"
-    changes.append(
-        {
-            "kind": "policy",
-            "name": "managed-global-policies",
-            "status": policy_change,
-            "target": str(agents_file),
+        if agents_candidate == agents_original:
+            policy_change = "in-sync"
+        else:
+            if agents_file.exists():
+                agents_backup = backup / "AGENTS.md"
+                agents_backup.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(agents_file, agents_backup)
+            atomic_write(agents_file, agents_candidate)
+            policy_change = "installed"
+        changes.append(
+            {
+                "kind": "policy",
+                "name": "managed-global-policies",
+                "status": policy_change,
+                "target": str(agents_file),
+            }
+        )
+        verification = verify_environment(codex_home)
+        if verification["status"] != "ok":
+            raise InstallError(f"Post-install verification failed for {codex_home}: {verification['issues']}")
+        backup_used = any(change["status"] == "installed" for change in changes) and backup.exists()
+        return {
+            "codex_home": str(codex_home),
+            "changes": changes,
+            "backup": str(backup) if backup_used else None,
         }
-    )
-    verification = verify_environment(codex_home)
-    if verification["status"] != "ok":
-        raise InstallError(f"Post-install verification failed for {codex_home}: {verification['issues']}")
-    backup_used = any(change["status"] == "installed" for change in changes) and backup.exists()
-    return {
-        "codex_home": str(codex_home),
-        "changes": changes,
-        "backup": str(backup) if backup_used else None,
-    }
+
+    except (OSError, ValueError, InstallError) as exc:
+        error = InstallError(f"Installation stopped for {codex_home}: {exc}")
+        error.partial_install = {"codex_home": str(codex_home), "changes": changes,
+                                 "backup": str(backup) if backup.exists() else None}
+        raise error from exc
 
 
 def verify_environment(codex_home: Path) -> dict[str, Any]:
     codex_home = codex_home.expanduser().resolve()
+    try:
+        validate_routing_environment(codex_home)
+    except InstallError as exc:
+        return {"status": "failed", "codex_home": str(codex_home), "issues": [str(exc)], "items": []}
     issues: list[str] = []
     statuses: list[dict[str, str]] = []
     runtime_status = path_status(GRAPH_RUNTIME_ROOT, codex_home / GRAPH_RUNTIME_TARGET)
@@ -456,11 +571,14 @@ def verify_environment(codex_home: Path) -> dict[str, Any]:
         statuses.append({"kind": "skill", "name": skill, "status": status})
         if status != "in-sync":
             issues.append(f"skill {skill}: {status}")
-    for role in AGENT_ROLES:
-        status = file_status(AGENTS_ROOT / f"{role}.toml", codex_home / "agents" / f"{role}.toml")
-        statuses.append({"kind": "agent", "name": role, "status": status})
-        if status != "in-sync":
-            issues.append(f"agent {role}: {status}")
+    try:
+        for relative, (kind, content) in generated_files(codex_home).items():
+            status = generated_status(content, codex_home / relative)
+            statuses.append({"kind": kind, "name": relative.stem, "status": status})
+            if status != "in-sync":
+                issues.append(f"{kind} {relative}: {status}")
+    except (ValueError, InstallError) as exc:
+        issues.append(str(exc))
     try:
         status = config_status(codex_home)
     except InstallError as exc:
@@ -487,6 +605,11 @@ def verify_environment(codex_home: Path) -> dict[str, Any]:
 
 def plan_environment(codex_home: Path) -> dict[str, Any]:
     codex_home = codex_home.expanduser().resolve()
+    try:
+        validate_routing_environment(codex_home)
+    except InstallError as exc:
+        return {"codex_home": str(codex_home), "items": [
+            {"kind": "environment", "name": "routing-preflight", "status": "conflict", "error": str(exc)}]}
     items: list[dict[str, str]] = [
         {
             "kind": "runtime",
@@ -502,14 +625,11 @@ def plan_environment(codex_home: Path) -> dict[str, Any]:
                 "status": path_status(SKILLS_ROOT / skill, codex_home / "skills" / skill),
             }
         )
-    for role in AGENT_ROLES:
-        items.append(
-            {
-                "kind": "agent",
-                "name": role,
-                "status": file_status(AGENTS_ROOT / f"{role}.toml", codex_home / "agents" / f"{role}.toml"),
-            }
-        )
+    try:
+        for relative, (kind, content) in generated_files(codex_home).items():
+            items.append({"kind": kind, "name": relative.stem, "status": generated_status(content, codex_home / relative)})
+    except (ValueError, InstallError) as exc:
+        items.append({"kind": "routing", "name": "generated-files", "status": "conflict", "error": str(exc)})
     try:
         config = config_status(codex_home)
     except InstallError:
@@ -568,12 +688,12 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    environments: list[dict[str, Any]] = []
     try:
         homes = selected_homes(args)
         if args.action == "install":
             for _, home in homes:
                 preflight_environment(home)
-        environments: list[dict[str, Any]] = []
         for label, home in homes:
             if args.action == "plan":
                 payload = plan_environment(home)
@@ -591,13 +711,13 @@ def main(argv: list[str] | None = None) -> int:
             "artifacts": [str(REPO_ROOT)],
             "data": {"environments": environments},
         }
-    except (InstallError, OSError) as exc:
+    except (InstallError, OSError, ValueError) as exc:
         response = {
             "status": "failed",
             "summary": str(exc),
             "next_actions": ["Fix the reported install condition and retry"],
             "artifacts": [str(REPO_ROOT)],
-            "data": {},
+            "data": {"environments": environments, "partial_install": getattr(exc, "partial_install", None)},
         }
         print(json.dumps(response, ensure_ascii=False, indent=2))
         return 2

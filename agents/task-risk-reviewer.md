@@ -2,7 +2,7 @@
 # GENERATED FROM agents/task_risk_reviewer.toml — do not edit; regenerate: scripts/claude_agents_sync.py --write
 # graph.json role id: task_risk_reviewer
 name: task-risk-reviewer
-description: Critical-only Task Delivery risk reviewer.
+description: Focused risk reviewer supporting independent acceptance.
 model: opus
 effort: max
 tools: Read, Grep, Glob, Bash

@@ -13,7 +13,9 @@
   "summary": "Что фактически сделано и доказано.",
   "confidence": "high",
   "capabilities": ["rg", "project test command", "mcp:not-applicable:local-only-task"],
-  "agents": [],
+  "agents": [
+    {"role": "task_plan_reviewer", "phase": "plan-review", "receipt": "/root/task_plan_review", "outcome": "pass"}
+  ],
   "research": {
     "internal": ["Какие текущие пути и контракты проверены"],
     "external": {
@@ -24,7 +26,7 @@
   "plan": {
     "path": "docs/development/plans/active/TD-123.md",
     "digest": "64 hex",
-    "review": {"mode": "self", "verdict": "pass"}
+    "review": {"mode": "independent", "verdict": "pass"}
   },
   "engineering_standard": {
     "path": "docs/architecture/ENGINEERING.md",
@@ -68,10 +70,13 @@
 - `research.internal` непустой. Для внешнего исследования используй `status: used` и receipt Research run; иначе дай содержательную причину `not-needed`.
 - `capabilities` содержит один тип MCP-квитанции: `mcp:<server>` после реального вызова, `mcp:fallback:<reason>` после неудачи релевантного MCP или `mcp:not-applicable:<reason>` для локальной задачи. Эти типы нельзя смешивать.
 - `documentation_impact.class` равен `none`, `factual` или `semantic`. Только два последних открывают Project Start maintenance.
-- `standard` и `complex` не требуют result verifier по имени профиля. Записывай
-  work outcome `verify` только при фактическом risk/uncertainty signal;
-  `critical`, low confidence и повтор после reject остаются обязательным
-  verified путём.
+- Без унаследованной policy `standard` и `complex` не требуют result verifier
+  по имени профиля. Записывай work outcome `verify` только при фактическом
+  risk/uncertainty signal; `critical`, low confidence и повтор после reject
+  остаются обязательным verified путём. При активной policy каждый substantive
+  plan должен иметь свежий `task_plan_reviewer` PASS, а final whole-result —
+  другой свежий `task_result_reviewer` PASS; focused checks допускаются рядом
+  с ними, но их findings нужно reconcile до acceptance.
 - Обычный agent receipt имеет поля `role`, `phase`, `receipt`, `outcome`. `task_worker` дополнительно содержит `slice_id`, `packet_sha256`, `receipt_sha256`, а `outcome` точно равен worker status. Acceptance и checkpoint принадлежат root controller, не worker. Роли и количество обязаны соответствовать профилю.
 - При существенном вопросе `decision` содержит как минимум `question`; обычный результат использует `null`.
 

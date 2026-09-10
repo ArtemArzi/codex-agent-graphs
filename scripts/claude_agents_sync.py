@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Проекция канона agents/*.toml в сабагентов Claude Code (agents/*.md).
 
-Канон ролей — ровно один: agents/*.toml + описания из managed-блока install.py.
+Канон ролей: agents/*.toml + policies/model-routing.toml + описания install.py.
 Файлы agents/*.md — машинная проекция ДЛЯ Claude Code, лежащая рядом с toml:
 загрузчик плагинов CC обнаруживает агентов только конвенцией из корневого
 agents/ (поля `agents` в схеме plugin.json не существует — см. ECC
@@ -13,7 +13,7 @@ PLUGIN_SCHEMA_NOTES). Для Codex эти .md невидимы: install.py ко�
     claude_agents_sync.py --check   сверка: проекция байт-в-байт + чётность ролей
     claude_agents_sync.py --write   перегенерация agents/*.md
 
-Маппинги Codex → Claude Code пинованы константами ниже. Любое неизвестное
+Модели Claude явно сохранены в общем manifest независимо от моделей Codex. Любое неизвестное
 значение любого поля — немедленный отказ (никаких молчаливых дефолтов):
 устаревший маппинг должен ломать сборку, а не тихо портить агентов.
 """
@@ -30,18 +30,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# --- Пиновые маппинги: единственное место истины Codex → Claude Code --------
-
-MODEL_MAP = {"gpt-5.6-terra": "sonnet", "gpt-5.6-sol": "opus"}
+# Provider settings are explicit and independent in the routing manifest.
+# Changing Codex routing must not invent an equivalence to Claude models.
 EFFORT_MAP = {"high": "high", "xhigh": "xhigh", "max": "max"}
-# Preserve each role's existing Claude budget independently of Codex routing.
-# Pin the source pair too: future routing changes require an explicit decision,
-# not an assumed equivalence between providers' models or effort levels.
-ROLE_PROJECTIONS = {
-    "task_worker": (("gpt-6-astra", "low"), ("sonnet", "xhigh")),
-    "task_plan_reviewer": (("gpt-6-astra", "high"), ("opus", "high")),
-    "task_result_reviewer": (("gpt-6-astra", "high"), ("opus", "max")),
-}
 DEFAULT_WEB = "disabled"  # web_search отсутствует в 2 из 13 toml — трактуем как disabled
 
 KNOWN_TOML_KEYS = {
@@ -104,7 +95,11 @@ def canonical_roles() -> dict[str, dict]:
         unknown = set(data) - KNOWN_TOML_KEYS
         if unknown:
             raise SystemExit(f"{path.name}: неизвестные ключи toml {sorted(unknown)} — обнови маппинги генератора")
-        roles[path.stem] = data
+        routing = _load_install_module().routing
+        route = routing.role_route(path.stem)
+        if "model" in data or "model_reasoning_effort" in data:
+            raise SystemExit(f"{path.name}: модели должны находиться только в model-routing.toml")
+        roles[path.stem] = {**data, "model": route["model"], "model_reasoning_effort": route["effort"]}
     return roles
 
 
@@ -134,17 +129,17 @@ def _tools_for(sandbox_mode: str, web_search: str) -> tuple[list[str], list[str]
 
 
 def render_role(role: str, spec: dict, description: str) -> str:
-    if role in ROLE_PROJECTIONS:
-        source, (model, effort) = ROLE_PROJECTIONS[role]
-        if (spec["model"], spec["model_reasoning_effort"]) != source:
-            raise SystemExit(f"{role}: изменились модель/effort — обнови ROLE_PROJECTIONS")
-    else:
-        model = MODEL_MAP.get(spec["model"])
-        if model is None:
-            raise SystemExit(f"{role}: неизвестная модель {spec['model']!r} — обнови MODEL_MAP")
-        effort = EFFORT_MAP.get(spec["model_reasoning_effort"])
-        if effort is None:
-            raise SystemExit(f"{role}: неизвестный effort {spec['model_reasoning_effort']!r} — обнови EFFORT_MAP")
+    routing = _load_install_module().routing
+    policy = routing.load_policy()
+    projection = policy["roles"].get(role, {})
+    if "claude_model" not in projection:
+        raise SystemExit(f"{role}: отсутствует явная независимая проекция Claude")
+    route = routing.role_route(role, policy)
+    if (spec["model"], spec["model_reasoning_effort"]) != (route["model"], route["effort"]):
+        raise SystemExit(f"{role}: модель/effort расходятся с model-routing.toml")
+    model, effort = projection["claude_model"], projection["claude_effort"]
+    if model not in ("sonnet", "opus") or effort not in EFFORT_MAP:
+        raise SystemExit(f"{role}: неизвестные настройки проекции Claude")
     tools, deny = _tools_for(spec["sandbox_mode"], spec.get("web_search", DEFAULT_WEB))
 
     lines = [
@@ -221,9 +216,9 @@ def check_parity(rendered: dict[str, str]) -> list[str]:
     toml_roles = set(canonical_roles())
     template_roles = set(render_template_roles())
     install = _load_install_module()
-    if set(install.AGENT_ROLES) != toml_roles:
+    if set(install.AGENT_ROLES) - install.NATIVE_ROLES != toml_roles:
         errors.append(
-            f"install.py AGENT_ROLES != agents/*.toml: {sorted(set(install.AGENT_ROLES) ^ toml_roles)}"
+            f"install.py AGENT_ROLES != agents/*.toml: {sorted((set(install.AGENT_ROLES) - install.NATIVE_ROLES) ^ toml_roles)}"
         )
     for role in sorted(graph_roles() - GRAPH_ROLE_EXEMPT):
         if role not in toml_roles and role not in template_roles:

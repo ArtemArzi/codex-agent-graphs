@@ -1,6 +1,13 @@
 # Continuous Improvement control artifact
 
-`improvement.json` is the immutable receipt for one bounded repository pass. It records evidence and handoff identity, not chain-of-thought.
+`improvement.json` is the immutable receipt for one bounded repository pass. It
+records evidence and handoff identity, not chain-of-thought. Under the inherited
+user-level acceptance policy, a substantive pass has a fresh whole-plan
+`task_plan_reviewer` before execution and a different fresh
+`improvement_verifier` as whole-artifact acceptor after completion. Focused
+checks may run beside either acceptor over the same candidate; reconcile their
+material findings before PASS. These are operations inside `work`, not schema or
+graph additions.
 
 ## Work receipt
 
@@ -88,7 +95,9 @@ identities.
 }
 ```
 
-`reject` requires a non-empty repair list. One repair may replace `improvement.json`; a second rejection blocks the run.
+`reject` requires a non-empty repair list. One same-scope repair may replace
+`improvement.json` and returns to the same reviewer; a materially new scope
+needs a fresh assignment and review. A second rejection blocks the run.
 
 ## Completion
 
@@ -121,6 +130,8 @@ external state, current acceptance or continued authorization.
 
 Reuse the candidate's reproduction, evidence references, acceptance, scope and
 benefit in the existing Task Delivery plan. Carry prior receipt paths/hashes as
-historical sources; Task Delivery creates its own current plan and baseline.
-Do not reuse an old completion receipt for a new repair or launch a second
-discovery agent merely because control moves between the two skills.
+historical sources; Task Delivery creates its own current baseline. Reuse still-
+valid exact-scope acceptance evidence when it covers the same candidate instead
+of duplicating reviews merely because control moves between skills. Do not reuse
+an old completion receipt for a new repair or launch a second discovery agent
+merely because control moves between the two skills.

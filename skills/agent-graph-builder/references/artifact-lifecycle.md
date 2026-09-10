@@ -58,6 +58,12 @@ work -> optional verify -> complete
 
 It leaves the raw run intact. Cleanup remains a separate explicit operation.
 
+The `work -> optional verify -> complete` diagram describes only deterministic
+controller lifecycle. An inherited user-level policy may require a fresh
+whole-plan review and a different fresh whole-result review inside `work`, even
+when the controller's `verify` node is skipped. Those instruction-level reviews
+must not be represented by new graph nodes or schema changes.
+
 ## Commands
 
 The installer places the shared standard-library runtime at
