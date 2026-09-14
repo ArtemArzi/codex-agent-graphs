@@ -14,6 +14,8 @@
 
 <!-- PROJECT-START:REQUIRED State where new behavior belongs, public entry interfaces, allowed dependency directions, and forbidden cross-module shortcuts. -->
 
+<!-- PROJECT-START:REQUIRED Link the accepted architecture decisions and distinguish current implementation from known divergence. Give the short new-module route (contract, owned data, registration, checks); link codebase details instead of copying them. -->
+
 ## Framework patterns and anti-patterns
 
 <!-- PROJECT-START:REQUIRED List only project-relevant native patterns and the AI-prone mistakes that existing tools cannot fully prevent. -->
@@ -33,6 +35,8 @@
 ## Quality commands
 
 <!-- PROJECT-START:REQUIRED Give exact formatter, linter, type-checker, structural, unit, integration and E2E commands with their working directories. Do not restate rules already fully enforced by those tools. -->
+
+<!-- PROJECT-START:REQUIRED For material architecture constraints identify the check and actual enforcement: review, executable local command, required CI, or planned implementation. A planned test is not an enforced rule. -->
 
 ## Security and sensitive data
 

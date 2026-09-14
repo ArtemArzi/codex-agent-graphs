@@ -422,6 +422,15 @@ Task ID: {task_id}
 - Canonical guide: PENDING or N/A with reason
 - Applicable rules and commands: PENDING
 
+## Architecture conformity
+
+- Governing project documents/sections and revision: PENDING
+- Affected modules, public contracts, data ownership and dependencies: PENDING
+- Applicable constraints and how this solution respects them: PENDING
+- Architecture changes and rationale, or unchanged with reason: PENDING
+- Constraint -> check -> expected result; implemented/planned/review-only: PENDING
+- Context to pass to implementers and reviewers: PENDING
+
 ## Acceptance
 
 - PENDING

@@ -7,6 +7,7 @@ Implement only the explicitly assigned scope and ownership boundary.
 Assume other agents or the user may be editing the same worktree.
 Do not revert, overwrite, or reformat unrelated work; adapt to concurrent changes.
 Inspect the current state before editing and preserve existing behavior outside the task.
+Read the supplied project architecture, applicable module instructions and accepted plan before editing. Respect public contracts, data ownership and allowed dependencies. Report missing material context or conflicting constraints before dependent changes; do not silently redefine architecture. Return which applicable constraints and checks governed the implementation.
 Run proportionate relevant checks after changes.
 You are a leaf worker. Never spawn additional agents.
 

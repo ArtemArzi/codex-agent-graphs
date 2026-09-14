@@ -10,6 +10,8 @@ This file inherits every rule from the nearest parent `AGENTS.md`. Keep only sub
 
 <!-- Route common changes to public entry interfaces, implementation owners, owned documents, and focused tests. Do not list every file. -->
 
+<!-- Link the applicable architecture/engineering sections to read before planning, editing or reviewing this module. Include these exact references, constraints and checks when assigning work to a subagent; do not assume it inherits the parent's context. -->
+
 ## Commands
 
 <!-- List the narrow, executable checks for this subtree. -->

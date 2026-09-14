@@ -754,6 +754,59 @@ src/app.py
             with self.assertRaisesRegex(graph.GraphError, "изменился после init"):
                 graph.record(run, "work", "verify")
 
+    def test_architecture_documents_are_explicit_packet_snapshots(self) -> None:
+        run, standard = self.initialize_with_engineering_standard(
+            implementation_strategy="delegated-sequential"
+        )
+        self.plan()
+        architecture = self.write("docs/architecture/FOUNDATION.md", "# A1\nUse public contracts.\n")
+        draft_path = self.slice_draft(run)
+        draft = self.read(draft_path)
+        draft["must_read"].append("docs/architecture/FOUNDATION.md")
+        draft_path.write_text(json.dumps(draft), encoding="utf-8")
+        with mock.patch.object(graph.legacy, "reject_pending_project_reopen"):
+            registered = graph.register_slice(run, draft_path)
+        packet = self.read(Path(registered["artifacts"][0]))
+        snapshots = {item["path"]: item["sha256"] for item in packet["must_read"]}
+        self.assertEqual(graph.sha256_file(architecture), snapshots["docs/architecture/FOUNDATION.md"])
+        self.assertEqual(graph.sha256_file(self.root / standard), snapshots[standard])
+
+    def test_missing_architecture_document_cannot_enter_packet(self) -> None:
+        run = self.initialize(implementation_strategy="delegated-sequential")
+        self.plan()
+        draft_path = self.slice_draft(run)
+        draft = self.read(draft_path)
+        draft["must_read"].append("docs/missing-architecture.md")
+        draft_path.write_text(json.dumps(draft), encoding="utf-8")
+        with self.assertRaisesRegex(graph.GraphError, "must_read"):
+            graph.register_slice(run, draft_path)
+
+    def test_approved_architecture_update_can_continue_after_stale_binding(self) -> None:
+        run, standard = self.initialize_with_engineering_standard()
+        self.plan()
+        old_binding = self.read(run / graph.STATE_NAME)["engineering_standard"]
+        # Models the canonical result returned by a completed semantic maintenance.
+        # The Project Start decision lifecycle has its own real runner tests.
+        self.write(standard, "# Engineering\nApproved A2: consume the versioned public interface.\n")
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run))
+        with mock.patch.object(graph.legacy, "reject_pending_project_reopen"):
+            with self.assertRaisesRegex(graph.GraphError, "изменился после init"):
+                graph.record(run, "work", "verify")
+            graph.degrade_control(run, "Approved architecture changed; preserve code and re-review against A2.")
+            fresh = self.initialize(task_id="TD-A2", profile="complex")
+        self.assertEqual("VALUE = 2\n", (self.root / "src/app.py").read_text())
+        fresh_state = self.read(fresh / graph.STATE_NAME)
+        self.assertNotEqual(old_binding["sha256"], fresh_state["engineering_standard"]["sha256"])
+        self.assertEqual(old_binding, self.read(run / graph.STATE_NAME)["engineering_standard"])
+        self.plan(task_id="TD-A2")
+        self.write("src/app.py", "VALUE = 3\n")
+        payload = self.work_payload(fresh)  # fixture's fresh independent plan-review receipt
+        self.write_work(fresh, payload)
+        with mock.patch.object(graph.legacy, "reject_pending_project_reopen"):
+            result = graph.record(fresh, "work", "verify")
+        self.assertEqual("verify", result["data"]["current"])
+
     def test_slice_contract_is_progressively_disclosed(self) -> None:
         skill = (graph.SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
         reference = (graph.SKILL_DIR / "references/implementation-slices.md").read_text(encoding="utf-8")
