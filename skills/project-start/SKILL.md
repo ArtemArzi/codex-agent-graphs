@@ -186,12 +186,17 @@ python3 scripts/project_graph.py decide --run <run-dir> --answer "<точный 
 
 В bootstrap и при существенном архитектурном изменении в maintenance примени
 [архитектурный договор](references/documentation-contract.md#архитектурный-договор).
-Найди архитектурный справочник через инструкции workspace/проекта (в workspace
-пользователя это `ARCHITECTURE_PLAYBOOK.md`); прочитай его как маршрут выбора
-источников, затем закрепи применимые решения в документах проекта. Не зашивай
-абсолютный путь конкретного хоста в шаблоны переносимого проекта. Если справочник
-недоступен, используй требования, принятые решения и первичные источники; отметь
-пробел, но не выдумывай его содержание и не блокируй ясную локальную работу.
+Сначала найди пользовательский архитектурный справочник через инструкции
+проекта/workspace: он может уточнять локальные ограничения и имеет приоритет
+среди справочников. Если такого файла нет, прочитай поставляемый вместе со
+скиллом [архитектурный справочник](references/architecture-playbook.md). Это
+порядок поиска guidance, а не authority: требования пользователя, принятые
+решения, код, данные и runtime проекта всегда главнее обоих справочников. Затем
+закрепи применимые решения в документах проекта. Не зашивай абсолютный путь
+конкретного хоста в шаблоны переносимого проекта. Если недоступны оба
+справочника, используй требования, принятые решения и первичные источники;
+отметь пробел, но не выдумывай его содержание и не блокируй ясную локальную
+работу.
 
 Запиши выбранную структуру, причины, границы модулей, публичные контракты,
 владение данными, разрешённые зависимости и маршрут добавления модуля в уже
@@ -225,7 +230,13 @@ python3 scripts/project_graph.py decide --run <run-dir> --answer "<точный 
 - `AGENTS.md` хранит стабильные `Scope`, `Map`, `Commands` и `Boundaries`; task status, progress и receipts принадлежат плану/controller, а подробные runtime flows и owner navigation — codebase-документу.
 - Хук может обнаружить дрейф и предложить Project Start, но не должен сам редактировать смысловые документы.
 
-Единый контракт — в [references/documentation-contract.md](references/documentation-contract.md), правила maintenance — в [references/maintenance.md](references/maintenance.md), роли и стоимость — в [references/agent-operations.md](references/agent-operations.md).
+Встроенный маршрут архитектурного выбора — в
+[references/architecture-playbook.md](references/architecture-playbook.md),
+единый контракт — в
+[references/documentation-contract.md](references/documentation-contract.md),
+правила maintenance — в [references/maintenance.md](references/maintenance.md),
+роли и стоимость — в
+[references/agent-operations.md](references/agent-operations.md).
 
 ## Завершение и восстановление
 

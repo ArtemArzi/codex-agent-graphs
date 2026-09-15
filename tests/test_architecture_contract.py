@@ -115,5 +115,30 @@ class ScopedInstallTests(unittest.TestCase):
         self.assertEqual(config, self.config.read_bytes())
 
 
+class BundledArchitecturePlaybookTests(unittest.TestCase):
+    def test_playbook_is_portable_linked_and_installed(self) -> None:
+        relative = Path("skills/project-start/references/architecture-playbook.md")
+        bundled = ROOT / relative
+        self.assertTrue(bundled.is_file())
+
+        content = bundled.read_text(encoding="utf-8")
+        self.assertNotIn("/home/artem/projects", content)
+        self.assertIn("## Иерархия оснований", content)
+        self.assertIn("## Формат архитектурного предложения", content)
+
+        skill = (ROOT / "skills/project-start/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("references/architecture-playbook.md", skill)
+        self.assertLess(
+            skill.index("пользовательский архитектурный справочник"),
+            skill.index("references/architecture-playbook.md"),
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory) / "codex"
+            update.install.install_environment(home)
+            installed = home / relative
+            self.assertEqual(bundled.read_bytes(), installed.read_bytes())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -28,6 +28,9 @@ open-source лицензию; текущий юридический статус
   процесс и границы навыка.
 - [`skills/project-start/references/documentation-contract.md`](../skills/project-start/references/documentation-contract.md)
   — какие смысловые роли должны покрывать документы проекта.
+- [`skills/project-start/references/architecture-playbook.md`](../skills/project-start/references/architecture-playbook.md)
+  — встроенный переносимый маршрут архитектурного выбора, используемый, когда
+  проект или workspace не предоставляет собственный справочник.
 - [`skills/project-start/references/lifecycle.md`](../skills/project-start/references/lifecycle.md)
   — жизненный цикл, остановки и восстановление.
 - [`research/AGENTIC_ARCHITECTURE_LANDSCAPE_2026-07-28.md`](research/AGENTIC_ARCHITECTURE_LANDSCAPE_2026-07-28.md)
@@ -37,6 +40,10 @@ open-source лицензию; текущий юридический статус
 
 Историческое исследование объясняет происхождение решений, но действующими
 правилами остаются текущие файлы `skills/`, `policies/` и корневой `AGENTS.md`.
+Пользовательский архитектурный справочник проекта/workspace может уточнять
+встроенную базу и имеет приоритет среди справочников. В обоих случаях требования,
+принятые решения и фактическое состояние целевого проекта остаются главнее, а
+выбранная архитектура закрепляется в его собственных документах.
 
 ## Требования и внешние зависимости
 
@@ -104,8 +111,10 @@ claude plugin marketplace add ArtemArzi/codex-agent-graphs
 https://github.com/ArtemArzi/codex-agent-graphs.git в отдельную папку.
 
 Сначала прочитай README.ru.md, AGENTS.md и
-docs/PROJECT_START_HANDOFF.ru.md. Определи, где запущен Codex: WSL/CLI,
-Codex Desktop, оба варианта или Claude Code. Проверь Git и Python 3.11+.
+docs/PROJECT_START_HANDOFF.ru.md, а также встроенный справочник
+skills/project-start/references/architecture-playbook.md. Определи, где запущен
+Codex: WSL/CLI, Codex Desktop, оба варианта или Claude Code. Проверь Git и
+Python 3.11+.
 
 Не копируй только SKILL.md и не перезаписывай существующие настройки вручную.
 Сначала выполни scripts/install.py plan для нужного окружения и покажи мне
@@ -117,6 +126,12 @@ channel. Затем открой новую сессию и проверь `$pro
 Отдельно проверь наличие $domain-modeling и $codebase-design. Если их нет,
 сообщи об этом и используй только предусмотренный Project Start fallback;
 ничего дополнительно не устанавливай без моего разрешения.
+
+При запуске Project Start сначала используй архитектурный справочник целевого
+проекта/workspace, если он явно указан в его инструкциях. Если такого файла нет,
+используй встроенный architecture-playbook.md. Не копируй его механически в
+проект: выбери только применимые решения и зафиксируй их в канонических
+документах проекта вместе с основаниями и проверками.
 ```
 
 ## Первый запуск
