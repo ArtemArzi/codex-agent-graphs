@@ -160,11 +160,12 @@ python3 scripts/project_graph.py record --run <run-dir> --node work --outcome ve
 ```
 
 `project_docs_verifier` читает точный `project.json` и точный набор документов,
-пытается найти расхождение с репозиторием и пишет `verification.json`. При
-унаследованной policy это whole-artifact acceptance для substantive результата и
-должен быть другим свежим reviewer после plan review; focused findings сначала
-reconcile с исходниками. Один `reject` возвращает работу корневому агенту;
-второй блокирует controller cycle.
+пытается найти расхождение с репозиторием и возвращает payload для
+`verification.json`; корневой агент сохраняет его. При унаследованной policy это
+whole-artifact acceptance для substantive результата и должен быть другим свежим
+reviewer после plan review; focused findings сначала reconcile с исходниками.
+Один `reject` возвращает работу корневому агенту; второй блокирует controller
+cycle.
 
 ## Существенное решение
 
