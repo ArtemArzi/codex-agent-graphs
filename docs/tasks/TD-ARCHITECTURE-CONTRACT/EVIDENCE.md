@@ -44,8 +44,9 @@ differed from installer output. That setting is preserved, not printed here.
 - `python3 scripts/check_all.py`: exit 0, all workflow checks passed, including
   Project Start bootstrap/maintenance/adversarial and legacy compatibility checks,
   generated-role parity, validators and Task Delivery tests.
-- Full-suite log after the installer parent-validation repair:
-  `/tmp/architecture-smoke.7SnFFR/check-all.log` (ends `All workflow checks passed.`).
+- Full-suite log after the installer parent-validation repair was retained in the
+  task's temporary verification workspace and ended with
+  `All workflow checks passed.`.
 - `git diff --check`: exit 0.
 
 ## Behavioral fixture evidence
@@ -86,9 +87,10 @@ receipt binds source and installed manifests; intervening drift rejects apply.
 An injected installation failure restores exact prior targets and preserves the
 rejected candidate under the backup directory, without deleting either version.
 
-Prepared WSL installation receipt: `/tmp/architecture-smoke.7SnFFR/install-prepared.json`.
+Prepared WSL installation receipt was retained in the task's temporary
+verification workspace.
 Scoped apply: PASS. Backup:
-`/home/artem/.codex/backups/agent-graphs/20260914-112136-849870-433827`.
+`<CODEX_HOME>/backups/agent-graphs/<timestamped-backup>`.
 Scoped verify: PASS for both skills and all five roles; config hash unchanged.
 Independent backup comparison: all seven saved targets exactly match the prepared
 before-manifest. Loading installed task_graph.py and generating a new plan

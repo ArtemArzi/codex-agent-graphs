@@ -17,8 +17,8 @@ receipt plan-accept-two-skills-architecture-20260914-b7f3c9.
   graphs, released schemas and older active runs must remain compatible.
 - Engineering standard: AGENTS.md is the applicable repository guide; no separate
   Project Start engineering-standard binding is declared in this repository.
-- General source router: /home/artem/projects/ARCHITECTURE_PLAYBOOK.md. No external
-  architecture lookup is needed for this local workflow integration.
+- General source router: the workspace-provided `ARCHITECTURE_PLAYBOOK.md`. No
+  external architecture lookup is needed for this local workflow integration.
 - Existing Project Start coverage roles own foundation, engineering_standard,
   codebase and quality. Reuse them; do not introduce mandatory duplicate documents.
 - Task Delivery already binds engineering_standard to path/hash, includes it in

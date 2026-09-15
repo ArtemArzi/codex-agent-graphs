@@ -76,6 +76,11 @@ Three supporting capabilities keep those workflows healthy:
 | `$development-recovery` | Recovers when specification, plan, code, tests, or observed behavior diverge; it is a conditional non-graph skill |
 | Large-codebase discovery | A managed global policy that bounds repository exploration and joins the evidence before planning; it deliberately adds no new skill or graph |
 
+For a Russian-language handoff to another person or their coding agent, use
+[`docs/PROJECT_START_HANDOFF.ru.md`](docs/PROJECT_START_HANDOFF.ru.md). It
+explains what to download, which architecture material to read, and how to
+preview installation changes before applying them.
+
 ## Shared Codex routing
 
 [policies/model-routing.toml](policies/model-routing.toml) is the single source
