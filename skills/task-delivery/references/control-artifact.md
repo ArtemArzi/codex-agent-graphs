@@ -73,10 +73,12 @@
 - Без унаследованной policy `standard` и `complex` не требуют result verifier
   по имени профиля. Записывай work outcome `verify` только при фактическом
   risk/uncertainty signal; `critical`, low confidence и повтор после reject
-  остаются обязательным verified путём. При активной policy каждый substantive
-  plan должен иметь свежий `task_plan_reviewer` PASS, а final whole-result —
-  другой свежий `task_result_reviewer` PASS; focused checks допускаются рядом
-  с ними, но их findings нужно reconcile до acceptance.
+  остаются обязательным verified путём этого released controller. При активной
+  policy named whole-acceptors выбираются только по глобальному complex-engineering/
+  material-risk порогу; simple engineering review использует `block_reviewer`.
+  Если controller требует исключённую этим порогом роль, не подменяй receipt:
+  примени Controller compatibility из SKILL.md, сохрани state/pending obligations
+  и native verdict отдельно, не заявляй controller verified/complete.
 - Обычный agent receipt имеет поля `role`, `phase`, `receipt`, `outcome`. `task_worker` дополнительно содержит `slice_id`, `packet_sha256`, `receipt_sha256`, а `outcome` точно равен worker status. Acceptance и checkpoint принадлежат root controller, не worker. Роли и количество обязаны соответствовать профилю.
 - При существенном вопросе `decision` содержит как минимум `question`; обычный результат использует `null`.
 

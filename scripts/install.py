@@ -27,6 +27,8 @@ GLOBAL_POLICY_SOURCE = REPO_ROOT / "policies" / "development-recovery.md"
 DISCOVERY_POLICY_SOURCE = REPO_ROOT / "policies" / "large-codebase-discovery.md"
 ORCHESTRATION_POLICY_SOURCE = REPO_ROOT / "policies" / "orchestration.md"
 SKILLS = (
+    "verification-loop",
+    "ai-regression-testing",
     "agent-graph-builder",
     "continuous-improvement",
     "development-recovery",
@@ -116,18 +118,18 @@ def file_status(source: Path, target: Path) -> str:
 
 def role_descriptions() -> dict[str, str]:
     descriptions = {
-        "improvement_verifier": "Independent whole-candidate Continuous Improvement acceptor.",
+        "improvement_verifier": "Whole-candidate improvement acceptor only at the global complex-engineering/material-risk threshold; simple results use block_reviewer.",
         "project_docs_auditor": "Legacy v2 Project Start drift auditor.",
         "project_docs_curator": "Legacy v2 Project Start factual updater.",
-        "project_docs_verifier": "Independent whole-result Project Start documentation acceptor.",
+        "project_docs_verifier": "Whole-result documentation acceptor only at the global complex-engineering/material-risk threshold; ordinary document review uses block_reviewer.",
         "research_planner": "Optional deep-research decomposition helper.",
         "research_scout": "Optional read-only deep-research branch scout.",
         "research_synthesizer": "Optional deep-research evidence synthesizer.",
-        "research_verifier": "Independent whole-result research acceptor.",
+        "research_verifier": "Whole-report acceptor only for complex engineering research or materially high-risk decisions; ordinary research review uses block_reviewer.",
         "task_explorer": "Optional read-only Task Delivery codebase explorer.",
         "task_worker": "Optional bounded Task Delivery implementation worker.",
-        "task_plan_reviewer": "Fresh independent whole-plan acceptor for any substantive workflow.",
-        "task_result_reviewer": "Fresh independent whole-result Task Delivery acceptor.",
+        "task_plan_reviewer": "Whole-plan acceptor only for complex engineering or materially high-risk work; ordinary plans use block_reviewer.",
+        "task_result_reviewer": "Whole-result acceptor for complex engineering or materially high-risk work; simple engineering uses block_reviewer.",
         "task_risk_reviewer": "Focused risk reviewer supporting independent acceptance.",
     }
     for role in NATIVE_ROLES:
@@ -446,6 +448,186 @@ def validate_routing_environment(codex_home: Path) -> None:
             raise InstallError(f"Unmanaged profile contains routing overrides: {profile}")
 
 
+def routing_only_candidates(
+    codex_home: Path, preimages: dict[Path, str] | None = None
+) -> dict[Path, str]:
+    """Render only model-routing surfaces; preserve root choices and all skills."""
+    codex_home = codex_home.expanduser().resolve()
+    validate_routing_environment(codex_home)
+    desired = routing.load_policy()
+
+    def read_installed(relative: Path) -> str:
+        content = (codex_home / relative).read_text(encoding="utf-8")
+        if preimages is not None:
+            preimages[relative] = content
+        return content
+
+    policy_file = codex_home / routing.POLICY_TARGET
+    if policy_file.is_symlink() or not policy_file.is_file():
+        raise InstallError(f"Missing or unsafe installed routing policy: {policy_file}")
+    installed_text = read_installed(Path(routing.POLICY_TARGET))
+    try:
+        installed = tomllib.loads(installed_text)
+    except tomllib.TOMLDecodeError as exc:
+        raise InstallError(f"Invalid installed routing policy: {policy_file}") from exc
+    prior_model = installed.get("auxiliary", {}).get("model")
+    current_model = desired["auxiliary"]["model"]
+    expected_prior = {**desired, "auxiliary": {**desired["auxiliary"], "model": prior_model}}
+    if not isinstance(prior_model, str) or installed != expected_prior:
+        raise InstallError("Installed routing policy has unrelated drift")
+    if prior_model not in (current_model, "gpt-5.6-sol"):
+        raise InstallError(f"Unexpected prior auxiliary model: {prior_model}")
+
+    candidates: dict[Path, str] = {}
+    descriptions = role_descriptions()
+    for role, description in descriptions.items():
+        relative = Path("agents") / f"{role}.toml"
+        target = codex_home / relative
+        if target.is_symlink() or not target.is_file():
+            raise InstallError(f"Missing or unsafe installed role: {target}")
+        rendered = routing.render_agent(role, description)
+        if desired["roles"][role]["class"] == "auxiliary":
+            new_line = f"model = {json.dumps(current_model)}"
+            old_line = f"model = {json.dumps(prior_model)}"
+            if rendered.count(new_line) != 1:
+                raise InstallError(f"Ambiguous generated model for {role}")
+            previous = rendered.replace(new_line, old_line, 1)
+        else:
+            previous = rendered
+        if read_installed(relative) not in (previous, rendered):
+            raise InstallError(f"Installed role has unrelated drift: {target}")
+        candidates[relative] = rendered
+    candidates[Path(routing.POLICY_TARGET)] = routing.POLICY_PATH.read_text(encoding="utf-8")
+
+    agents_file = codex_home / "AGENTS.md"
+    if agents_file.is_symlink() or not agents_file.is_file():
+        raise InstallError(f"Missing or unsafe global AGENTS.md: {agents_file}")
+    original_agents = read_installed(Path("AGENTS.md"))
+    pattern = re.compile(
+        rf"(?ms)^{re.escape(routing.POLICY_START)}\n.*?^{re.escape(routing.POLICY_END)}\n"
+    )
+    matches = list(pattern.finditer(original_agents))
+    if len(matches) != 1:
+        raise InstallError("Missing or duplicate model-routing AGENTS.md block")
+    rendered_block = f"{routing.POLICY_START}\n{routing.render_policy()}{routing.POLICY_END}\n"
+    previous_block = rendered_block.replace(f"`{current_model}`", f"`{prior_model}`", 1)
+    existing_block = matches[0].group()
+    if existing_block not in (previous_block, rendered_block):
+        raise InstallError("Global model-routing block has unrelated drift")
+    candidates[Path("AGENTS.md")] = (
+        original_agents[:matches[0].start()] + rendered_block + original_agents[matches[0].end():]
+    )
+
+    config_file = codex_home / "config.toml"
+    if config_file.is_symlink() or not config_file.is_file():
+        raise InstallError(f"Missing or unsafe config.toml: {config_file}")
+    original_config = read_installed(Path("config.toml"))
+    try:
+        parsed = tomllib.loads(original_config)
+    except tomllib.TOMLDecodeError as exc:
+        raise InstallError(f"Invalid installed config.toml: {config_file}") from exc
+    agents = parsed.get("agents", {})
+    for role, description in descriptions.items():
+        entry = agents.get(role)
+        if (not isinstance(entry, dict)
+                or entry.get("config_file") != f"./agents/{role}.toml"
+                or entry.get("description") != description
+                or set(entry) - {"config_file", "description", "nickname_candidates"}):
+            raise InstallError(f"Managed role registration has unrelated drift: {role}")
+    if agents.get("default_subagent_model") not in (prior_model, current_model):
+        raise InstallError("Unexpected default_subagent_model")
+    if agents.get("default_subagent_reasoning_effort") != desired["auxiliary"]["effort"]:
+        raise InstallError("Unexpected default_subagent_reasoning_effort")
+    hint = parsed.get("features", {}).get("multi_agent_v2", {}).get("usage_hint_text")
+    new_hint = routing.usage_hint()
+    old_hint = new_hint.replace(current_model, prior_model, 1)
+    if hint not in (old_hint, new_hint):
+        raise InstallError("Existing subagent usage hint has unrelated drift")
+    updated_config = routing.rewrite_fields(original_config, ("agents",), {
+        "default_subagent_model": current_model,
+        "default_subagent_reasoning_effort": desired["auxiliary"]["effort"],
+    })
+    updated_config = routing.rewrite_fields(
+        updated_config, ("features", "multi_agent_v2"), {"usage_hint_text": new_hint}
+    )
+    candidates[Path("config.toml")] = updated_config
+    return candidates
+
+
+def plan_routing_environment(codex_home: Path) -> dict[str, Any]:
+    codex_home = codex_home.expanduser().resolve()
+    try:
+        candidates = routing_only_candidates(codex_home)
+        items = [
+            {"kind": "routing", "name": str(relative),
+             "status": generated_status(content, codex_home / relative)}
+            for relative, content in candidates.items()
+        ]
+        return {"status": "ok", "codex_home": str(codex_home), "items": items}
+    except (InstallError, OSError, ValueError) as exc:
+        return {"status": "failed", "codex_home": str(codex_home), "issues": [str(exc)]}
+
+
+def verify_routing_environment(codex_home: Path) -> dict[str, Any]:
+    result = plan_routing_environment(codex_home)
+    if result["status"] == "ok":
+        result["issues"] = [
+            f"{item['name']}: {item['status']}" for item in result["items"]
+            if item["status"] != "in-sync"
+        ]
+        if result["issues"]:
+            result["status"] = "failed"
+    return result
+
+
+def install_routing_environment(codex_home: Path) -> dict[str, Any]:
+    codex_home = codex_home.expanduser().resolve()
+    preimages: dict[Path, str] = {}
+    candidates = routing_only_candidates(codex_home, preimages=preimages)
+    if set(preimages) != set(candidates):
+        raise InstallError("Routing preimage capture is incomplete")
+    backup = backup_root(codex_home)
+    touched: list[tuple[Path, str, str]] = []
+    changes: list[dict[str, str]] = []
+    try:
+        for relative, content in candidates.items():
+            target = codex_home / relative
+            before = preimages[relative]
+            if target.read_text(encoding="utf-8") != before:
+                raise InstallError(f"Concurrent edit before write: {target}")
+            if before == content:
+                status = "in-sync"
+            else:
+                touched.append((target, before, content))
+                status = replace_generated(content, target, backup / relative)
+                if target.read_text(encoding="utf-8") != content:
+                    raise InstallError(f"Write verification failed: {target}")
+            changes.append({"kind": "routing", "name": str(relative), "status": status})
+        verification = verify_routing_environment(codex_home)
+        if verification["status"] != "ok":
+            raise InstallError(f"Routing verification failed: {verification['issues']}")
+        return {"codex_home": str(codex_home), "changes": changes,
+                "backup": str(backup) if touched else None}
+    except (InstallError, OSError, ValueError) as exc:
+        conflicts = []
+        for target, before, content in reversed(touched):
+            if not target.exists() or target.is_symlink():
+                conflicts.append(str(target))
+                continue
+            current = target.read_text(encoding="utf-8")
+            if current == content:
+                atomic_write(target, before)
+            elif current != before:
+                conflicts.append(str(target))
+        error = InstallError(
+            f"Routing installation stopped for {codex_home}: {exc}"
+            + (f"; rollback conflicts: {conflicts}" if conflicts else "; owned writes rolled back")
+        )
+        error.partial_install = {"codex_home": str(codex_home), "changes": changes,
+                                 "backup": str(backup) if backup.exists() else None}
+        raise error from exc
+
+
 def preflight_environment(codex_home: Path) -> tuple[str, str, str, str]:
     codex_home = codex_home.expanduser().resolve()
     validate_routing_environment(codex_home)
@@ -679,6 +861,7 @@ def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description=__doc__)
     command.add_argument("action", choices=("plan", "install", "verify"))
     command.add_argument("--all", action="store_true", help="Target both WSL and Desktop")
+    command.add_argument("--routing-only", action="store_true", help="Update model routing without skills or root model changes")
     command.add_argument("--wsl", action="store_true", help="Target WSL only")
     command.add_argument("--desktop", action="store_true", help="Target Desktop only")
     command.add_argument("--wsl-home", default=str(Path.home() / ".codex"))
@@ -693,9 +876,19 @@ def main(argv: list[str] | None = None) -> int:
         homes = selected_homes(args)
         if args.action == "install":
             for _, home in homes:
-                preflight_environment(home)
+                if args.routing_only:
+                    routing_only_candidates(home)
+                else:
+                    preflight_environment(home)
         for label, home in homes:
-            if args.action == "plan":
+            if args.routing_only:
+                if args.action == "plan":
+                    payload = plan_routing_environment(home)
+                elif args.action == "install":
+                    payload = install_routing_environment(home)
+                else:
+                    payload = verify_routing_environment(home)
+            elif args.action == "plan":
                 payload = plan_environment(home)
             elif args.action == "install":
                 payload = install_environment(home)

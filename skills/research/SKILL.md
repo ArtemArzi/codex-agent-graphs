@@ -11,6 +11,10 @@ Use one native Codex research loop. Add the graph only when durable state or
 independent verification closes a real need. Do not turn planning, searching,
 evidence capture, reconciliation, or drafting into separate graph nodes.
 
+## Task context and collaboration
+
+Apply the inherited “Collaboration and useful questions” policy. Establish what decision the research supports, its scope, freshness and expected output from existing context. Clarify only material remaining ambiguity; in explicit no-question mode use stated reversible scope assumptions. Distinguish sourced facts from inference. Finish when the relevant claims have sufficient evidence, or state the specific unresolved gap; do not keep collecting sources to meet a quota.
+
 ## Plain-language user updates
 
 Write every progress and final message in the user's language and in plain
@@ -28,6 +32,11 @@ after the plain explanation. Keep ordinary progress to one short paragraph.
 
 ## Inherited routing and acceptance policy
 
+Apply the global complex-engineering/material-risk threshold to EVERY review instruction below. Simple engineering gets one auxiliary `block_reviewer` result review; ordinary non-engineering reviews also use `block_reviewer` for the complete bounded artifact. Trivial chat/wording stays root-only. Only complex engineering or concrete material consequences require the whole-plan/whole-result acceptance pair. Length, a skill invocation, a profile label or a review request alone does not select an acceptance role. Stage/skill switches and routine same-outcome repairs reuse valid acceptance and the existing reviewer. Keep additional focused reviews bounded and justified; do not split risky work to evade acceptance.
+
+Controller compatibility: prefer skill-only/native review for ordinary and simple work. If an already active released controller requires an acceptance-role receipt below the global threshold and has no supported auxiliary-review completion route, degrade controller execution and preserve its state/pending obligations. Continue authorized work with the required `block_reviewer` verdict recorded in the existing handoff outside controller metadata. Never relabel that verdict as an acceptance role, alter graph identity/schema, clear pending obligations, or claim the controller is verified/complete. This protocol mismatch alone does not justify Astra; actual complex engineering/material risk still does.
+
+
 The effective user-level routing policy is the sole authority for model and
 effort selection; this skill never hardcodes either. For substantive research,
 the root owns the question, source decisions, final synthesis and
@@ -35,9 +44,10 @@ reconciliation; auxiliary scouts, planners, synthesizers and focused reviewers
 receive fresh bounded context, remain leaf-only and may return bounded
 independent packets.
 
-If the work has a substantive plan, a fresh whole-plan `task_plan_reviewer` must
-accept it before execution. A different fresh `research_verifier` accepts the
-completed report as a whole artifact. Focused checks may run alongside either
+Only when the global complex-engineering/material-risk threshold is met, a fresh
+`task_plan_reviewer` accepts the whole plan and a different `research_verifier`
+accepts the completed report. Ordinary non-engineering report/plan reviews use
+`block_reviewer` for the bounded artifact, without an acceptance pair. Focused checks may run alongside either
 acceptor against the same candidate; wait for all selected checks and reconcile
 material findings with the sources before PASS. Same-scope repairs return to the
 same reviewer, while materially new scope gets a fresh assignment. Root
@@ -90,8 +100,9 @@ Read [routing.md](references/routing.md) for depth and capability selection. Rea
 
 Understand the decision, use applicable sources and capabilities, stop when
 coverage is sufficient, and answer with citations next to material claims. If
-the result is substantive under the inherited policy, obtain the separate fresh
-`research_verifier` whole-report acceptance before presenting it as accepted;
+the result meets the global complex-engineering/material-risk threshold, obtain
+`research_verifier` whole-report acceptance; otherwise route an ordinary report
+review to `block_reviewer`, without adding reviews to trivial answers;
 this does not require durable graph state.
 Keep no graph artifacts. Escalate to `tracked` before context loss or when a
 durable report becomes part of the requested outcome.
@@ -172,9 +183,10 @@ Keep every internal agent leaf-only, read-only, bounded to one branch, and respo
 ## Verify by route and host policy
 
 Without the inherited policy, use `research_verifier` only for the signals in
-[routing.md](references/routing.md). With the policy, use it for every
-substantive completed report as the whole-artifact acceptor, even on the
-skill-only route. Give it the report, compact ledger, exact claims to check, and
+[routing.md](references/routing.md). With the policy, use it only when the global
+complex-engineering/material-risk threshold requires whole-artifact acceptance.
+Ordinary non-engineering report reviews use `block_reviewer`; skill-only, depth
+and report length do not promote them to acceptance roles. Give it the report, compact ledger, exact claims to check, and
 a strict instruction not to expand the research.
 
 On rejection, repair only the listed claims and run one delta verification. The graph permits one repair by default; a second full audit is intentionally unavailable.

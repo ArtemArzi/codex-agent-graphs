@@ -26,7 +26,7 @@ class RoutingTests(unittest.TestCase):
             with self.subTest(role=role):
                 rendered = tomllib.loads(routing.render_agent(role, description))
                 template = tomllib.loads(routing.role_template(role).read_text())
-                expected = ("gpt-6-astra", "high") if role in acceptors else ("gpt-5.6-luna", "max")
+                expected = ("gpt-6-astra", "medium") if role in acceptors else ("gpt-6-sol", "medium")
                 self.assertEqual(expected, (rendered["model"], rendered["model_reasoning_effort"]))
                 for key, value in template.items():
                     self.assertEqual(value, rendered[key])
@@ -191,7 +191,12 @@ persistence = 'none'
                 code = installer.main(["install", "--wsl", "--wsl-home", str(home)])
             data = json.loads(output.getvalue())
             self.assertEqual(code, 2)
-            self.assertEqual(len(data["data"]["partial_install"]["changes"]), 7)
+            changes = data["data"]["partial_install"]["changes"]
+            expected = {("runtime", "agent-graph-runtime")} | {
+                ("skill", name) for name in installer.SKILLS
+            }
+            self.assertEqual({(item["kind"], item["name"]) for item in changes}, expected)
+            self.assertEqual(len(changes), len(expected))
             self.assertFalse((home / "config.toml").exists())
 
 

@@ -102,15 +102,23 @@ def render_policy() -> str:
 
 def usage_hint() -> str:
     data = load_policy()
-    return ("Follow the inherited Unified model routing and independent acceptance policy. "
+    return ("Apply the global complex-engineering/material-risk threshold. Simple engineering gets one "
+            "block_reviewer result review; ordinary non-engineering reviews also use block_reviewer, "
+            "including complete bounded artifacts. Trivial chat/wording stays root-only. "
+            "Bounded block reviews remain auxiliary even within complex tasks. Reserve reviewer and "
+            "workflow acceptors for qualifying whole outcomes; state the concrete escalation reason. "
+            "Stage/skill switches and routine corrections reuse valid acceptance and the same reviewer. "
+            "Default to root-only implementation for simple "
+            "tasks, known-context fixes and same-outcome refinements; no mandatory whole-plan/whole-result pair for them. "
+            "Use a fresh whole-plan acceptor and different fresh whole-result acceptor for complex engineering or materially high-risk work in any domain. "
+            "Honor explicit delegation/review at its requested scope; one simple worker request does not require a pair. "
+            "Reassess material scope or risk changes. Add extra focused review only for a justified independent block or distinct material risk. "
             f"Use configured auxiliary roles ({data['auxiliary']['model']}, {data['auxiliary']['effort']}) "
-            "for bounded discovery, execution and focused checks. "
-            "Use a fresh configured whole-plan acceptor before execution and a different fresh whole-result "
-            "acceptor before completion; focused checks may accompany both. "
-            'Always set agent_type and fork_turns="none"; preserve role settings. '
-            "Children are leaves. Required reviews are not optional, and missing evidence is not a pass. "
-            "Reuse the same reviewer only for corrections to its assigned scope. "
-            "Respect host concurrency/writer limits, avoid duplicate scopes, and return compact cited evidence.")
+            "only when an independent block repays handoff cost. "
+            'Always set agent_type and fork_turns="none"; preserve role settings. Children are leaves. '
+            "When independent acceptance is required, missing evidence is not a pass. "
+            "Reuse the same reviewer only for corrections to its scope. Respect host concurrency/writer limits, "
+            "avoid duplicate scopes, and return compact cited evidence.")
 
 
 def _structural_lines(text: str) -> list[tuple[int, str]]:

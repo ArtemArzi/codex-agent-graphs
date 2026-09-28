@@ -10,7 +10,8 @@ profiles.
 | Planner | `research_planner` | decomposition itself is unstable | root |
 | Scout | `research_scout` | an independent branch benefits from parallel search | root or parallel tool calls |
 | Synthesizer | `research_synthesizer` | conflicts or evidence volume exceed a clean root synthesis | root |
-| Verifier | `research_verifier` | inherited policy or routing requires independent whole-report acceptance | root self-check only without that requirement |
+| Ordinary review | `block_reviewer` | ordinary non-engineering report/plan or bounded block review | report missing independent evidence if required |
+| Whole acceptor | `research_verifier` | global complex-engineering/material-risk threshold requires whole-report acceptance | never substitute self-check for required acceptance |
 
 Use zero discovery/fan-out agents in fast mode. A required verifier or plan
 acceptor is not optional discovery fan-out and never belongs in

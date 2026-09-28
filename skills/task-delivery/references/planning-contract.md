@@ -92,9 +92,10 @@ Reviewer accepted: <кто и когда>
 
 ## Приоритет и глубина
 
-Risk priority ниже не отменяет унаследованную user-level policy. Если работа
-substantive, свежий `task_plan_reviewer` принимает план до исполнения, а
-другой свежий whole-result reviewer принимает готовый кандидат. Без этой policy
+Risk priority ниже не отменяет глобальный complex-engineering/material-risk порог.
+Только при его достижении нужны `task_plan_reviewer` и другой whole-result reviewer.
+Simple engineering получает одно итоговое `block_reviewer`, ordinary non-engineering
+reviews также auxiliary; роль не повышается из-за названия профиля или нового этапа. Без этой policy
 остаются обычные P0–P3 defaults.
 
 - `P0` — аварийное событие. Срочное ограничение ущерба ведётся внешним утверждённым аварийным процессом; ремонт через `task-delivery` всё равно требует исследования, проверенного плана, отката, реализации, проверки и отдельного обзора. Этот навык не выдаёт скрытого исключения из рубежей.

@@ -10,6 +10,10 @@ description: >-
 
 Автономно найди одну полезную задачу и либо докажи, что менять нечего, либо передай точное исправление в `$task-delivery`. Граф — короткий контроллер отбора, а не второй цикл разработки.
 
+## Task context and collaboration
+
+Применяй унаследованную политику «Collaboration and useful questions». Из запроса и контекста определи область и ожидаемый режим: аудит либо разрешённое исправление. Уточняй только существенное неизвестное. Объясни пользу выбранной проблемы и способ проверки; передай уже принятые решения в Task Delivery без повторного опроса. Режим без вопросов сохраняет ограничения риска и полномочий этого skill.
+
 ## Plain-language user updates
 
 Все промежуточные и итоговые сообщения пиши на языке пользователя простыми
@@ -28,16 +32,22 @@ description: >-
 
 ## Наследуемая политика маршрутизации и приёмки
 
+Apply the global complex-engineering/material-risk threshold to EVERY review instruction below. Simple engineering gets one auxiliary `block_reviewer` result review; ordinary non-engineering reviews also use `block_reviewer` for the complete bounded artifact. Trivial chat/wording stays root-only. Only complex engineering or concrete material consequences require the whole-plan/whole-result acceptance pair. Length, a skill invocation, a profile label or a review request alone does not select an acceptance role. Stage/skill switches and routine same-outcome repairs reuse valid acceptance and the existing reviewer. Keep additional focused reviews bounded and justified; do not split risky work to evade acceptance.
+
+Controller compatibility: prefer skill-only/native review for ordinary and simple work. If an already active released controller requires an acceptance-role receipt below the global threshold and has no supported auxiliary-review completion route, degrade controller execution and preserve its state/pending obligations. Continue authorized work with the required `block_reviewer` verdict recorded in the existing handoff outside controller metadata. Never relabel that verdict as an acceptance role, alter graph identity/schema, clear pending obligations, or claim the controller is verified/complete. This protocol mismatch alone does not justify Astra; actual complex engineering/material risk still does.
+
+
 Имена моделей и степень рассуждения выбираются только унаследованной
 user-level routing policy; этот skill не переопределяет их. Для substantive
 full/audit результата root владеет решением, интеграцией и reconciliation с
 исходниками, а auxiliary explorer, implementation, synthesis и focused-review
 agents получают свежий bounded context и остаются leaf-only.
 
-До исполнения каждого substantive плана нужен свежий whole-plan
-`task_plan_reviewer`. После завершения кандидата или доказательного no-op
-другой свежий `improvement_verifier` принимает весь improvement artifact, а не
-отдельную claim. Focused checks могут идти рядом с acceptor над тем же
+Только при глобальном пороге complex engineering / material risk нужны свежий
+`task_plan_reviewer` и другой `improvement_verifier` для всего результата.
+Простое инженерное изменение получает одно итоговое `block_reviewer`; обычные
+неинженерные ревью также выполняет `block_reviewer`. Сам substantive/no-op статус
+не создаёт обязательную пару приёмщиков. Focused checks могут идти рядом с acceptor над тем же
 кандидатом; дождись всех выбранных checks и сверь material findings с
 исходниками до PASS. Same-scope repair возвращается тому же reviewer,
 существенный новый scope получает fresh assignment. Root self-review не
@@ -115,7 +125,7 @@ python3 scripts/continuous_improvement_graph.py init \
 4. Подключай только применимые skills. `$research` нужен для внешнего меняющегося факта; локальный поиск и тесты — для кода. `$development-recovery` срабатывает при расхождении спецификации и наблюдений. Project Start обновится через handoff Task Delivery, а не отдельный вложенный цикл.
 5. Воспроизведи проблему командой или наблюдением, сформулируй acceptance и минимальный scope. Если доказательства недостаточны — `no-op` либо `issue-ready`, но не код.
 6. Классифицируй риск. Автономная доставка разрешена только для `low` без protected domains. Данные и миграции, auth/permissions/security, billing/payments, secrets, deployment/infrastructure, публичные контракты и широкая бизнес-семантика всегда становятся `issue-ready`.
-7. В `audit` остановись на `no-op` или `issue-ready`. В `full` доставляй только кандидата с обоснованным небольшим объёмом (`benefit.effort=small`). Создай отдельную ветку `codex/continuous-improvement-<run-id>` и продолжи тем же корневым агентом через `$task-delivery` в `full`; передача между навыками сама по себе не требует нового агента. В его план передай точный кандидат, пользу, актуальное воспроизведение, ссылки на доказательства, acceptance и bounded scope; при активной policy дождись свежего `task_plan_reviewer` до изменений. Не повторяй уже доказанное стабильное исследование: Task Delivery проверяет текущие инструкции, применимость находки и необходимые неизвестные, создаёт собственный актуальный baseline и выполняет проверки исправления. Старые тесты и квитанции не заменяют текущее подтверждение. План должен лежать в `.agent-graphs/continuous-improvement-runs/<run-id>/task-delivery/PLAN.md`, чтобы служебный контроллер не попадал в продуктовый diff. Профиль Task Delivery должен быть не ниже `standard`; дождись его полного результата и проверь реальный diff, тесты и handoff.
+7. В `audit` остановись на `no-op` или `issue-ready`. В `full` доставляй только кандидата с обоснованным небольшим объёмом (`benefit.effort=small`). Создай отдельную ветку `codex/continuous-improvement-<run-id>` и продолжи тем же корневым агентом через `$task-delivery` в `full`; передача между навыками сама по себе не требует нового агента. В его план передай точный кандидат, пользу, актуальное воспроизведение, ссылки на доказательства, acceptance и bounded scope; при активной policy запрашивай `task_plan_reviewer` только по глобальному порогу complex engineering / material risk и переиспользуй действительную приёмку того же результата; простое изменение получает одно итоговое `block_reviewer`. Не повторяй уже доказанное стабильное исследование: Task Delivery проверяет текущие инструкции, применимость находки и необходимые неизвестные, создаёт собственный актуальный baseline и выполняет проверки исправления. Старые тесты и квитанции не заменяют текущее подтверждение. План должен лежать в `.agent-graphs/continuous-improvement-runs/<run-id>/task-delivery/PLAN.md`, чтобы служебный контроллер не попадал в продуктовый diff. Профиль Task Delivery должен быть не ниже `standard`; дождись его полного результата и проверь реальный diff, тесты и handoff.
 8. Создай один commit только из точных `changed_paths` Task Delivery. Не коммить control artifacts, не push, не merge и не deploy: публикация остаётся отдельным явно разрешённым действием вне этого запуска.
 9. Создай `improvement.json` по [control-artifact.md](references/control-artifact.md) и зафиксируй `work`.
 
@@ -128,9 +138,10 @@ python3 scripts/continuous_improvement_graph.py record \
 
 Без унаследованной policy вызови `improvement_verifier`, если уверенность не
 `high`, доказательство неоднозначно, кандидат пришёл из слабого сигнала или
-root сам эскалировал риск. При активной policy вызови его для каждого
-substantive completed candidate/no-op как свежего whole-artifact acceptor,
-даже если controller fast path не требует `verify`. Передай точные SHA-256
+root сам эскалировал риск. При активной policy эта роль нужна только по
+глобальному порогу complex engineering / material risk. Простое инженерное
+изменение и обычное неинженерное ревью направляй в `block_reviewer`; сам
+candidate/no-op или controller fast path не выбирает дорогую роль. Передай точные SHA-256
 `improvement.json`, candidate evidence и Task Delivery receipt при наличии.
 Проверяющий не перепроводит разработку и не расширяет scope; root сохраняет
 возвращённый `verification.json` после reconciliation всех выбранных checks.

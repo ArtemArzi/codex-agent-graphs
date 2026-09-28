@@ -13,6 +13,30 @@ spec.loader.exec_module(graph)
 
 
 class RoutingWorkflowContractTests(unittest.TestCase):
+    def test_native_auxiliary_verdict_cannot_impersonate_controller_acceptance(self):
+        task_spec = importlib.util.spec_from_file_location(
+            "task_routing_contract_test", ROOT / "skills/task-delivery/scripts/task_graph.py")
+        task_graph = importlib.util.module_from_spec(task_spec)
+        task_spec.loader.exec_module(task_graph)
+        for mode in ("plan", "implement", "full"):
+            with self.subTest(mode=mode):
+                work = {"sha256": "work-digest", "plan_digest": "plan-digest",
+                        "implementation_digest": "candidate-digest"}
+                state = {"task_id": "TD-123", "mode": mode,
+                         "nodes": {"work": {"receipts": [work]}}}
+                artifact = {"schema_version": 3, "task_id": "TD-123", "mode": mode,
+                            "work_sha256": work["sha256"], "plan_digest": work["plan_digest"],
+                            "implementation_digest": work["implementation_digest"],
+                            "verdict": "pass", "checked_claims": ["fixture candidate checked"],
+                            "residual_risks": [], "repair_list": [],
+                            "reviewer_receipt": "fixture-native-review",
+                            "reviewer_role": "block_reviewer"}
+                with self.assertRaisesRegex(task_graph.GraphError, "Verifier требует роль"):
+                    task_graph.validate_verification(state, artifact, "succeeded")
+                artifact["reviewer_role"] = (
+                    "task_plan_reviewer" if mode == "plan" else "task_result_reviewer")
+                task_graph.validate_verification(state, artifact, "succeeded")
+
     def test_research_documented_fast_examples_and_deep_route_validate(self):
         for reference in ("control-artifact.md", "source-policy.md"):
             with self.subTest(reference=reference), tempfile.TemporaryDirectory() as directory:

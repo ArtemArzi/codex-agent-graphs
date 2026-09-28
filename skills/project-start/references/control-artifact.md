@@ -82,9 +82,11 @@ Maintenance использует `classification: no-change|factual|semantic` и
 соответствующий provider только при изменении принадлежащего ему слоя.
 `evidence` содержит существующие пути внутри репозитория.
 
-При унаследованной user-level policy `verification: independent` означает
-fresh whole-artifact acceptance от `project_docs_verifier` после отдельного
-fresh `task_plan_reviewer`. Focused checks могут быть записаны рядом, но PASS
+Поле `verification: independent` сохраняет released controller contract с
+`project_docs_verifier`. При активной policy эта whole-роль и отдельный
+`task_plan_reviewer` выбираются только по complex-engineering/material-risk порогу.
+Ordinary document review выполняет `block_reviewer` вне controller metadata;
+при несовместимости соблюдай Controller compatibility из SKILL.md. Focused checks могут быть записаны рядом, но PASS
 допустим только после их завершения и reconciliation существенных findings с
 исходниками. `self` остаётся совместимым legacy fallback только когда policy не
 требует independent acceptance; это instruction-level правило и не меняет

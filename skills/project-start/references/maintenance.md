@@ -7,8 +7,8 @@ Maintenance отвечает на один вопрос: расходятся л
 - `no-change` — документы уже точны; файловая дельта пуста.
 - `factual` — отражены проверяемые факты: пути, команды, версии, завершённая
   реализация, тесты, владельцы или карта модулей. Отдельное semantic decision
-  не требуется; при унаследованной policy whole-artifact acceptance всё равно
-  требуется для substantive результата.
+  не требуется; ordinary documentation review по policy выполняет `block_reviewer`.
+  Whole acceptance нужна только при complex engineering / material risk.
 - `semantic` — меняются продуктовая семантика, публичный договор, архитектурная власть, риск или полномочия. Сначала `decision-required`, затем правка со ссылкой на решённый `decision.id`.
 
 ## Быстрый порядок
@@ -22,8 +22,9 @@ Maintenance отвечает на один вопрос: расходятся л
 7. Без унаследованной policy выбери self-проверку по умолчанию. Независимая
    проверка нужна при широкой дельте, security/compliance, изменении публичного
    договора, низкой уверенности или конфликтующих доказательствах. При активной
-   policy substantive plan/result acceptance обязательна даже для локальной
-   factual/no-change maintenance.
+   policy обычное factual/no-change ревью выполняет `block_reviewer`, без пары
+   plan/result; тривиальный no-change/status не создаёт отдельный review.
+   Только complex engineering / material risk требует общей приёмки.
 
 Engineering standard меняй только при устойчивом изменении стека, модульной границы, framework policy, тестовой обязанности или команды качества. Обычная реализация, одноразовый workaround и task progress не должны раздувать guide. Если Task Delivery обнаружил новую повторяемую норму, сначала проверь её на реальном коде и инструменте, затем обнови guide минимальной factual/semantic дельтой.
 

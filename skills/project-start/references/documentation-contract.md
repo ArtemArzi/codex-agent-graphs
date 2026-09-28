@@ -24,7 +24,7 @@ Project Start нормализует способ навигации, роли �
 | `foundation` | архитектура, runtime, ownership и внешние границы |
 | `engineering_standard` | stack-specific coding guide: модульные границы, framework patterns, anti-patterns, обработка ошибок и данных, тестовые обязанности, команды качества и исключения |
 | `codebase` | модули, interfaces, seams, зависимости и реальные пути |
-| `quality` | команды проверки, риски и acceptance evidence |
+| `quality` | риски, критерии/моменты проверки, ссылки на команды engineering standard и acceptance evidence |
 | `plan` | текущая стадия, порядок работы и критерии выхода |
 | `agent_context` | всегда корневой `AGENTS.md` |
 | `skill_contract` | всегда `docs/agents/domain.md`; вместе с `docs/agents/issue-tracker.md` |
@@ -40,6 +40,14 @@ Guide должен отвечать на практические вопросы
 `change/flow → entry interface → implementation owners → adapters/persistence → callers/UI → focused tests → owning spec`.
 
 Это навигация от изменения к публичному interface и владельцам, а не полное дерево файлов или generated symbol inventory.
+
+## Требования качества и входные вопросы
+
+Для существенного bootstrap/maintenance применяй
+[quality-and-intake.md](quality-and-intake.md): вопросы о пропущенных требованиях,
+режим «без вопросов», один документ качества, момент добавления и запуска
+проверок. Ссылку на quality и обязанность читать применимые правила включай в
+маршрут AGENTS.md; не дублируй проектную политику в обоих skills.
 
 ## Архитектурный договор
 
@@ -121,4 +129,4 @@ Bootstrap обязан применить:
 6. Создай вложенный `AGENTS.md` только для стабильной самостоятельной границы.
 7. Запиши точный coverage, canonical set и evidence в `project.json`.
 
-Если код и конфигурация не доказывают продуктовую семантику, зафиксируй один `decision-required`; не заполняй пробел догадкой.
+Если код и конфигурация не доказывают продуктовую семантику, отличай неизвестное от подтверждённого. Уточняй существенный выбор по правилам входных вопросов; при «без вопросов» сохрани явный пробел или обратимое допущение и продолжай независимую работу. `decision-required` нужен только для действительно блокирующего решения в активном controller, а не для каждого вопроса.

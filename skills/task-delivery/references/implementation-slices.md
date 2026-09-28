@@ -2,9 +2,12 @@
 
 Этот протокол живёт внутри одного узла `work`. Он добавляет проверяемые handoff-границы, но не превращает Task Delivery в длинный граф.
 
-Если унаследованная user-level policy активна, packet создаётся только после
-свежего whole-plan PASS от `task_plan_reviewer`, а завершённый результат
-принимает другой свежий whole-result reviewer. `root-acceptance` подтверждает
+При активной policy whole-plan/whole-result acceptance требуется только по
+глобальному complex-engineering/material-risk порогу. Simple engineering получает
+одно итоговое `block_reviewer`; ordinary non-engineering reviews также auxiliary.
+Packet/receipt requirements существующего controller сохраняются: при их
+несовместимости с текущим выбором роли применяй Controller compatibility из SKILL.md,
+не переименовывай Sol verdict и не создавай фиктивный whole-plan PASS. `root-acceptance` подтверждает
 slice provenance и не является independent acceptance. Focused checks могут
 идти рядом с acceptor над тем же кандидатом; их findings нужно завершить и
 сверить с исходниками до PASS. В skill-only/quick это операции внутри `work`,

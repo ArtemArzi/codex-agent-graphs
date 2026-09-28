@@ -9,6 +9,10 @@ Host invocation: `$agent-graph-builder` in Codex, `/cag:agent-graph-builder` in 
 
 Create a skill-backed control graph that constrains evidence and lifecycle while leaving semantic work to the model.
 
+## Task context and collaboration
+
+Apply the inherited “Collaboration and useful questions” policy when designing a workflow. Generated skills must inherit the host's collaboration policy and add only domain-specific intake and acceptance guidance. Keep small tasks lightweight, preserve decisions across skill switches and support explicit no-question instructions within existing authority. Do not embed a mandatory interview or duplicate the global policy in every generated skill.
+
 ## Plain-language user updates
 
 Make every operational graph explain its work in the user's language and in
@@ -28,28 +32,29 @@ after the plain explanation. Keep ordinary progress to one short paragraph.
 
 ## Inherited routing and acceptance policy
 
-The effective user-level policy is the sole authority for model and effort
-selection; graph skills must not name or override those settings. It also
-overrides optional/self-review defaults for substantive work: the root owns
-decisions and integration, while auxiliary discovery, preparation,
-implementation, synthesis and focused-review agents receive fresh bounded
-packets and remain leaf-only.
+The effective user-level policy is the sole authority for models, effort and
+review thresholds. Root owns decisions and integration; auxiliary agents receive
+fresh bounded context and remain leaves. Default to native skill-only execution.
 
-Before execution, a substantive plan needs a fresh whole-plan
-`task_plan_reviewer`; after the candidate is complete, a different fresh
-workflow-specific whole-result acceptor accepts the entire artifact. Focused
-checks may run beside either acceptor over the same candidate, but all selected
-checks must finish and material findings must be reconciled with sources before
-PASS. Same-scope repair returns to the same reviewer; materially new scope gets
-a fresh assignment. Root self-review is not independent acceptance.
+Trivial chat and wording stay root-only. Simple engineering gets one independent
+`block_reviewer` result review; ordinary non-engineering artifact reviews also
+use `block_reviewer`. Only complex engineering or concrete material risk requires
+a fresh whole-plan `task_plan_reviewer` before execution and a different fresh
+workflow-specific whole-result acceptor afterwards. A substantive label, long
+document, skill switch or review request alone does not trigger this pair.
+Honor explicit review scope without inflating it. Do not split risky work to
+evade the threshold. Same-outcome repairs reuse valid evidence and the assigned
+reviewer; reassess material changes. Finish all required checks and reconcile
+findings before claiming acceptance. Root self-review is not independent review.
 
-These are instruction-level operations inside `work`, not new deterministic
-controller nodes. Skill-only/quick may perform them without initializing a
-controller only to record model calls. If an existing tracked/verified graph is
-used, select its verified path and preserve the supported final receipt,
-identity and schema. Nested skills reuse exact-scope acceptance evidence instead
-of adding duplicate reviews solely because a skill changed. Ordinary status or
-acknowledgement is not a new delivery cycle.
+These reviews are operations inside `work`, not new graph nodes. Prefer native
+review before admitting a controller. If a released controller demands an
+acceptance-role receipt below the threshold and has no supported auxiliary
+completion route, degrade controller execution and preserve state and pending
+obligations. Continue authorized work with the required `block_reviewer` verdict
+in the existing handoff. Never relabel its role, alter identity/schema, clear
+pending obligations or claim controller completion. Protocol mismatch does not
+raise the review threshold. Nested skills reuse valid same-scope evidence.
 
 ## Mandatory dependency
 

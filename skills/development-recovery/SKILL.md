@@ -9,6 +9,10 @@ Host invocation: `$development-recovery` in Codex, `/cag:development-recovery` i
 
 Treat recovery as a conditional development control, not as a graph or a mandatory stage. Keep the current root model as the judgment owner. Do not add agents or ceremony unless evidence localization or independent verification genuinely needs them.
 
+## Task context and collaboration
+
+Apply the inherited “Collaboration and useful questions” policy. Explain which assumption failed, what the observation proves and how the proposed correction preserves intended behavior. Read the accepted contract before asking; a bounded technical repair proceeds directly. An unresolved product decision stays unresolved in no-question mode: continue diagnosis and independent authorized work without silently changing the specification.
+
 ## Plain-language user updates
 
 Write every progress and final message in the user's language and in plain

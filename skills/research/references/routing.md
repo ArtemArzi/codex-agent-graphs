@@ -95,9 +95,9 @@ with outcome `verify` when any of these apply:
 Without the inherited policy, do not request independent verification merely
 because a report is long. A deep multi-source answer may still complete with
 root self-check when its primary evidence is direct, consistent, and low-risk.
-With the policy, every substantive completed report uses the fresh
-`research_verifier` whole-artifact acceptor even when the evidence is direct and
-the route is fast. In fast or skill-only work return its native verdict and
+With the policy, ordinary non-engineering report reviews use `block_reviewer`.
+Only the global complex-engineering/material-risk threshold selects a fresh
+`research_verifier` whole-artifact acceptor; length and depth alone do not. In fast or skill-only work return its native verdict and
 receipt outside controller metadata; do not use the deep-only `verify` outcome
 or populate `research.json.agents` with acceptors. Native policy review alone
 does not justify changing the research depth.

@@ -2,9 +2,11 @@
 
 `improvement.json` is the immutable receipt for one bounded repository pass. It
 records evidence and handoff identity, not chain-of-thought. Under the inherited
-user-level acceptance policy, a substantive pass has a fresh whole-plan
-`task_plan_reviewer` before execution and a different fresh
-`improvement_verifier` as whole-artifact acceptor after completion. Focused
+user-level policy, simple engineering gets one `block_reviewer` result review;
+ordinary non-engineering reviews also use that role. Only complex engineering
+or concrete material risk requires `task_plan_reviewer` before execution and a
+different `improvement_verifier` afterward. Native auxiliary verdicts never
+impersonate released controller receipts; follow Controller compatibility in SKILL.md. Focused
 checks may run beside either acceptor over the same candidate; reconcile their
 material findings before PASS. These are operations inside `work`, not schema or
 graph additions.

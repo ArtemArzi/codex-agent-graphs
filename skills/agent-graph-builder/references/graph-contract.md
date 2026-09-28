@@ -53,10 +53,13 @@ Every route contains exactly:
 - `verify`: a conditional independent role checks the exact immutable candidate;
 - `complete`: root commits the durable completion artifact and state.
 
-The topology is deterministic controller structure only. When inherited host
-policy applies, a substantive plan is accepted by a fresh whole-plan reviewer
-before execution and the completed artifact by a different fresh whole-result
-reviewer after execution; these are operations inside `work`, not extra nodes.
+The topology describes the deterministic controller only. Apply the inherited
+host review threshold: simple engineering gets one `block_reviewer` result review;
+ordinary non-engineering reviews also use `block_reviewer`. Only complex
+engineering or concrete material risk requires a fresh whole-plan reviewer and
+a different whole-result acceptor. Trivial work stays root-only. Reviews remain
+operations inside `work`, not extra nodes. Follow the entrypoint's controller
+compatibility rule when released receipts cannot represent the required route.
 
 A user decision may pause `work`, but it does not need a permanent decision node. A slice packet, research branch, plan review or capability call is an operation inside `work` unless it has its own durable lifecycle across most runs.
 

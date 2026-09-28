@@ -31,8 +31,10 @@ work|verify --failure--> blocked --retry once--> same node
 
 Без унаследованной policy решение модели определяет глубину исследования,
 выбранные навыки, структуру документов и необходимость controller verifier.
-При активной policy substantive plan/result acceptance обязательна независимо от
-этого перехода. Runner по-прежнему проверяет только допустимые переходы, пути,
+При активной policy ordinary document review использует `block_reviewer`;
+пара plan/result нужна только по глобальному complex-engineering/material-risk
+порогу. Несовместимость старого controller устраняется по разделу Controller
+compatibility в SKILL.md без ложной квитанции завершения. Runner по-прежнему проверяет только допустимые переходы, пути,
 точную document delta, лимиты, квитанции и дрейф после записи.
 
 ## Остановка

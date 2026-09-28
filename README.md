@@ -68,13 +68,28 @@ verified    → tracked execution plus independent exact-candidate review
 | `$task-delivery` | One scoped software task from Markdown plan through implementation, tests, review, and handoff | Features, fixes, refactors, plan-only work, or implementation from an accepted plan |
 | `$continuous-improvement` | One evidence-backed repository improvement or an honest no-op/issue-ready result | Bounded autonomous maintenance from a failing test, CI signal, regression, or explicit audit request |
 
-Three supporting capabilities keep those workflows healthy:
+Supporting capabilities keep those workflows healthy:
 
 | Capability | Role |
 | --- | --- |
 | `$agent-graph-builder` | Creates or standardizes graph-backed skills against the shared contract; it is a meta-skill, not another runtime workflow |
 | `$development-recovery` | Recovers when specification, plan, code, tests, or observed behavior diverge; it is a conditional non-graph skill |
+| `$verification-loop` | Runs proportionate checks and preserves real command outcomes and evidence limits |
+| `$ai-regression-testing` | Protects changed and critical behavior with meaningful regression checks, including before the first incident |
 | Large-codebase discovery | A managed global policy that bounds repository exploration and joins the evidence before planning; it deliberately adds no new skill or graph |
+
+Project Start retains its bundled [architecture playbook](skills/project-start/references/architecture-playbook.md),
+including examples and the rule to consult project guidance first. Task Delivery
+carries the selected architectural constraints into plans, implementation and review.
+The shared [collaboration policy](policies/orchestration.md#collaboration-and-useful-questions)
+adds useful early questions, explicit no-question handling and plain-language
+explanations. Project quality requirements remain in their owning documents;
+checks are selected by risk rather than a universal coverage quota.
+
+The two testing companions are local adaptations of installed ECC skills;
+their original MIT notices are retained in each skill's `LICENSE`.
+See [the synchronization note](docs/SKILLS_SYNC_2026-09-29.md) for the reconciled
+changes and verification limits.
 
 For a Russian-language handoff to another person or their coding agent, use
 [`docs/PROJECT_START_HANDOFF.ru.md`](docs/PROJECT_START_HANDOFF.ru.md). It
@@ -87,18 +102,31 @@ preview installation changes before applying them.
 for the main model, auxiliary models, independent acceptance models, role
 classification and compatible profile names. The installer generates all 19
 Codex role files, global AGENTS guidance and the native multi-agent usage hint.
-Edit the manifest, then run `python3 scripts/install.py install --all` and
-`python3 scripts/install.py verify --all` to synchronize WSL and Desktop.
+For a model-routing-only migration, edit the manifest, then run
+`python3 scripts/install.py plan --routing-only --all`. Run
+`python3 scripts/install.py install --routing-only --wsl` and then
+`python3 scripts/install.py install --routing-only --desktop`, checking each
+with `verify --routing-only` and the same home selector. This mode updates
+managed role files, the routing policy block, default subagent settings, and
+the usage hint. It preserves each home's selected root model and reasoning
+effort, plus skills, runtime, and unrelated configuration; it refuses
+unrelated drift in routing surfaces and backs up changed files. Use the full
+`install --all` and `verify --all` only when synchronizing all workflows and
+root defaults is intended.
 
 Existing baseline/experiment profile names become aliases that inherit the
 shared defaults; original files are backed up under each Codex home. Unrelated
 settings remain intact, and unknown routing overrides fail preflight. Backups
 may contain private configuration and must stay in the local Codex home.
 
-The host policy requires a fresh whole-plan acceptance before execution and a
-different fresh whole-result acceptance before completion, with focused auxiliary
-checks at either boundary when useful. This overrides generic optional-review
-defaults in the workflow contracts. The plan review is an agent instruction;
+The host policy uses one Sol `block_reviewer` result review for simple engineering
+and Sol for ordinary non-engineering reviews, including complete bounded artifacts.
+Only complex engineering or concrete materially high-risk consequences require
+fresh Astra whole-plan acceptance and a different whole-result acceptor. Length,
+profile labels and topic keywords alone do not select Astra. Bounded block reviews
+remain Sol even within complex work; stage/skill switches and routine corrections
+reuse valid acceptance and the existing reviewer. Trivial chat/wording stays root-only.
+This threshold overrides workflow defaults. The plan review is an agent instruction;
 no new deterministic controller gate or graph identity is introduced. Start a
 new session to load new role instructions; running sessions are not restarted.
 Claude provider choices remain explicit and independent in the same manifest.

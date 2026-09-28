@@ -46,9 +46,10 @@ capabilities
 ```
 
 При унаследованной user-level policy этот порядок означает instruction-level
-dispatch внутри `work`: substantive plan сначала принимает свежий
-`task_plan_reviewer`, а завершённый кандидат — другой свежий whole-result
-reviewer. Focused checks могут идти рядом с соответствующим acceptor; все
+dispatch внутри `work`: простое engineering получает одно `block_reviewer`,
+ordinary non-engineering reviews также auxiliary; только complex engineering /
+material risk требует `task_plan_reviewer` и другого whole-result reviewer.
+Этапы и вложенные skills переиспользуют действительную приёмку. Focused checks могут идти рядом с соответствующим acceptor; все
 выбранные checks завершаются до PASS, findings сверяются root с исходниками.
 Это не добавляет graph node или второй controller run. Skill-only/quick может
 выполнить требуемые reviews без durable controller state; при отсутствии policy
@@ -56,7 +57,7 @@ reviewer. Focused checks могут идти рядом с соответств�
 
 Повторная запись раннего доказательства сбрасывает зависимые поздние записи и одобрение. Изменение файла после фиксации делает его запись устаревшей. `status` сообщает расхождение SHA-256; он ничего не исправляет автоматически.
 
-Проверенный `HANDOFF.md` является входной квитанцией для document-maintenance route, но не семантическим одобрением. `complete --apply` ставит durable pending marker до terminal task state, затем привязывает к Project Start обязательство `maintenance-required`; повторный `complete --apply` безопасно восстанавливает запись и снимает marker после успеха. Незакрытые `maintenance-required`, `running`, `blocked`, `reopen-required`, pending marker и любой неизвестный maintenance status запрещают следующую задачу. `restart-required` допускает независимую Task Delivery только без document drift и verifier requirement; эти evidence obligations остаются fail-closed. `task-delivery` не пересчитывает project-start approvals и не решает, является ли дрейф factual или semantic. Унаследованная policy acceptance остаётся обязательной даже когда controller receipt не требуется.
+Проверенный `HANDOFF.md` является входной квитанцией для document-maintenance route, но не семантическим одобрением. `complete --apply` ставит durable pending marker до terminal task state, затем привязывает к Project Start обязательство `maintenance-required`; повторный `complete --apply` безопасно восстанавливает запись и снимает marker после успеха. Незакрытые `maintenance-required`, `running`, `blocked`, `reopen-required`, pending marker и любой неизвестный maintenance status запрещают следующую задачу. `restart-required` допускает независимую Task Delivery только без document drift и verifier requirement; эти evidence obligations остаются fail-closed. `task-delivery` не пересчитывает project-start approvals и не решает, является ли дрейф factual или semantic. Review по глобальному порогу остаётся обязательным даже без controller receipt. Несовместимый controller не закрывай ложным PASS: используй Controller compatibility из SKILL.md и отдельно сохрани его незавершённые обязательства.
 Если Project Start активен, Task Delivery обязан оставить его канонические документы, ADR и все применимые `AGENTS.md` неизменными, записать `Canonical docs changed: NO` и описать предлагаемые изменения в `Proposed documentation maintenance`. Скрипт handoff сверяет это с фактическим снимком репозитория.
 
 ## Создание задачи

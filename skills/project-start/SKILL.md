@@ -10,6 +10,10 @@ description: >-
 
 Создай ровно столько проектного основания, сколько помогает сильной модели уверенно работать дальше. Граф — это контроль границ, целостности и возобновления, а не сценарий мышления.
 
+## Task context and collaboration
+
+Apply the inherited “Collaboration and useful questions” policy. Before substantial bootstrap/maintenance, use the project's documentation map and [quality-and-intake.md](references/quality-and-intake.md). Identify missing product boundaries, data ownership, load, recovery and acceptance requirements; maintenance covers only changed areas. Keep one owning project quality document and a short route to it from AGENTS.md. Record unresolved requirements as unknown, not as approved defaults.
+
 ## Plain-language user updates
 
 Все промежуточные и итоговые сообщения пиши на языке пользователя простыми
@@ -18,6 +22,14 @@ description: >-
 будет дальше. Не показывай журнал контроллера вместо объяснения.
 
 Обязательный порядок: результат → влияние → следующий шаг.
+
+Объясняй владельцу простыми словами, предполагая, что код пишет AI. Каждый
+вопрос связывай с наблюдаемым последствием и, когда есть основание, предлагай
+рекомендуемый вариант. Например: «Если сервис перезапустится, продолжать
+незавершённые заявки? Предлагаю продолжать без повторного создания». Термины
+вроде идемпотентности, RPO или p95 используй только с коротким объяснением,
+если они помогают принять решение. Не требуй от пользователя выбора названия
+теста, библиотеки или технического механизма; это работа агента.
 
 Слова `controller`, `root`, `worker`, `packet`, `receipt`, `digest`,
 `checkpoint`, `gate`, `authority`, `control-degrade` и `recovery route`
@@ -28,6 +40,11 @@ description: >-
 
 ## Наследуемая политика маршрутизации и приёмки
 
+Apply the global complex-engineering/material-risk threshold to EVERY review instruction below. Simple engineering gets one auxiliary `block_reviewer` result review; ordinary non-engineering reviews also use `block_reviewer` for the complete bounded artifact. Trivial chat/wording stays root-only. Only complex engineering or concrete material consequences require the whole-plan/whole-result acceptance pair. Length, a skill invocation, a profile label or a review request alone does not select an acceptance role. Stage/skill switches and routine same-outcome repairs reuse valid acceptance and the existing reviewer. Keep additional focused reviews bounded and justified; do not split risky work to evade acceptance.
+
+Controller compatibility: prefer skill-only/native review for ordinary and simple work. If an already active released controller requires an acceptance-role receipt below the global threshold and has no supported auxiliary-review completion route, degrade controller execution and preserve its state/pending obligations. Continue authorized work with the required `block_reviewer` verdict recorded in the existing handoff outside controller metadata. Never relabel that verdict as an acceptance role, alter graph identity/schema, clear pending obligations, or claim the controller is verified/complete. This protocol mismatch alone does not justify Astra; actual complex engineering/material risk still does.
+
+
 Если эффективные пользовательские инструкции содержат unified routing и
 independent acceptance policy, она имеет приоритет над risk-only и self-review
 defaults ниже. Project Start не выбирает имена моделей или степень рассуждения:
@@ -36,9 +53,11 @@ defaults ниже. Project Start не выбирает имена моделей
 Для substantive bootstrap/maintenance root владеет решениями, интеграцией и
 reconciliation с исходниками. При активной policy bounded auxiliary agents
 могут выполнять независимые discovery, preparation, document implementation,
-synthesis или focused review; root сверяет их доказательства. До исполнения плана нужен свежий
-whole-plan `task_plan_reviewer`; после завершения полного документационного
-кандидата — другой свежий whole-artifact `project_docs_verifier`. Focused
+synthesis или focused review; root сверяет их доказательства. Только при достижении
+глобального порога complex engineering / material risk план принимает свежий
+`task_plan_reviewer`, результат — другой `project_docs_verifier`. Обычные
+документационные ревью выполняет `block_reviewer` над всем ограниченным кандидатом,
+без пары общих приёмщиков. Focused
 checkers могут идти рядом с acceptor над тем же кандидатом, но все выбранные
 проверки должны завершиться, а существенные findings — быть сверены с
 исходниками до PASS. Дети получают свежий bounded context и остаются leaf-only.
@@ -132,8 +151,9 @@ python3 scripts/project_graph.py ready --run <run-dir>
 4. Обнови документы сам. Без унаследованной policy для локализованного
    maintenance одного смыслового слоя используй fast maintenance: без
    explorer, без controller verifier и без повторного чтения всего основания.
-   При активной policy не пропускай обязательные `task_plan_reviewer` и другой
-   `project_docs_verifier`; они остаются операциями внутри `work`. Не отдавай
+   При активной policy выбирай review по глобальному порогу: обычные документы —
+   `block_reviewer`; complex engineering / material risk — `task_plan_reviewer`
+   и другой `project_docs_verifier`. Это операции внутри `work`. Не отдавай
    параллельным агентам пересекающиеся документы и не запускай отдельного
    «куратора» по умолчанию.
 5. Создай один `project.json` по [договору управляющего артефакта](references/control-artifact.md). Это квитанция прохода, не второй источник истины.
@@ -161,11 +181,12 @@ python3 scripts/project_graph.py record --run <run-dir> --node work --outcome ve
 
 `project_docs_verifier` читает точный `project.json` и точный набор документов,
 пытается найти расхождение с репозиторием и возвращает payload для
-`verification.json`; корневой агент сохраняет его. При унаследованной policy это
-whole-artifact acceptance для substantive результата и должен быть другим свежим
-reviewer после plan review; focused findings сначала reconcile с исходниками.
-Один `reject` возвращает работу корневому агенту; второй блокирует controller
-cycle.
+`verification.json`; корневой агент сохраняет его. При унаследованной policy
+эта роль применяется только при глобальном пороге complex engineering /
+material risk и отличается от plan acceptor; для обычного документационного
+ревью используй `block_reviewer`; focused findings сначала reconcile с
+исходниками. Один `reject` возвращает работу корневому агенту; второй блокирует
+controller cycle.
 
 ## Существенное решение
 

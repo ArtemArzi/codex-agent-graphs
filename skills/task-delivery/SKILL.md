@@ -10,6 +10,10 @@ description: >-
 
 Доведи одну задачу до доказанного результата. Граф — это короткий контроль границ, а не пошаговый заменитель инженерного мышления.
 
+## Task context and collaboration
+
+Apply the inherited “Collaboration and useful questions” policy. Before a substantial task, including quick/skill-only, read the project quality document through its documentation map and the applicable sections of [testing-and-review.md](references/testing-and-review.md). Identify the affected requirements, failure modes and acceptance checks; explain meaningful choices briefly. A clear trivial edit needs only known applicable rules and proportionate verification. Keep decisions and evidence in the existing task record; a skill switch does not restart intake.
+
 ## Plain-language user updates
 
 Все промежуточные и итоговые сообщения пиши на языке пользователя простыми
@@ -18,6 +22,14 @@ description: >-
 показывай журнал контроллера вместо объяснения.
 
 Обязательный порядок: результат → влияние → следующий шаг.
+
+Объясняй владельцу простыми словами, предполагая, что код пишет AI. Каждый
+вопрос связывай с наблюдаемым последствием и, когда есть основание, предлагай
+рекомендуемый вариант. Например: «Если сервис перезапустится, продолжать
+незавершённые заявки? Предлагаю продолжать без повторного создания». Термины
+вроде идемпотентности, RPO или p95 используй только с коротким объяснением,
+если они помогают принять решение. Не требуй от пользователя выбора названия
+теста, библиотеки или технического механизма; это работа агента.
 
 Слова `controller`, `root`, `worker`, `packet`, `receipt`, `digest`,
 `checkpoint`, `gate`, `authority`, `control-degrade` и `recovery route`
@@ -33,6 +45,11 @@ description: >-
 
 ## Наследуемая политика маршрутизации и приёмки
 
+Apply the global complex-engineering/material-risk threshold to EVERY review instruction below. Simple engineering gets one auxiliary `block_reviewer` result review; ordinary non-engineering reviews also use `block_reviewer` for the complete bounded artifact. Trivial chat/wording stays root-only. Only complex engineering or concrete material consequences require the whole-plan/whole-result acceptance pair. Length, a skill invocation, a profile label or a review request alone does not select an acceptance role. Stage/skill switches and routine same-outcome repairs reuse valid acceptance and the existing reviewer. Keep additional focused reviews bounded and justified; do not split risky work to evade acceptance.
+
+Controller compatibility: prefer skill-only/native review for ordinary and simple work. If an already active released controller requires an acceptance-role receipt below the global threshold and has no supported auxiliary-review completion route, degrade controller execution and preserve its state/pending obligations. Continue authorized work with the required `block_reviewer` verdict recorded in the existing handoff outside controller metadata. Never relabel that verdict as an acceptance role, alter graph identity/schema, clear pending obligations, or claim the controller is verified/complete. This protocol mismatch alone does not justify Astra; actual complex engineering/material risk still does.
+
+
 Если эффективные пользовательские инструкции содержат политику unified routing
 и independent acceptance, она имеет приоритет над risk-based и self-review
 значениями ниже. Имена моделей и степень рассуждения этот skill не выбирает:
@@ -41,9 +58,10 @@ description: >-
 Для substantive работы root принимает решения, объединяет изменения и
 сверяет выводы с первичными файлами. Вспомогательные explorer, worker,
 synthesizer и focused reviewer получают свежий ограниченный контекст, остаются
-leaf-only и возвращают самостоятельные доказательства. До начала исполнения
-каждого substantive плана нужен свежий whole-plan `task_plan_reviewer`; после
-завершения кандидата — другой свежий whole-result `task_result_reviewer`.
+leaf-only и возвращают самостоятельные доказательства. Если задача достигает
+глобального порога сложности/риска, до исполнения плана нужен свежий whole-plan
+`task_plan_reviewer`, после завершения — другой whole-result `task_result_reviewer`.
+Простая инженерная задача получает одно итоговое `block_reviewer` без этой пары; обычные неинженерные ревью также идут в `block_reviewer`. Явный запрос review выполняй в его объёме; сам запрос не выбирает acceptance-модель.
 Self-review root не является независимой приёмкой.
 
 Focused checks могут идти рядом с соответствующим acceptor над тем же
@@ -270,15 +288,15 @@ python3 scripts/task_graph.py init \
 
 Оцени риск по области, обратимости, новизне, внешним контрактам и последствиям ошибки.
 
-- `light` — малая локальная обратимая правка, ясные критерии: self-review
-  только без унаследованной policy acceptance; иначе обязательны её plan/result
-  acceptors.
+- `light` — малая локальная обратимая правка, ясные критерии: root выполняет
+  работу и соразмерную проверку сам. Наличие policy/skill не требует plan/result
+  acceptors; применяй её порог сложности/риска и явный запрос пользователя.
 - `standard` — обычная продуктовая задача: legacy self plan/result, reviewer
   только по фактическому risk signal; унаследованная policy acceptance имеет
   приоритет.
 - `complex` — несколько модулей, новая граница или неоднозначный plan:
-  legacy self-review по умолчанию; унаследованная policy всё равно требует
-  свежий whole-plan и другой whole-result review для substantive работы.
+  legacy self-review по умолчанию; унаследованная policy требует whole-plan и
+  другой whole-result только при фактическом complex engineering / material risk.
 - `critical` — безопасность, данные, миграция, деньги, необратимость или
   широкий blast radius: обязательны risk reviewer и итоговый verifier; при
   активной policy plan/result acceptors выполняются независимо от этого
@@ -286,15 +304,16 @@ python3 scripts/task_graph.py init \
 
 Без унаследованной policy `plan` не получает reviewer только из-за имени
 профиля. Независимый plan review нужен при неоднозначной архитектуре, слабом
-evidence, публичном контракте или явном запросе. При активной policy каждый
-substantive plan до исполнения принимает свежий `task_plan_reviewer`, а
-результат — другой свежий `task_result_reviewer`.
+evidence, публичном контракте или явном запросе. При активной policy эта пара
+нужна только по глобальному порогу complex engineering / material risk.
+Простое инженерное изменение получает одно итоговое `block_reviewer`;
+этапы и вложенные навыки не запускают новую общую приёмку.
 Подробная матрица — в [profiles-and-agents.md](references/profiles-and-agents.md).
 
 ## Один рабочий проход
 
 1. Выполни `git status --short`; все существующие изменения считай пользовательским baseline.
-2. Прочитай только относящиеся к задаче инструкции, canonical engineering standard, текущий план и исходный код. Из guide вынеси в план применимые модульные границы, framework patterns, тестовые обязанности и exact quality commands; не копируй весь документ. Для неясной большой кодовой базы допустимы до двух независимых `task_explorer`; для обычной локализации работай сам.
+2. Прочитай только относящиеся к задаче инструкции, canonical engineering standard, текущий план и исходный код; для существенной задачи также прочитай документ роли `quality` по правилам входного разбора. Из guide вынеси в план применимые модульные границы, framework patterns, тестовые обязанности и exact quality commands; не копируй весь документ. Для неясной большой кодовой базы допустимы до двух независимых `task_explorer`; для обычной локализации работай сам.
 3. Выбери навыки и инструменты по задаче:
    - локальный поиск, LSP/AST и навыки кодовой базы — сначала для внутреннего исследования;
    - `$research` — только для внешних, текущих или смешанных фактов; его агенты входят в общий лимит Task Delivery;
@@ -302,9 +321,10 @@ substantive plan до исполнения принимает свежий `task
    - provider-specific MCP используй для данных его продукта, Context7 — для официальной документации библиотек, research MCP — для внешнего поиска, Playwright или другой live MCP — для относящейся к acceptance живой системы;
    - для строго локальной задачи запиши `mcp:not-applicable:<reason>`; если релевантный MCP проверен, но не сработал, запиши `mcp:fallback:<reason>` и продолжай подходящим fallback; не выполняй внешнюю запись без полномочий.
 4. Создай или обнови один план. В замороженной части должны быть outcome, основания, ссылка на exact engineering standard или честное `N/A`, применимые правила/команды, acceptance, шаги, тесты, stop conditions и точный `task-delivery:scope`. Не веди гигантский журнал снимков внутри плана. Названный в плане этап не обязан становиться worker slice: read-only baseline, authorization, evidence freeze, integration и final acceptance root выполняет внутри `work`, если независимый worker не даёт отдельной полезной дельты.
-5. Проверь план сам как подготовительный шаг. При активной унаследованной
-   policy до любого исполнения дождись свежего whole-plan PASS от
-   `task_plan_reviewer`; без неё подключай эту роль только при реальной
+5. Проверь план сам как подготовительный шаг. При активной policy свежий
+   whole-plan PASS от `task_plan_reviewer` нужен только при глобальном пороге
+   complex engineering / material risk; действительную приёмку того же результата
+   переиспользуй. Без policy подключай эту роль только при реальной
    неопределённости плана или явном запросе. Это операция внутри `work`, а не
    новый pre-code controller gate. В режиме `implement` используй принятый plan
    как рабочую основу и переходи к коду, если semantic scope не изменился.
@@ -313,7 +333,7 @@ substantive plan до исполнения принимает свежий `task
 
 6. Выбери implementation strategy по пользе. `root-only` — default для любого профиля: root может сам выполнить несколько этапов. Просьба «слайсами» означает небольшие проверяемые части, а не обязательный spawn. Только явная просьба делегировать реализацию либо доказанная польза независимого worker выбирает `delegated-sequential`. Перед spawn кратко укажи в dispatch, какой самостоятельный результат оправдывает запуск и передачу контекста; отдельной квитанции этого решения не нужно. Один active write slice; до следующего прими реальный diff и тесты через `slice-accept`. `--slice-budget N` в 3.9 — положительная оценка объёма, а не запрет продолжать после N. Не разбивай одну задачу на новые runs ради счётчика агентов. `plan` не запускает workers; `implement` связывает packet с точным прошлым review; `full` создаёт его после валидного плана. Полный протокол: [implementation-slices.md](references/implementation-slices.md). `delegated-parallel` остаётся fail-closed без доказанной изоляции worktrees.
 7. На каждом slice запускай только быстрые проверки его области. Worker обновляет или добавляет затронутые unit/integration/E2E tests согласно `test_impact`; root повторяет минимум один exact slice check. Дорогие интеграционные и E2E рубежи из `deferred_final_checks` запускай один раз после интеграции всех slices и внеси exact command/purpose в `task.json.tests`. Не утверждай успех по diff или словам агента.
-8. В `critical` отдельно вызови `task_risk_reviewer`. Создай один `task.json` по [control-artifact.md](references/control-artifact.md).
+8. При активной policy вызывай `task_risk_reviewer` только для конкретного существенного риска сверх общей приёмки; без неё сохраняй legacy critical contract. Простое инженерное изменение заверши одним `block_reviewer`. Создай один `task.json` по [control-artifact.md](references/control-artifact.md).
 
 В `capabilities` запиши ровно один тип MCP-квитанции: `mcp:<server>` для реально использованного MCP, `mcp:fallback:<reason>` после неудачи релевантного сервера либо `mcp:not-applicable:<reason>` для локальной задачи. Нативный web/browser и затем `curl` являются fallback, а не первым выбором при наличии подходящего MCP.
 
@@ -331,9 +351,10 @@ substantive plan до исполнения принимает свежий `task
 python3 scripts/task_graph.py record --run <run-dir> --node work --outcome succeeded
 ```
 
-При активной policy не используй этот `succeeded` shortcut для substantive
-результата: в skill-only завершай после independent acceptance, а при выбранном
-graph используй его поддержанный verified path и final receipt.
+При активной policy заверши требуемое по её порогу review: `block_reviewer`
+для простого инженерного результата либо whole acceptance для complex engineering /
+material risk. Native review не меняет graph identity: используй поддержанный
+контроллером путь и receipt, не повышай профиль только ради записи model calls.
 
 Когда controller-профиль или унаследованная policy требуют поддержанную
 final verification receipt:

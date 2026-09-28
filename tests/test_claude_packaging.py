@@ -57,14 +57,14 @@ class ClaudePackagingTests(unittest.TestCase):
 
     def test_routed_roles_preserve_claude_model_and_effort(self) -> None:
         expected = {
-            "task_worker": ("max", "sonnet", "xhigh"),
-            "task_plan_reviewer": ("high", "opus", "high"),
-            "task_result_reviewer": ("high", "opus", "max"),
+            "task_worker": ("medium", "sonnet", "xhigh"),
+            "task_plan_reviewer": ("medium", "opus", "high"),
+            "task_result_reviewer": ("medium", "opus", "max"),
         }
         roles = sync.canonical_roles()
         for role, (codex_effort, model, effort) in expected.items():
             with self.subTest(role=role):
-                self.assertEqual(roles[role]["model"], "gpt-5.6-luna" if role == "task_worker" else "gpt-6-astra")
+                self.assertEqual(roles[role]["model"], "gpt-6-sol" if role == "task_worker" else "gpt-6-astra")
                 self.assertEqual(roles[role]["model_reasoning_effort"], codex_effort)
                 fields = frontmatter_fields(self.rendered[sync.claude_name(role)])
                 self.assertEqual((fields["model"], fields["effort"]), (model, effort))
@@ -74,7 +74,7 @@ class ClaudePackagingTests(unittest.TestCase):
         for role in roles:
             for key, value in (("model", "gpt-99-unknown"),
                                ("model_reasoning_effort", "ultra"),
-                               ("model", "gpt-5.6-sol"),
+                               ("model", "gpt-5.6-luna"),
                                ("model_reasoning_effort", "xhigh")):
                 with self.subTest(role=role, key=key, value=value):
                     with self.assertRaises(SystemExit):

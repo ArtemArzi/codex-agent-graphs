@@ -25,9 +25,9 @@ Explorer остаётся read-only:
 ## Verifier
 
 Без унаследованной acceptance policy verifier условный и read-only. При
-активной policy для substantive работы до исполнения нужен свежий
-`task_plan_reviewer`, а после кандидата — другой свежий `project_docs_verifier`
-как whole-artifact acceptor. Оба получают bounded fresh context; focused checks
+активной policy эти whole-роли нужны только по глобальному порогу complex
+engineering / material risk: `task_plan_reviewer`, затем другой `project_docs_verifier`.
+Обычные документационные ревью выполняет `block_reviewer` над ограниченным результатом. Оба получают bounded fresh context; focused checks
 могут идти рядом с соответствующим acceptor, но root ждёт все выбранные checks
 и reconciles material findings с источниками до PASS. Это операции внутри
 `work`, не дополнительные graph nodes.
@@ -39,9 +39,9 @@ Verifier получает:
 - применимые правила репозитория;
 - задачу найти контрпример или расхождение, а не пересказать работу.
 
-Self-проверка нормальна для малого factual/no-change прохода и ясного bootstrap
-только без унаследованной policy. Иначе обязательная независимая приёмка не
-отменяется малым размером. В legacy controller verifier оправдан широкой
+При активной policy обычное factual/no-change ревью использует `block_reviewer`,
+а тривиальный ответ/status остаётся root-only. Whole acceptance определяется
+реальной complex engineering / material risk, а не размером или названием прохода. В legacy controller verifier оправдан широкой
 дельтой, семантическим решением, security/compliance, конфликтом доказательств
 или низкой уверенностью.
 
@@ -49,8 +49,8 @@ Self-проверка нормальна для малого factual/no-change �
 
 - один корневой интегрирующий агент;
 - не более двух explorer;
-- один свежий plan acceptor до исполнения substantive плана и один другой
-  whole-artifact verifier только после кандидата;
+- один `block_reviewer` для ordinary document review; только по глобальному
+  complex-engineering/material-risk порогу — свежий plan acceptor и другой result acceptor;
 - глубина делегации 1;
 - один verification repair;
 - одна повторная попытка failed-узла.

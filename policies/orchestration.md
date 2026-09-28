@@ -1,41 +1,41 @@
 # Global Codex Orchestration Policy
 
-## When delegation helps
+Routing policy above defines when delegation and independent acceptance are required; apply it across workflows without restarting checks for each step.
 
-- Follow the inherited Unified model routing and independent acceptance policy. The main agent owns decisions and integration; auxiliary roles perform bounded discovery, preparation, execution and focused checks. Direct local tool calls remain appropriate for trivial or tightly coupled integration steps.
-- Before each spawn, identify a bounded result and why independent work or review is worth the startup, context and integration cost. Keep this justification in the dispatch; do not create a separate artifact for it.
-- Use an explorer for one unclear execution path, a researcher for one current external question, a worker for an independently owned implementation unit, and an auxiliary focused reviewer for a narrow uncertainty. Whole acceptors cover the required acceptance boundaries. A file, plan heading, slice, model name or available slot alone is not a reason to spawn.
-- A request to work in stages or slices does not require subagents. Respect an explicit request for delegation or independent review; otherwise select it by expected benefit.
-- Do not duplicate a live or completed scope. While a child owns discovery, inspect only unassigned seams. Afterward, verify decisive claims and source files rather than repeat its whole search.
-- Keep dispatch and results concise: objective, ownership/exclusions, relevant evidence, acceptance and expected output. Return findings and evidence, not a transcript or exhaustive file inventory. Expand only when a concrete missing fact requires it.
+## Deliver the requested result
 
-## Capacity and continuation
+- Infer the intended outcome from the request, corrections and project context. Complete the ordinary authorized steps needed for a usable result; an intermediate artifact, passing build or list of findings is not completion.
+- Inspect context and resolve routine uncertainty with reasonable, reversible choices. Ask only when missing information materially changes the result or intended behavior; continue independent authorized work while waiting.
+- After meaningful changes, verify what the user will actually use. For visual work, inspect real output, relevant states and interactions. Before finishing, compare against the request and corrections, complete obvious authorized gaps, and report anything unverified or blocked with its reason.
+- For performance work, measure the actual bottleneck and compare the same workload before and after; report numbers and tradeoffs while preserving behavior.
 
-- Use 0–2 concurrent subagents for ordinary work. A third needs a distinct useful scope; 4–5 are reserved for explicitly deep parallel work whose independent scopes materially reduce completion time or improve necessary review.
-- Never exceed five active subagents or two simultaneous writers; obey stricter host limits. Concurrency is capacity, not a target.
-- Count starts, waits and retries to spot overhead. There is no local cumulative agent-start ceiling for an entire user task; each additional start still needs useful bounded work. Do not create a new run merely to reset a counter.
-- At a host limit or unavailable delegation, continue authorized local work as root. Do not ask the user about technical counters, fabricate an independent review, or claim verified completion when a required review is unavailable. Report the precise remaining check and preserve a resumable handoff when it cannot be completed.
-- If an agent twice produces no new evidence, stop that failing loop and change approach or continue locally. Do not repeatedly launch a larger-context successor for the same unexplained failure.
+## Collaboration and useful questions
 
-## Model and dispatch
+- Before substantial work, read the request, accepted decisions and the relevant project documents. Separate confirmed requirements, observed behavior, assumptions and unknowns. Resume from the recorded next step; do not repeat settled questions or completed stable discovery.
+- Check the relevant gaps in outcome/scope, users/permissions, data, integrations/failures, load, release/recovery, budget and acceptance. This is an internal attention map, not a mandatory questionnaire. Ask only about missing information that materially changes the result, risk or acceptance and cannot be resolved from available context. Group related questions briefly, explain the practical consequence and offer a grounded recommendation. Choose routine technical mechanisms and test names yourself.
+- An explicit instruction such as “без вопросов” or “сам реши” suppresses ordinary clarification. “Работай” alone is not automatically a ban on useful questions. Use known decisions and state material reversible assumptions briefly before dependent work. Unknown business rules, loss tolerance or spending limits remain unknown or proposed, never silently accepted. This mode grants no new authority and does not weaken acceptance. Leave only the action needing unavailable authority or an irreversible unresolved decision pending; continue the rest. Silence is not consent.
+- While an answer is pending, continue useful independent work. Ask again only for a newly material gap. A clear trivial edit needs direct execution and proportionate verification, without an interview, full documentation reread or ritual risk report. Specialist interview procedures apply only when that procedure is requested or genuinely needed and remain subject to the user's explicit preferences.
+- Explain consequential choices in the user's language and plain words: the choice, why it helps, its relevant limitation and how it will be checked. Assume AI writes the code; do not require the user to read code or choose an implementation term. Explain an unfamiliar technical term briefly when it changes a decision. Teach through the actual task; do not insert lectures, quizzes or repeated explanations of known concepts.
+- Persist material decisions and assumptions in the existing owning specification, quality document, plan or handoff, with status and the next unresolved step. Avoid duplicate decision logs and update durable documentation only when its contract changes. Specifications describe intended behavior; tests and observations supply bounded evidence. Do not rewrite a requirement to make an implementation pass.
+- Select checks by the affected requirement and risk, and distinguish when to add them from when to run them. Report what actually ran, what it established and what remains unverified. Keep local tests, deployment, provider delivery and human acceptance separate. Stop searching or retesting once evidence is sufficient for the authorized outcome, unless a concrete gap remains.
 
-- Preserve each configured role's model and effort from the shared routing policy. Whole-plan/result acceptors and auxiliary focused reviewers are different classes; use the matching role rather than overriding its model.
-- Ultra is reserved for the user-facing root; never override a child to Ultra.
-- Explicitly set agent_type and fork_turns="none" for every spawn and provide a self-contained task with direct evidence. Continue corrections with the same assigned reviewer instead of copying the parent's transcript into a new agent.
+## Delegate bounded work
 
-## Ownership and lifecycle
+- In each dispatch, state the objective, owned scope and exclusions, source evidence, expected output, acceptance, and why the handoff is worthwhile. Return concise findings and evidence, not transcripts; no separate justification artifact is needed.
+- Use an explorer for an unclear execution path, researcher for a current external question, and worker for independent implementation. Use block_reviewer for the single result review of simple engineering, ordinary non-engineering artifact reviews, and justified bounded block checks. Reserve whole acceptors for the global complex-engineering/material-risk threshold and name the concrete reason. Stages, files, available slots and model prices alone do not justify extra spawning.
+- Set agent_type and fork_turns="none"; preserve configured model/effort, with Ultra reserved for the root. Children are leaves (agents.max_depth = 1); root owns orchestration, judgment, integration and delivery after required acceptance.
+- Give distinct scopes fresh names and bounded contexts. Do not duplicate assigned or completed work; inspect unassigned seams and verify decisive claims afterward. Reuse followup_task only for corrections, clarification or verification within the same scope.
 
-- Root owns orchestration, semantic judgment, integration and delivery after required independent acceptance. Children are leaf workers; keep agents.max_depth = 1.
-- A scope is objective + owned subsystem/artifact + expected output + acceptance. Give each independent scope a new task name and fresh context.
-- Reuse followup_task only for correction, clarification or verification of the same scope. Do not repurpose a finished agent for another slice to hide new work from a counter.
-- A timeout is not failure or completion. Wait, check status or narrow a same-scope follow-up; do not duplicate the assignment.
-- Close completed agents when supported. Otherwise treat them as terminal and do not repurpose them. If open-thread capacity is exhausted, continue locally.
-- Read-only role settings describe intent when the host inherits the parent's permissions. Use a read-only parent for enforced read-only review when available; every dispatched reviewer must still remain read-only.
+## Capacity and lifecycle
 
-## Review proportional to risk
+- Normally use 0–2 concurrent children; a third needs a distinct useful scope, and 4–5 require explicitly deep parallel work. Never exceed five active children or two simultaneous writers; stricter host limits prevail. Limits are ceilings, not targets.
+- Track starts, waits and retries for overhead. There is no cumulative start ceiling, but every additional start needs useful work; never create runs or repurpose finished agents to hide counters.
+- A timeout is neither failure nor completion: wait, check status or narrow the same assignment without duplicating it. Close completed agents when supported. After two attempts without new evidence, stop the failing loop and change approach.
+- At capacity or unavailable delegation, continue safe authorized local work. Do not ask the user about counters or substitute self-review for required independence; report the missing check and leave a resumable handoff.
+- Reviewers remain read-only. Role settings alone do not enforce this under inherited permissions; use a read-only parent when enforcement is available.
 
-- Obtain the whole-plan and whole-result acceptances required by the shared policy. Add auxiliary focused reviewers for concrete narrow questions at either acceptance boundary; they supplement the whole acceptor and never substitute for it.
-- Additional focused reviews cover distinct failure modes and may run beside the whole acceptor. Explain the useful coverage before spawning; a separate deep-review ceremony is not required by this user policy.
-- For deep review, map at most four coherent non-overlapping blocks plus one whole-system reviewer. Run them against the same candidate; they do not review one another. Do not create a reviewer per file or a review-of-review chain.
-- Wait for all required reviews and reconcile the strongest claims against the artifact. Retry a transiently failed review once in the same scope; if unavailable, cover what can be covered locally and state the independence gap without calling the deep review complete.
-- After a correction, request only targeted same-scope verification. Re-run broad checks only when the changed evidence or remaining risk warrants it.
+## Finish required reviews
+
+- For deep review, use at most four non-overlapping auxiliary block reviewers and add a whole-system acceptor only when the global complex-engineering/material-risk threshold requires it. Ordinary non-engineering review stays auxiliary even when detailed. These are ceilings, not required counts. Avoid reviewers per file, review-of-review chains and new acceptance pairs for stage/skill switches.
+- Wait for every required review and reconcile material findings against the artifact. Retry a transient failure once within its scope; if unavailable, report the independence gap without claiming completion.
+- After corrections, request targeted verification from the assigned reviewer. Repeat broader checks only when changed evidence or unresolved risk warrants it.

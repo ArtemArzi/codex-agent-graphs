@@ -56,13 +56,16 @@ briefly in the dispatch, not a new artifact. A stage or slice is not an agent.
 Do not duplicate a live or completed scope. A same-scope retry must identify
 new evidence or a new discriminating check.
 
-Start independent review when risk, uncertainty, an explicit user request, a
-release gate or inherited host policy needs it. Under that policy, a fresh
-whole-plan acceptor precedes substantive execution and a different fresh
-whole-result acceptor follows it. Focused/block reviews may run beside either
-acceptor against the same candidate, but all selected checks must finish before
-acceptance. Without the policy, one reviewer is the default and parallel block
-review is an explicit deep-review mode, not an automatic response to task size.
+Start independent review when the inherited host policy, an explicit review
+request or a real release requirement calls for it. Apply the host threshold:
+one `block_reviewer` result review for simple engineering, and `block_reviewer`
+for ordinary non-engineering artifact reviews. A whole-plan acceptor and a
+different whole-result acceptor are required only for complex engineering or
+concrete material risk. Trivial work stays root-only. Finish all required checks
+before acceptance; same-outcome corrections reuse the assigned reviewer.
+Without host policy, keep review proportional to actual risk and requested scope.
+A controller receipt incompatibility does not justify a larger review route;
+follow the entrypoint's compatibility rule without changing receipt identities.
 
 An explicit user request may raise a normal budget, but the run must record the
 finite override. It never disables integrity, evidence or stop guards.
