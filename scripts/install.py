@@ -27,6 +27,7 @@ GLOBAL_POLICY_SOURCE = REPO_ROOT / "policies" / "development-recovery.md"
 DISCOVERY_POLICY_SOURCE = REPO_ROOT / "policies" / "large-codebase-discovery.md"
 ORCHESTRATION_POLICY_SOURCE = REPO_ROOT / "policies" / "orchestration.md"
 SKILLS = (
+    "production-audit",
     "verification-loop",
     "ai-regression-testing",
     "agent-graph-builder",
