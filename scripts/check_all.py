@@ -321,6 +321,7 @@ def main() -> int:
     skill_validator = find_skill_validator()
     if skill_validator:
         for skill in (
+            "agent-introspection-debugging",
             "market-research",
             "production-audit",
             "verification-loop",

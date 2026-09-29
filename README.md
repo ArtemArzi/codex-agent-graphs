@@ -74,6 +74,7 @@ Supporting capabilities keep those workflows healthy:
 | --- | --- |
 | `$agent-graph-builder` | Creates or standardizes graph-backed skills against the shared contract; it is a meta-skill, not another runtime workflow |
 | `$development-recovery` | Recovers when specification, plan, code, tests, or observed behavior diverge; it is a conditional non-graph skill |
+| `$agent-introspection-debugging` | Diagnoses repeated agent/tool failures with bounded checks and the shared diagnostic guide |
 | `$market-research` | Supports market decisions with sources, niche evidence and a bounded demand-validation experiment |
 | `$production-audit` | Assesses a scoped release using applicable requirements, observed evidence and explicit missing checks |
 | `$verification-loop` | Runs proportionate checks and preserves real command outcomes and evidence limits |
@@ -235,7 +236,7 @@ The installer copies files; it does not create cross-filesystem symlinks.
 
 | Installed surface | What changes |
 | --- | --- |
-| Skills | Ten directories under each target Codex home: `agent-graph-builder`, `continuous-improvement`, `development-recovery`, `project-start`, `research`, `task-delivery`, `verification-loop`, `ai-regression-testing`, `production-audit`, and `market-research` |
+| Skills | Eleven directories under each target Codex home: `agent-graph-builder`, `continuous-improvement`, `development-recovery`, `project-start`, `research`, `task-delivery`, `verification-loop`, `ai-regression-testing`, `production-audit`, `market-research`, and `agent-introspection-debugging` |
 | Shared runtime | `agent-graph-runtime/` under each target Codex home for deterministic artifact inventory, verified compaction, and explicit TTL pruning |
 | Custom agents | Thirteen bounded role definitions for conditional exploration, implementation, planning review, result review, project-doc verification, improvement verification, and deep research |
 | `config.toml` | One managed block that registers those custom roles without replacing unrelated configuration |

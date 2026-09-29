@@ -60,6 +60,15 @@ A single ordinary coding defect does not require a recovery record. Enter the re
 - an earlier design or checkpoint may rest on a false assumption;
 - security, data integrity, migration or external-state behavior differs from the accepted contract.
 
+## Distinguish competing causes
+
+When several causes still fit the observation, use
+[diagnostic-checks.md](references/diagnostic-checks.md): compare the evidence and
+choose a small authorized check with different expected results for the competing
+causes. If the cause is already established, proceed with the bounded correction.
+This method can also support agent/tool diagnosis; reading it does not activate
+the recovery procedure or change the divergence triggers above.
+
 ## Classify the first false assumption
 
 Choose one owner. If evidence is insufficient, continue diagnosis instead of guessing.
