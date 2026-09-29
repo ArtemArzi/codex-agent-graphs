@@ -14,6 +14,16 @@ description: >-
 
 Apply the inherited “Collaboration and useful questions” policy. Before substantial bootstrap/maintenance, use the project's documentation map and [quality-and-intake.md](references/quality-and-intake.md). Identify missing product boundaries, data ownership, load, recovery and acceptance requirements; maintenance covers only changed areas. Keep one owning project quality document and a short route to it from AGENTS.md. Record unresolved requirements as unknown, not as approved defaults.
 
+## Состояние проекта между сессиями
+
+При bootstrap или изменении маршрута продолжения назначь существующий план,
+трекер или документ владельцем текущего состояния и укажи его в карте чтения.
+Применяй [правила передачи контекста](references/maintenance.md#состояние-проекта-и-передача-контекста):
+один актуальный статус для каждой задачи, решения с причинами, проверенное со
+ссылками и следующий допустимый шаг. При смене выбора пользователя обновляй
+статус и следующий шаг вместе. Это документальный слой, не новая роль coverage,
+граф, обязательный файл памяти или отдельный цикл проверки.
+
 ## Plain-language user updates
 
 Все промежуточные и итоговые сообщения пиши на языке пользователя простыми

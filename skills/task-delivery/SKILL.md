@@ -14,6 +14,16 @@ description: >-
 
 Apply the inherited “Collaboration and useful questions” policy. Before a substantial task, including quick/skill-only, read the project quality document through its documentation map and the applicable sections of [testing-and-review.md](references/testing-and-review.md). Identify the affected requirements, failure modes and acceptance checks; explain meaningful choices briefly. A clear trivial edit needs only known applicable rules and proportionate verification. Keep decisions and evidence in the existing task record; a skill switch does not restart intake.
 
+## Продолжение задачи и проектная память
+
+Перед существенной работой или возобновлением прочитай владельца текущего
+состояния через карту проекта: решения с причинами, свидетельства, важные
+неудачные попытки и следующий шаг. Применяй [правила продолжения](references/project-state.md)
+при смене решения, существенном результате, паузе или завершении. Обновляй
+разрешённый документ состояния, а защищённую каноническую дельту передавай через
+существующий handoff в Project Start. Для quick достаточно компактной записи
+в существующем документе, без нового controller или обязательного файла памяти.
+
 ## Plain-language user updates
 
 Все промежуточные и итоговые сообщения пиши на языке пользователя простыми
