@@ -1,0 +1,52 @@
+[
+  {
+    "repository": "CRM_Dima",
+    "base_commit": "bdebc8500da21b550713fc80a08e4cb84ecee81b",
+    "local_branch": "codex/materials-parser-pre-refactor",
+    "paths": [
+      ".codex/agents"
+    ],
+    "patch": "CRM_Dima.patch",
+    "sha256": "a70e0c21f9e185da4b51551550c410848ee79b5d7b3d16d3ecfe3fd582dfb8e0",
+    "local_result_commit": "cdf439b498fb9d40afa53f27c7483949b3bd8f20"
+  },
+  {
+    "repository": "CRM_Dima-parser-refactor",
+    "base_commit": "e65c520e4828dc73ba4191eec4cb2e538b24f58e",
+    "local_branch": "materials-parser-vue-workbench",
+    "paths": [
+      ".codex/agents"
+    ],
+    "patch": "CRM_Dima-parser-refactor.patch",
+    "sha256": "59dbe899aac286fb165fbc78bb2c32963dce730aeca8dcf042d4c8c248544c0a",
+    "local_result_commit": "d6cb866effcc51eef69d4d02084fab8a372e3f87"
+  },
+  {
+    "repository": "ECC",
+    "base_commit": "64cd1ba248e77e377e76f70fc4e6434bfdddd511",
+    "local_branch": "main",
+    "paths": [
+      ".codex/AGENTS.md",
+      ".codex/config.toml",
+      ".codex/agents/explorer.toml",
+      ".codex/agents/reviewer.toml",
+      ".codex/agents/docs-researcher.toml",
+      "AGENTS.md",
+      "tests/scripts/codex-hooks.test.js"
+    ],
+    "patch": "ECC.patch",
+    "sha256": "c78352b06707d7dead5e8ff21dd78a5777f9eed7d365169aceb1e987260982aa",
+    "local_result_commit": "70fdea88d9e1d9193e218404783f9b15817c7d0d"
+  },
+  {
+    "repository": "ai_mrketing_agentci",
+    "base_commit": "ed03de7a5f36bd0b3f11f89068eee4d52f244945",
+    "local_branch": "main",
+    "paths": [
+      ".codex/agents"
+    ],
+    "patch": "ai_mrketing_agentci.patch",
+    "sha256": "d546b797538bf864d1950367560ac270d31abfc13fdc150c53d81077e2c0157a",
+    "local_result_commit": "ddb60355c3ab94af61c7c73c502ffc813107250c"
+  }
+]

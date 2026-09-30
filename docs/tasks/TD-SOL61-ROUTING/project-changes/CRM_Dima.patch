@@ -1,0 +1,147 @@
+diff --git a/.codex/agents/crm-dima-backend-tdd-worker.toml b/.codex/agents/crm-dima-backend-tdd-worker.toml
+index e7e3ad7e..25aababf 100644
+--- a/.codex/agents/crm-dima-backend-tdd-worker.toml
++++ b/.codex/agents/crm-dima-backend-tdd-worker.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
+@@ -3 +4,0 @@ description = "CRM_Dima implementation worker for narrow Executive Documentation
+-model_reasoning_effort = "high"
+@@ -6 +7 @@ developer_instructions = """
+-You implement narrow backend changes in the repository root assigned by the parent
++You implement narrow backend changes in the repository root explicitly assigned by the parent agent.
+diff --git a/.codex/agents/crm-dima-desk-shell-auditor.toml b/.codex/agents/crm-dima-desk-shell-auditor.toml
+index a3b09533..e0891a03 100644
+--- a/.codex/agents/crm-dima-desk-shell-auditor.toml
++++ b/.codex/agents/crm-dima-desk-shell-auditor.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only auditor for global Desk JS scope, route gates, asset or
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-desk-ui-reviewer.toml b/.codex/agents/crm-dima-desk-ui-reviewer.toml
+index 12d10642..4c875824 100644
+--- a/.codex/agents/crm-dima-desk-ui-reviewer.toml
++++ b/.codex/agents/crm-dima-desk-ui-reviewer.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only reviewer for Executive Documentation form/list UX, summ
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-docs-source-curator.toml b/.codex/agents/crm-dima-docs-source-curator.toml
+index d839ac22..0d77e53f 100644
+--- a/.codex/agents/crm-dima-docs-source-curator.toml
++++ b/.codex/agents/crm-dima-docs-source-curator.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only curator for CRM_Dima source-of-truth docs, ED spec boun
+-model_reasoning_effort = "medium"
+diff --git a/.codex/agents/crm-dima-docs-updater.toml b/.codex/agents/crm-dima-docs-updater.toml
+index 2505c397..8fbea197 100644
+--- a/.codex/agents/crm-dima-docs-updater.toml
++++ b/.codex/agents/crm-dima-docs-updater.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Write-capable docs worker for narrow CRM_Dima documentation updat
+-model_reasoning_effort = "medium"
+diff --git a/.codex/agents/crm-dima-ed-business-flow-cartographer.toml b/.codex/agents/crm-dima-ed-business-flow-cartographer.toml
+index ac2ade4d..e2ae4c2f 100644
+--- a/.codex/agents/crm-dima-ed-business-flow-cartographer.toml
++++ b/.codex/agents/crm-dima-ed-business-flow-cartographer.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only mapper for Executive Documentation business flow from s
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-ed-lifecycle-tracer.toml b/.codex/agents/crm-dima-ed-lifecycle-tracer.toml
+index 6f9950f6..1d6f74c7 100644
+--- a/.codex/agents/crm-dima-ed-lifecycle-tracer.toml
++++ b/.codex/agents/crm-dima-ed-lifecycle-tracer.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only tracer for Act/Special Journal controlled document life
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-ed-package-export-tracer.toml b/.codex/agents/crm-dima-ed-package-export-tracer.toml
+index f2d02ba6..134a7abe 100644
+--- a/.codex/agents/crm-dima-ed-package-export-tracer.toml
++++ b/.codex/agents/crm-dima-ed-package-export-tracer.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only tracer for Register -> Package -> Export readiness, mis
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-ed-permission-auditor.toml b/.codex/agents/crm-dima-ed-permission-auditor.toml
+index 8efac4f4..bba951db 100644
+--- a/.codex/agents/crm-dima-ed-permission-auditor.toml
++++ b/.codex/agents/crm-dima-ed-permission-auditor.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
+@@ -3 +4,0 @@ description = "Read-only auditor for ED object-scope permissions across hooks, w
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-fix-reviewer.toml b/.codex/agents/crm-dima-fix-reviewer.toml
+index 161facd0..b80f8070 100644
+--- a/.codex/agents/crm-dima-fix-reviewer.toml
++++ b/.codex/agents/crm-dima-fix-reviewer.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only final reviewer for CRM_Dima changes, focused on correct
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-frappe-docs-researcher.toml b/.codex/agents/crm-dima-frappe-docs-researcher.toml
+index dc9d3da9..26d249b0 100644
+--- a/.codex/agents/crm-dima-frappe-docs-researcher.toml
++++ b/.codex/agents/crm-dima-frappe-docs-researcher.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only Frappe/ERPNext documentation researcher for framework b
+-model_reasoning_effort = "medium"
+diff --git a/.codex/agents/crm-dima-localization-guard.toml b/.codex/agents/crm-dima-localization-guard.toml
+index 3c3e2959..694d97d6 100644
+--- a/.codex/agents/crm-dima-localization-guard.toml
++++ b/.codex/agents/crm-dima-localization-guard.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only guard for CRM_Dima source-string localization, Russian
+-model_reasoning_effort = "medium"
+diff --git a/.codex/agents/crm-dima-quality-file-auditor.toml b/.codex/agents/crm-dima-quality-file-auditor.toml
+index d1692fcd..2fd57e77 100644
+--- a/.codex/agents/crm-dima-quality-file-auditor.toml
++++ b/.codex/agents/crm-dima-quality-file-auditor.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
+@@ -3 +4,0 @@ description = "Read-only auditor for quality document reuse, material/ZhVK/objec
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-setup-patch-reviewer.toml b/.codex/agents/crm-dima-setup-patch-reviewer.toml
+index f3c9a074..a4ddec7b 100644
+--- a/.codex/agents/crm-dima-setup-patch-reviewer.toml
++++ b/.codex/agents/crm-dima-setup-patch-reviewer.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
+@@ -3 +4,0 @@ description = "Read-only reviewer for CRM_Dima setup, fixtures, patches, migrate
+-model_reasoning_effort = "high"
+diff --git a/.codex/agents/crm-dima-verification-scout.toml b/.codex/agents/crm-dima-verification-scout.toml
+index ab801d4c..b5c7ec7c 100644
+--- a/.codex/agents/crm-dima-verification-scout.toml
++++ b/.codex/agents/crm-dima-verification-scout.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "CRM_Dima verification planner/runner for targeted ruff, mypy, pyt
+-model_reasoning_effort = "medium"
+diff --git a/.codex/agents/crm-dima-workspace-report-navigator.toml b/.codex/agents/crm-dima-workspace-report-navigator.toml
+index fef66299..317c3b96 100644
+--- a/.codex/agents/crm-dima-workspace-report-navigator.toml
++++ b/.codex/agents/crm-dima-workspace-report-navigator.toml
+@@ -0,0 +1,2 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
+@@ -3 +4,0 @@ description = "Read-only reviewer for ED Workspace, sidebar, number cards, query
+-model_reasoning_effort = "medium"

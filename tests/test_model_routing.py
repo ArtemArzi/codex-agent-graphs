@@ -1,5 +1,6 @@
 """Routing migration checks: preserve user state and fail before writes."""
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -17,16 +18,95 @@ routing = installer.routing
 
 
 class RoutingTests(unittest.TestCase):
+    def test_root_manual_effort_survives_install_and_repeat(self):
+        for effort in ("high", "xhigh", "max"):
+            with self.subTest(effort=effort), tempfile.TemporaryDirectory() as tmp:
+                home = Path(tmp)
+                (home / "config.toml").write_text(
+                    f'model="gpt-6.1-sol"\nmodel_reasoning_effort="{effort}"\n')
+                installer.install_environment(home)
+                self.assertEqual(effort, tomllib.loads((home / "config.toml").read_text())["model_reasoning_effort"])
+                self.assertEqual("ok", installer.verify_environment(home)["status"])
+                result = installer.install_environment(home)
+                self.assertTrue(all(c["status"] == "in-sync" for c in result["changes"]))
+
+    def test_invalid_effort_and_unknown_role_fields_fail_closed(self):
+        source = routing.POLICY_PATH.read_text()
+        candidates = [source.replace('effort = "max"', 'effort = "typo"', 1),
+                      source.replace('[roles.worker]', '[roles.worker]\nreasoning = "high"'),
+                      source.replace('[roles.worker]', '[roles.worker]\nmodel = "gpt-6-astra"')]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "policy.toml"
+            for candidate in candidates:
+                path.write_text(candidate)
+                with self.subTest(candidate=candidate[-200:]), self.assertRaises(ValueError):
+                    routing.load_policy(path)
+
+    @staticmethod
+    def retired_reviewer():
+        template = (ROOT / "tests/fixtures/retired-reviewer.template.toml").read_text()
+        return ('# Generated from policies/model-routing.toml and the role template.\n'
+                'model = "gpt-6-astra"\nmodel_reasoning_effort = "medium"\n' + template)
+
+    def test_retired_role_is_archived_outside_discovery_and_registration_removed(self):
+        content = self.retired_reviewer()
+        self.assertEqual(routing.load_policy()["retired_roles"]["reviewer"]["sha256"],
+                         hashlib.sha256(content.encode()).hexdigest())
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            (home / "agents").mkdir()
+            (home / "agents/reviewer.toml").write_text(content)
+            (home / "config.toml").write_text('[agents.reviewer]\nconfig_file="./agents/reviewer.toml"\n')
+            result = installer.install_environment(home)
+            self.assertFalse((home / "agents/reviewer.toml").exists())
+            self.assertEqual(content, (Path(result["backup"]) / "retired-agents/reviewer.toml").read_text())
+            self.assertNotIn("reviewer", tomllib.loads((home / "config.toml").read_text())["agents"])
+            self.assertEqual(20, len(list((home / "agents").glob("*.toml"))))
+
+    def test_unknown_retired_role_drift_prevents_all_writes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            (home / "agents").mkdir()
+            target = home / "agents/reviewer.toml"
+            target.write_text(self.retired_reviewer() + "\n# User customization\n")
+            before = target.read_bytes()
+            with self.assertRaises(installer.InstallError):
+                installer.install_environment(home)
+            self.assertEqual(before, target.read_bytes())
+            self.assertFalse((home / "skills").exists())
+
+    def test_retirement_is_restored_when_config_write_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            (home / "agents").mkdir()
+            retired = home / "agents/reviewer.toml"
+            retired.write_text(self.retired_reviewer())
+            write = installer.atomic_write
+            def fail_config(path, content):
+                if path == home / "config.toml":
+                    raise OSError("fixture config write failure")
+                return write(path, content)
+            with patch.object(installer, "atomic_write", side_effect=fail_config), self.assertRaises(installer.InstallError):
+                installer.install_environment(home)
+            self.assertEqual(self.retired_reviewer(), retired.read_text())
+
+    def test_multiline_array_projection_keeps_unrelated_prompt(self):
+        original = 'names = [\n "old",\n "second",\n]\nprompt = """\n[agents]\nmodel="example"\n"""\n'
+        updated = routing.rewrite_fields(original, (), {"names": ["new"]})
+        self.assertEqual({"names": ["new"], "prompt": tomllib.loads(original)["prompt"]}, tomllib.loads(updated))
+
     def test_all_roles_resolve_from_one_policy_and_keep_permissions(self):
         policy = routing.load_policy()
-        self.assertEqual(19, len(policy["roles"]))
-        acceptors = {"reviewer", "task_plan_reviewer", "task_result_reviewer", "research_verifier",
+        self.assertEqual(20, len(policy["roles"]))
+        acceptors = {"task_plan_reviewer", "task_result_reviewer", "research_verifier",
                      "project_docs_verifier", "improvement_verifier"}
         for role, description in installer.role_descriptions().items():
             with self.subTest(role=role):
                 rendered = tomllib.loads(routing.render_agent(role, description))
                 template = tomllib.loads(routing.role_template(role).read_text())
-                expected = ("gpt-6-astra", "medium") if role in acceptors else ("gpt-6-sol", "medium")
+                expected = ("gpt-6-astra", "medium") if role == "deep_reviewer" else (
+                    "gpt-6.1-sol", "high" if role in acceptors | {"worker", "task_worker",
+                        "research_synthesizer", "task_risk_reviewer"} else "medium")
                 self.assertEqual(expected, (rendered["model"], rendered["model_reasoning_effort"]))
                 for key, value in template.items():
                     self.assertEqual(value, rendered[key])
@@ -61,7 +141,7 @@ env = { TEST_TOKEN = 'fixture-only' }
         self.assertEqual(new["agents"]["worker"]["nickname_candidates"], ["One", "Two"])
         self.assertEqual(new["features"]["multi_agent_v2"]["tool_namespace"], "agents")
         self.assertEqual(new["agents"]["max_threads"], 6)
-        self.assertEqual(new["model_reasoning_effort"], "xhigh")
+        self.assertEqual(new["model_reasoning_effort"], "max")
         self.assertEqual(installer.config_with_block(updated), updated)
 
     def test_malformed_markers_and_unknown_native_registration_refused(self):

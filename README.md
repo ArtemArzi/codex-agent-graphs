@@ -103,8 +103,19 @@ preview installation changes before applying them.
 
 [policies/model-routing.toml](policies/model-routing.toml) is the single source
 for the main model, auxiliary models, independent acceptance models, role
-classification and compatible profile names. The installer generates all 19
+classification and compatible profile names. The installer generates all 20
 Codex role files, global AGENTS guidance and the native multi-agent usage hint.
+The root defaults to `gpt-6.1-sol/max`; a valid manual effort selected for an
+existing Sol 6.1 root stays local to that home through installation and sync.
+Ordinary auxiliaries and block reviews use Sol 6.1/Medium; implementation workers,
+research synthesis and focused risk review use High. Required whole-plan/result
+acceptance uses Sol 6.1/High. Only `deep_reviewer` uses Astra/Medium, for rare
+exceptionally complex outcomes, unresolved material uncertainty or explicit deep
+review requests. It replaces the selected final Sol acceptor when warranted.
+
+The full migration retires the former global `reviewer` file into a backup and
+incorporates the existing vacancy specialist. Unknown retirement-file drift
+stops preflight; workflow acceptor identities and graph schemas stay compatible.
 For a model-routing-only migration, edit the manifest, then run
 `python3 scripts/install.py plan --routing-only --all`. Run
 `python3 scripts/install.py install --routing-only --wsl` and then
@@ -125,7 +136,7 @@ may contain private configuration and must stay in the local Codex home.
 The host policy uses one Sol `block_reviewer` result review for simple engineering
 and Sol for ordinary non-engineering reviews, including complete bounded artifacts.
 Only complex engineering or concrete materially high-risk consequences require
-fresh Astra whole-plan acceptance and a different whole-result acceptor. Length,
+fresh Sol High whole-plan acceptance and a different whole-result acceptor. Length,
 profile labels and topic keywords alone do not select Astra. Bounded block reviews
 remain Sol even within complex work; stage/skill switches and routine corrections
 reuse valid acceptance and the existing reviewer. Trivial chat/wording stays root-only.
@@ -133,6 +144,22 @@ This threshold overrides workflow defaults. The plan review is an agent instruct
 no new deterministic controller gate or graph identity is introduced. Start a
 new session to load new role instructions; running sessions are not restarted.
 Claude provider choices remain explicit and independent in the same manifest.
+
+Portable WSL/Desktop synchronization is tracked here:
+
+```bash
+python3 scripts/sync_desktop.py --check
+python3 scripts/sync_desktop.py --apply
+python3 scripts/sync_desktop.py --verify
+```
+
+The helper handles separated TOML agent tables, preserves each home's selected
+root effort and Windows-specific plugins/MCP/trust/history, backs up changes and
+restores its owned files after deployment failures. It permits different valid
+root efforts across homes. Close Desktop before applying a full portable snapshot
+to avoid an active app writing the profile; the native installer also detects
+concurrent config edits. The previous `codex-profile-sync` entry point forwards
+to this tracked helper on the configured host. No background sync is installed.
 
 ## Quick start
 

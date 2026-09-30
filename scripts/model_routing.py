@@ -13,6 +13,8 @@ POLICY_PATH = ROOT / "policies" / "model-routing.toml"
 POLICY_TARGET = "model-routing.toml"
 POLICY_START = "<!-- BEGIN codex-model-routing -->"
 POLICY_END = "<!-- END codex-model-routing -->"
+ROLE_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
+ROOT_EFFORTS = ROLE_EFFORTS | {"ultra"}
 
 
 def load_policy(path: Path | None = None) -> dict[str, Any]:
@@ -27,6 +29,8 @@ def load_policy(path: Path | None = None) -> dict[str, Any]:
             raise ValueError(f"Incomplete routing class: {kind}")
         if not all(isinstance(v, str) and v for v in data[kind].values()):
             raise ValueError(f"Invalid routing class: {kind}")
+        if data[kind]["effort"] not in (ROOT_EFFORTS if kind == "root" else ROLE_EFFORTS):
+            raise ValueError(f"Invalid reasoning effort for routing class: {kind}")
     roles = data.get("roles", {})
     if not isinstance(roles, dict) or not roles:
         raise ValueError("Routing policy has no roles")
@@ -35,6 +39,13 @@ def load_policy(path: Path | None = None) -> dict[str, Any]:
             raise ValueError(f"Invalid role id: {role}")
         if spec.get("class") not in ("auxiliary", "acceptance"):
             raise ValueError(f"Unknown routing class for {role}")
+        unknown = set(spec) - {"class", "template", "model", "effort", "claude_model", "claude_effort"}
+        if unknown:
+            raise ValueError(f"Unknown routing fields for {role}: {sorted(unknown)}")
+        if "effort" in spec and spec["effort"] not in ROLE_EFFORTS:
+            raise ValueError(f"Invalid effort override for {role}")
+        if "model" in spec and (not isinstance(spec["model"], str) or not spec["model"]):
+            raise ValueError(f"Invalid model override for {role}")
         relative = Path(spec.get("template", ""))
         if relative.is_absolute() or ".." in relative.parts or relative.suffix != ".toml":
             raise ValueError(f"Unsafe template path for {role}")
@@ -43,6 +54,17 @@ def load_policy(path: Path | None = None) -> dict[str, Any]:
     for key in ("plan_role", "result_role"):
         if roles.get(data.get(key), {}).get("class") != "acceptance":
             raise ValueError(f"{key} must name an acceptance role")
+    if deep := data.get("deep_review_role"):
+        if roles.get(deep, {}).get("class") != "acceptance":
+            raise ValueError("deep_review_role must name an acceptance role")
+        astra = [r for r in roles if role_route(r, data)["model"] == "gpt-6-astra"]
+        if astra != [deep]:
+            raise ValueError("Only the declared deep reviewer may use Astra")
+    for role, retirement in data.get("retired_roles", {}).items():
+        if role in roles or not re.fullmatch(r"[a-z][a-z0-9_]*", role):
+            raise ValueError(f"Invalid retired role: {role}")
+        if set(retirement) != {"sha256"} or not re.fullmatch(r"[0-9a-f]{64}", retirement["sha256"]):
+            raise ValueError(f"Invalid retirement identity: {role}")
     aliases = data.get("profile_aliases", [])
     if not isinstance(aliases, list) or len(set(aliases)) != len(aliases):
         raise ValueError("Invalid profile aliases")
@@ -55,7 +77,8 @@ def load_policy(path: Path | None = None) -> dict[str, Any]:
 
 def role_route(role: str, policy: dict[str, Any] | None = None) -> dict[str, str]:
     policy = policy or load_policy()
-    return policy[policy["roles"][role]["class"]]
+    spec = policy["roles"][role]
+    return {**policy[spec["class"]], **{k: spec[k] for k in ("model", "effort") if k in spec}}
 
 
 def role_template(role: str) -> Path:
@@ -85,17 +108,24 @@ def render_agent(role: str, description: str) -> str:
     return rendered
 
 
-def render_policy() -> str:
-    data = load_policy()
+def render_policy(policy: dict[str, Any] | None = None) -> str:
+    data = policy or load_policy()
     rows = ["# Unified model routing and independent acceptance", "",
             "Generated from `policies/model-routing.toml`; change that source and run the installer.", "",
             "| Role class | Model | Reasoning |", "| --- | --- | --- |"]
-    for label, kind in (("Main orchestrator", "root"), ("Auxiliary work and focused reviews", "auxiliary"),
+    for label, kind in (("Main orchestrator (default; manual effort is preserved)", "root"), ("Auxiliary work and focused reviews", "auxiliary"),
                         ("Fresh whole-plan / whole-result acceptance", "acceptance")):
         rows.append(f"| {label} | `{data[kind]['model']}` | `{data[kind]['effort']}` |")
+    exceptions = [r for r, spec in data["roles"].items() if "model" in spec or "effort" in spec]
+    if exceptions:
+        rows.extend(("", "| Role exception | Model | Reasoning |", "| --- | --- | --- |"))
+        for role in exceptions:
+            route = role_route(role, data)
+            rows.append(f"| `{role}` | `{route['model']}` | `{route['effort']}` |")
     rows.extend(("", f"Shared plan role: `{data['plan_role']}`. General result role: `{data['result_role']}`.",
                  "Workflow-specific acceptance roles: " + ", ".join(f"`{r}`" for r, s in data["roles"].items()
-                     if s["class"] == "acceptance" and r not in (data["plan_role"], data["result_role"])) + ".",
+                     if s["class"] == "acceptance" and r not in
+                     (data["plan_role"], data["result_role"], data.get("deep_review_role"))) + ".",
                  "", data["instructions"].strip(), ""))
     return "\n".join(rows)
 
@@ -105,7 +135,7 @@ def usage_hint() -> str:
     return ("Apply the global complex-engineering/material-risk threshold. Simple engineering gets one "
             "block_reviewer result review; ordinary non-engineering reviews also use block_reviewer, "
             "including complete bounded artifacts. Trivial chat/wording stays root-only. "
-            "Bounded block reviews remain auxiliary even within complex tasks. Reserve reviewer and "
+            "Bounded block reviews remain auxiliary even within complex tasks. Reserve task_result_reviewer and "
             "workflow acceptors for qualifying whole outcomes; state the concrete escalation reason. "
             "Stage/skill switches and routine corrections reuse valid acceptance and the same reviewer. "
             "Default to root-only implementation for simple "
@@ -116,6 +146,9 @@ def usage_hint() -> str:
             f"Use configured auxiliary roles ({data['auxiliary']['model']}, {data['auxiliary']['effort']}) "
             "only when an independent block repays handoff cost. "
             'Always set agent_type and fork_turns="none"; preserve role settings. Children are leaves. '
+            "Ordinary whole-plan/result acceptance uses Sol High. deep_reviewer is the sole Astra role, "
+            "reserved for rare exceptionally complex outcomes, unresolved material uncertainty or explicit deep review. "
+            "Do not routinely duplicate a final Sol review with an Astra review. "
             "When independent acceptance is required, missing evidence is not a pass. "
             "Reuse the same reviewer only for corrections to its scope. Respect host concurrency/writer limits, "
             "avoid duplicate scopes, and return compact cited evidence.")
@@ -125,8 +158,9 @@ def _structural_lines(text: str) -> list[tuple[int, str]]:
     """Locate TOML statements outside strings; do not edit example keys in prompts."""
     result: list[tuple[int, str]] = []
     quote: str | None = None
+    nesting = 0
     for n, line in enumerate(text.splitlines(keepends=True)):
-        if quote is None:
+        if quote is None and nesting == 0:
             result.append((n, line))
         i = 0
         while i < len(line):
@@ -143,6 +177,12 @@ def _structural_lines(text: str) -> list[tuple[int, str]]:
             elif line[i] in "\"'":
                 quote = line[i] * (3 if line.startswith(line[i] * 3, i) else 1)
                 i += len(quote)
+            elif line[i] in "[{":
+                nesting += 1
+                i += 1
+            elif line[i] in "]}":
+                nesting -= 1
+                i += 1
             else:
                 i += 1
     return result
@@ -214,13 +254,26 @@ def config_defaults(text: str) -> str:
     for name, overlay in original.get("profiles", {}).items():
         if has_routing_override(overlay):
             raise ValueError(f"Embedded profile {name} contains routing overrides; migrate explicitly")
-    text = rewrite_fields(text, (), {"model": data["root"]["model"], "model_reasoning_effort": data["root"]["effort"]})
+    effort = root_effort(original, data)
+    text = rewrite_fields(text, (), {"model": data["root"]["model"], "model_reasoning_effort": effort})
     text = rewrite_fields(text, ("features",), {"multi_agent": True})
     text = rewrite_fields(text, ("agents",), {"enabled": True,
         "default_subagent_model": data["auxiliary"]["model"],
-        "default_subagent_reasoning_effort": data["auxiliary"]["effort"]})
-    text = rewrite_fields(text, ("features", "multi_agent_v2"), {"usage_hint_text": usage_hint()})
+        "default_subagent_reasoning_effort": data["auxiliary"]["effort"], "max_depth": 1})
+    text = rewrite_fields(text, ("features", "multi_agent_v2"), {"usage_hint_text": usage_hint(), "enabled": True})
     return text
+
+
+def root_effort(settings: dict[str, Any], policy: dict[str, Any] | None = None) -> str:
+    """Root effort is a target-owned preference, not auxiliary routing drift."""
+    data = policy or load_policy()
+    if settings.get("model") == data["root"]["model"]:
+        selected = settings.get("model_reasoning_effort")
+        if selected in ROOT_EFFORTS:
+            return selected
+        if selected is not None:
+            raise ValueError("Invalid selected root reasoning effort")
+    return data["root"]["effort"]
 
 
 def has_routing_override(data: dict[str, Any]) -> bool:

@@ -1,0 +1,32 @@
+diff --git a/.codex/agents/explorer.toml b/.codex/agents/explorer.toml
+index 5e6e6f9..9e9d8b0 100644
+--- a/.codex/agents/explorer.toml
++++ b/.codex/agents/explorer.toml
+@@ -0,0 +1,3 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
++sandbox_mode = "read-only"
+diff --git a/.codex/agents/researcher.toml b/.codex/agents/researcher.toml
+index 2d74a74..cbcf573 100644
+--- a/.codex/agents/researcher.toml
++++ b/.codex/agents/researcher.toml
+@@ -0,0 +1,3 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "medium"
++sandbox_mode = "read-only"
+diff --git a/.codex/agents/reviewer.toml b/.codex/agents/reviewer.toml
+index fa3aa0d..f3d97db 100644
+--- a/.codex/agents/reviewer.toml
++++ b/.codex/agents/reviewer.toml
+@@ -0,0 +1,3 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
++sandbox_mode = "read-only"
+diff --git a/.codex/agents/worker.toml b/.codex/agents/worker.toml
+index 7000d70..49bb4ba 100644
+--- a/.codex/agents/worker.toml
++++ b/.codex/agents/worker.toml
+@@ -0,0 +1,3 @@
++model = "gpt-6.1-sol"
++model_reasoning_effort = "high"
++sandbox_mode = "workspace-write"

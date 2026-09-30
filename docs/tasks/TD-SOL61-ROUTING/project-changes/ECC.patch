@@ -1,0 +1,143 @@
+diff --git a/.codex/AGENTS.md b/.codex/AGENTS.md
+index 7c6cfa75..fd9ac05c 100644
+--- a/.codex/AGENTS.md
++++ b/.codex/AGENTS.md
+@@ -5 +5 @@ This supplements the root `AGENTS.md` with Codex-specific guidance.
+-## Model Recommendations
++## Model Routing
+@@ -7,6 +7,5 @@ This supplements the root `AGENTS.md` with Codex-specific guidance.
+-| Task Type | Recommended Model |
+-|-----------|------------------|
+-| Routine coding, tests, formatting | GPT 5.4 |
+-| Complex features, architecture | GPT 5.4 |
+-| Debugging, refactoring | GPT 5.4 |
+-| Security review | GPT 5.4 |
++The shared Codex home and generated global policy own model routing. The root
++defaults to GPT-6.1 Sol/Max; each home's manual effort selection is preserved.
++Ordinary auxiliary work and reviews use Sol 6.1/Medium, harder implementation and
++whole-plan/result acceptance use Sol 6.1/High. The single global `deep_reviewer`
++uses Astra only for rare exceptional whole outcomes or explicit deep review.
+@@ -78,4 +77,4 @@ Codex now supports multi-agent workflows behind the experimental `features.multi
+-Sample role configs in this repo:
+-- `.codex/agents/explorer.toml` — read-only evidence gathering
+-- `.codex/agents/reviewer.toml` — correctness/security review
+-- `.codex/agents/docs-researcher.toml` — API and release-note verification
++ECC's redundant GPT-5.4 sample registrations and files have been retired.
++Use the shared `explorer`, `researcher`, `block_reviewer` and workflow acceptance
++roles instead. Codex defaults to root-only work and delegates only useful bounded
++scopes under the global complexity/risk threshold.
+diff --git a/.codex/agents/docs-researcher.toml b/.codex/agents/docs-researcher.toml
+deleted file mode 100644
+index 0daae570..00000000
+--- a/.codex/agents/docs-researcher.toml
++++ /dev/null
+@@ -1,9 +0,0 @@
+-model = "gpt-5.4"
+-model_reasoning_effort = "medium"
+-sandbox_mode = "read-only"
+-
+-developer_instructions = """
+-Verify APIs, framework behavior, and release-note claims against primary documentation before changes land.
+-Cite the exact docs or file paths that support each claim.
+-Do not invent undocumented behavior.
+-"""
+\ No newline at end of file
+diff --git a/.codex/agents/explorer.toml b/.codex/agents/explorer.toml
+deleted file mode 100644
+index 732df7af..00000000
+--- a/.codex/agents/explorer.toml
++++ /dev/null
+@@ -1,9 +0,0 @@
+-model = "gpt-5.4"
+-model_reasoning_effort = "medium"
+-sandbox_mode = "read-only"
+-
+-developer_instructions = """
+-Stay in exploration mode.
+-Trace the real execution path, cite files and symbols, and avoid proposing fixes unless the parent agent asks for them.
+-Prefer targeted search and file reads over broad scans.
+-"""
+\ No newline at end of file
+diff --git a/.codex/agents/reviewer.toml b/.codex/agents/reviewer.toml
+deleted file mode 100644
+index b13ed9cf..00000000
+--- a/.codex/agents/reviewer.toml
++++ /dev/null
+@@ -1,9 +0,0 @@
+-model = "gpt-5.4"
+-model_reasoning_effort = "high"
+-sandbox_mode = "read-only"
+-
+-developer_instructions = """
+-Review like an owner.
+-Prioritize correctness, security, behavioral regressions, and missing tests.
+-Lead with concrete findings and avoid style-only feedback unless it hides a real bug.
+-"""
+\ No newline at end of file
+diff --git a/.codex/config.toml b/.codex/config.toml
+index 5c3316ff..e6cb5b35 100644
+--- a/.codex/config.toml
++++ b/.codex/config.toml
+@@ -105,2 +105,2 @@ web_search = "live"
+-# Multi-agent role limits and local role definitions.
+-# These map to `.codex/agents/*.toml` and mirror the repo's explorer/reviewer/docs workflow.
++# Native global roles and routing come from the shared Codex home.
++# ECC does not register duplicate project role files.
+@@ -109,12 +108,0 @@ max_depth = 1
+-
+-[agents.explorer]
+-description = "Read-only codebase explorer for gathering evidence before changes are proposed."
+-config_file = "agents/explorer.toml"
+-
+-[agents.reviewer]
+-description = "PR reviewer focused on correctness, security, and missing tests."
+-config_file = "agents/reviewer.toml"
+-
+-[agents.docs_researcher]
+-description = "Documentation specialist that verifies APIs, framework behavior, and release notes."
+-config_file = "agents/docs-researcher.toml"
+diff --git a/AGENTS.md b/AGENTS.md
+index b956fe2d..3599912c 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -9 +9 @@ This is a **production-ready AI coding plugin** providing 63 specialized agents,
+-1. **Agent-First** — Delegate to specialized agents for domain tasks
++1. **Bounded Delegation** — Codex follows the shared routing policy and delegates only useful independent scopes
+@@ -52,8 +52,4 @@ This is a **production-ready AI coding plugin** providing 63 specialized agents,
+-Use agents proactively without user prompt:
+-- Complex feature requests → **planner**
+-- Code just written/modified → **code-reviewer**
+-- Bug fix or new feature → **tdd-guide**
+-- Architectural decision → **architect**
+-- Security-sensitive code → **security-reviewer**
+-- Autonomous loops / loop monitoring → **loop-operator**
+-- Harness config reliability and cost → **harness-optimizer**
++Codex follows the shared global routing and independent-review policy. Default to
++root-only execution, use Sol 6.1/Medium for useful auxiliary scopes and ordinary
++block reviews, and Sol 6.1/High for harder work and required whole-plan/result
++acceptance. The single global `deep_reviewer` is the rare Astra exception.
+@@ -61 +57,3 @@ Use agents proactively without user prompt:
+-Use parallel execution for independent operations — launch multiple agents simultaneously.
++The package's specialist profiles are optional provider-specific guidance. They
++do not impose extra agent counts or blanket delegation on Codex. Use parallel
++agents only when independent work repays the handoff cost; children remain leaves.
+diff --git a/tests/scripts/codex-hooks.test.js b/tests/scripts/codex-hooks.test.js
+index 59b82b5e..94f0924f 100644
+--- a/tests/scripts/codex-hooks.test.js
++++ b/tests/scripts/codex-hooks.test.js
+@@ -185 +185 @@ if (
+-      assert.strictEqual(parsed.agents.explorer.config_file, 'agents/explorer.toml');
++      assert.ok(!Object.prototype.hasOwnProperty.call(parsed.agents, 'explorer'));
+@@ -454,3 +454,3 @@ if (
+-      assert.strictEqual(parsedConfig.agents.explorer.config_file, 'agents/explorer.toml');
+-      assert.strictEqual(parsedConfig.agents.reviewer.config_file, 'agents/reviewer.toml');
+-      assert.strictEqual(parsedConfig.agents.docs_researcher.config_file, 'agents/docs-researcher.toml');
++      assert.strictEqual(parsedConfig.agents.explorer.config_file, undefined);
++      assert.ok(!Object.prototype.hasOwnProperty.call(parsedConfig.agents, 'reviewer'));
++      assert.ok(!Object.prototype.hasOwnProperty.call(parsedConfig.agents, 'docs_researcher'));
+@@ -464 +464 @@ if (
+-        assert.ok(fs.existsSync(path.join(codexDir, 'agents', roleFile)));
++        assert.ok(!fs.existsSync(path.join(codexDir, 'agents', roleFile)));
+@@ -497 +497 @@ if (
+-      assert.strictEqual(parsedConfig.agents.explorer.config_file, 'agents/explorer.toml');
++      assert.strictEqual(parsedConfig.agents.explorer.config_file, undefined);

@@ -127,7 +127,7 @@ class InstallerTests(unittest.TestCase):
                     installer.install_environment(self.home)
                 self.assertFalse((self.home / "skills").exists())
 
-    def test_install_preserves_astra_routing_and_unrelated_config(self) -> None:
+    def test_install_applies_sol61_routing_and_preserves_unrelated_config(self) -> None:
         original = "[agents]\nmax_threads = 6\nmax_depth = 1\n\n[history]\npersistence = 'save-all'\n"
         (self.home / "config.toml").write_text(original, encoding="utf-8")
         installer.install_environment(self.home)
@@ -136,9 +136,9 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(updated["agents"]["max_threads"], 6)
         self.assertEqual(updated["agents"]["max_depth"], 1)
         self.assertEqual(updated["history"], {"persistence": "save-all"})
-        for role, effort in (("task_worker", "medium"), ("task_plan_reviewer", "medium"), ("task_result_reviewer", "medium")):
+        for role, effort in (("task_worker", "high"), ("task_plan_reviewer", "high"), ("task_result_reviewer", "high")):
             spec = installer.tomllib.loads((self.home / "agents" / f"{role}.toml").read_text(encoding="utf-8"))
-            self.assertEqual(("gpt-6-sol" if role == "task_worker" else "gpt-6-astra", effort), (spec["model"], spec["model_reasoning_effort"]))
+            self.assertEqual(("gpt-6.1-sol", effort), (spec["model"], spec["model_reasoning_effort"]))
 
     def test_embedded_discovery_policy_marker_is_rejected(self) -> None:
         (self.home / "AGENTS.md").write_text(
@@ -333,7 +333,7 @@ class InstallerTests(unittest.TestCase):
 
     def _legacy_routing_fixture(self) -> None:
         installer.install_environment(self.home)
-        old, new = "gpt-5.6-sol", "gpt-6-sol"
+        old, new = "gpt-5.6-sol", "gpt-6.1-sol"
         policy = self.home / "model-routing.toml"
         policy.write_text(policy.read_text().replace(
             f'model = "{new}"\neffort = "medium"',
@@ -346,10 +346,9 @@ class InstallerTests(unittest.TestCase):
                     f'model = "{new}"', f'model = "{old}"', 1
                 ))
         agents_file = self.home / "AGENTS.md"
+        prior_policy = installer.tomllib.loads(policy.read_text())
         agents_file.write_text(agents_file.read_text().replace(
-            f"| Auxiliary work and focused reviews | `{new}` |",
-            f"| Auxiliary work and focused reviews | `{old}` |", 1
-        ))
+            installer.routing.render_policy(), installer.routing.render_policy(prior_policy), 1))
         config = self.home / "config.toml"
         old_config = config.read_text().replace(new, old)
         config.write_text(installer.routing.rewrite_fields(
@@ -360,7 +359,7 @@ class InstallerTests(unittest.TestCase):
         self._legacy_routing_fixture()
         skill = self.home / "skills" / "task-delivery" / "SKILL.md"
         skill.write_text(skill.read_text() + "\n# Local change\n")
-        manual = self.home / "agents" / "vacancy_researcher.toml"
+        manual = self.home / "agents" / "custom_manual.toml"
         manual.write_text('model = "gpt-5.6-luna"\n')
         before_skill, before_manual = skill.read_bytes(), manual.read_bytes()
         before_config = installer.tomllib.loads((self.home / "config.toml").read_text())
@@ -373,13 +372,13 @@ class InstallerTests(unittest.TestCase):
             (after_config["model"], after_config["model_reasoning_effort"]),
             (before_config["model"], before_config["model_reasoning_effort"])
         )
-        self.assertEqual(after_config["agents"]["default_subagent_model"], "gpt-6-sol")
+        self.assertEqual(after_config["agents"]["default_subagent_model"], "gpt-6.1-sol")
         self.assertEqual(after_config["agents"]["default_subagent_reasoning_effort"], "medium")
         self.assertEqual(skill.read_bytes(), before_skill)
         self.assertEqual(manual.read_bytes(), before_manual)
         for role, spec in installer.routing.load_policy()["roles"].items():
             actual = installer.tomllib.loads((self.home / "agents" / f"{role}.toml").read_text())
-            expected = "gpt-6-sol" if spec["class"] == "auxiliary" else "gpt-6-astra"
+            expected = "gpt-6-astra" if role == "deep_reviewer" else "gpt-6.1-sol"
             self.assertEqual(actual["model"], expected)
         self.assertEqual(installer.verify_environment(self.home)["status"], "failed")
         second = installer.install_routing_environment(self.home)

@@ -205,7 +205,8 @@ def config_with_block(original: str) -> str:
             raise InstallError(f"Adopted managed config would be invalid TOML: {exc}") from exc
         return adopted
     try:
-        without_managed, _ = routing.adopt_native_registrations(without_managed, NATIVE_ROLES)
+        without_managed, _ = routing.adopt_native_registrations(
+            without_managed, NATIVE_ROLES | set(routing.load_policy().get("retired_roles", {})))
     except ValueError as exc:
         raise InstallError(str(exc)) from exc
     remaining = tomllib.loads(without_managed)
@@ -437,6 +438,11 @@ def validate_install_parents(codex_home: Path) -> None:
 
 def validate_routing_environment(codex_home: Path) -> None:
     validate_install_parents(codex_home)
+    for role, retirement in routing.load_policy().get("retired_roles", {}).items():
+        path = codex_home / "agents" / f"{role}.toml"
+        if path.exists() or path.is_symlink():
+            if path.is_symlink() or not path.is_file() or sha256_file(path) != retirement["sha256"]:
+                raise InstallError(f"Retired role has unknown drift; preserve and inspect: {path}")
     known_profiles = set(routing.load_policy()["profile_aliases"])
     for profile in codex_home.glob("*.config.toml"):
         if profile.name.removesuffix(".config.toml") in known_profiles:
@@ -478,7 +484,7 @@ def routing_only_candidates(
     expected_prior = {**desired, "auxiliary": {**desired["auxiliary"], "model": prior_model}}
     if not isinstance(prior_model, str) or installed != expected_prior:
         raise InstallError("Installed routing policy has unrelated drift")
-    if prior_model not in (current_model, "gpt-5.6-sol"):
+    if prior_model not in (current_model, "gpt-5.6-sol", "gpt-6-sol"):
         raise InstallError(f"Unexpected prior auxiliary model: {prior_model}")
 
     candidates: dict[Path, str] = {}
@@ -513,7 +519,7 @@ def routing_only_candidates(
     if len(matches) != 1:
         raise InstallError("Missing or duplicate model-routing AGENTS.md block")
     rendered_block = f"{routing.POLICY_START}\n{routing.render_policy()}{routing.POLICY_END}\n"
-    previous_block = rendered_block.replace(f"`{current_model}`", f"`{prior_model}`", 1)
+    previous_block = f"{routing.POLICY_START}\n{routing.render_policy(expected_prior)}{routing.POLICY_END}\n"
     existing_block = matches[0].group()
     if existing_block not in (previous_block, rendered_block):
         raise InstallError("Global model-routing block has unrelated drift")
@@ -660,6 +666,21 @@ def preflight_environment(codex_home: Path) -> tuple[str, str, str, str]:
     return original, candidate, agents_original, agents_candidate
 
 
+def retire_agents(codex_home: Path, backup: Path) -> list[dict[str, str]]:
+    """Archive only a pinned obsolete role, outside active discovery."""
+    validate_routing_environment(codex_home)
+    changes = []
+    for role in routing.load_policy().get("retired_roles", {}):
+        target = codex_home / "agents" / f"{role}.toml"
+        if not target.exists():
+            continue
+        archived = backup / "retired-agents" / target.name
+        archived.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(target), archived)
+        changes.append({"kind": "retired-agent", "name": role, "status": "retired", "target": str(target)})
+    return changes
+
+
 def install_environment(codex_home: Path) -> dict[str, Any]:
     codex_home = codex_home.expanduser().resolve()
     original, candidate, agents_original, agents_candidate = preflight_environment(codex_home)
@@ -692,9 +713,13 @@ def install_environment(codex_home: Path) -> dict[str, Any]:
             status = replace_generated(content, target, backup / relative)
             changes.append({"kind": kind, "name": relative.stem, "status": status, "target": str(target)})
 
+        changes.extend(retire_agents(codex_home, backup))
+
         if candidate == original:
             config_change = "in-sync"
         else:
+            if config.exists() and config.read_text(encoding="utf-8") != original:
+                raise InstallError("Concurrent config edit before install; preserve the external edit")
             if config.exists():
                 config_backup = backup / "config.toml"
                 config_backup.parent.mkdir(parents=True, exist_ok=True)
@@ -723,7 +748,7 @@ def install_environment(codex_home: Path) -> dict[str, Any]:
         verification = verify_environment(codex_home)
         if verification["status"] != "ok":
             raise InstallError(f"Post-install verification failed for {codex_home}: {verification['issues']}")
-        backup_used = any(change["status"] == "installed" for change in changes) and backup.exists()
+        backup_used = any(change["status"] in ("installed", "retired") for change in changes) and backup.exists()
         return {
             "codex_home": str(codex_home),
             "changes": changes,
@@ -731,6 +756,12 @@ def install_environment(codex_home: Path) -> dict[str, Any]:
         }
 
     except (OSError, ValueError, InstallError) as exc:
+        for change in changes:
+            if change["kind"] == "retired-agent":
+                target = Path(change["target"])
+                archived = backup / "retired-agents" / target.name
+                if not target.exists() and archived.is_file():
+                    shutil.copy2(archived, target)
         error = InstallError(f"Installation stopped for {codex_home}: {exc}")
         error.partial_install = {"codex_home": str(codex_home), "changes": changes,
                                  "backup": str(backup) if backup.exists() else None}
@@ -745,6 +776,11 @@ def verify_environment(codex_home: Path) -> dict[str, Any]:
         return {"status": "failed", "codex_home": str(codex_home), "issues": [str(exc)], "items": []}
     issues: list[str] = []
     statuses: list[dict[str, str]] = []
+    for role in routing.load_policy().get("retired_roles", {}):
+        status = "drift" if (codex_home / "agents" / f"{role}.toml").exists() else "in-sync"
+        statuses.append({"kind": "retired-agent", "name": role, "status": status})
+        if status != "in-sync":
+            issues.append(f"retired agent {role}: still active")
     runtime_status = path_status(GRAPH_RUNTIME_ROOT, codex_home / GRAPH_RUNTIME_TARGET)
     statuses.append(
         {"kind": "runtime", "name": GRAPH_RUNTIME_TARGET, "status": runtime_status}
@@ -802,6 +838,9 @@ def plan_environment(codex_home: Path) -> dict[str, Any]:
             "status": path_status(GRAPH_RUNTIME_ROOT, codex_home / GRAPH_RUNTIME_TARGET),
         }
     ]
+    for role in routing.load_policy().get("retired_roles", {}):
+        items.append({"kind": "retired-agent", "name": role,
+                      "status": "drift" if (codex_home / "agents" / f"{role}.toml").exists() else "in-sync"})
     for skill in SKILLS:
         items.append(
             {
