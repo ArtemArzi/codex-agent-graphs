@@ -1,0 +1,2226 @@
+{
+  "schema_version": "ecc.agent-architecture-audit.report.v1",
+  "audit_date": "2026-09-30",
+  "scope": {
+    "target_name": "Native Codex subagent routing, principal workflow routing and WSL/Desktop portable parity",
+    "model_stack": [
+      "gpt-6.1-sol",
+      "gpt-6-sol",
+      "gpt-6-astra",
+      "gpt-5.6-luna",
+      "gpt-5.4"
+    ],
+    "layers_to_audit": [
+      "System prompt",
+      "Tool selection",
+      "Persistence"
+    ],
+    "excluded": [
+      "Paid A/B benchmark",
+      "All installed skills technical content",
+      "Production changes",
+      "Desktop new-session model inference",
+      "Automatic account or credential synchronization"
+    ],
+    "mode": "audit_and_proposal_only"
+  },
+  "executive_verdict": {
+    "overall_health": "needs_reconciliation",
+    "primary_failure_mode": "Canonical routing and sync ownership are inconsistent with current root preference",
+    "most_urgent_fix": "Persist root choice to the canonical policy before installing or syncing"
+  },
+  "repository": {
+    "base_commit": "d407fe9c38621f293101b793643557cca1c9b6b8",
+    "remote_main_verified": "d407fe9c38621f293101b793643557cca1c9b6b8",
+    "url": "https://github.com/ArtemArzi/codex-agent-graphs"
+  },
+  "installed_surfaces": [
+    {
+      "surface": "wsl",
+      "root_model": "gpt-6.1-sol",
+      "root_effort": "max",
+      "default_subagent_model": "gpt-6-sol",
+      "default_subagent_reasoning_effort": "medium",
+      "max_threads": 6,
+      "max_depth": 1,
+      "multi_agent": true,
+      "multi_agent_v2_enabled": null,
+      "profiles": [],
+      "roles": [
+        {
+          "role": "block_reviewer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 1964,
+          "sha256": "a9e4577c6f63a623dddd926fdc9e546148769acee5a6c156169558aeda7aec9e",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/block_reviewer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/block_reviewer.toml:1"
+        },
+        {
+          "role": "default",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": null,
+          "registered": true,
+          "instructions_chars": 322,
+          "sha256": "2900a21b0bcce4210d80ced6064c2407926fc97f56da982da3791f622f575750",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/default.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/default.toml:1"
+        },
+        {
+          "role": "explorer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 477,
+          "sha256": "5320796a6483d244f74051f5e44934efb8933bd25f5d664d892917b7dcece2a7",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/explorer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/explorer.toml:1"
+        },
+        {
+          "role": "improvement_verifier",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 2259,
+          "sha256": "66a55371021649dc0f5a673e06900e0125918bc4d274f5fd4f2962c8378c2635",
+          "managed_by_graph_installer": true,
+          "source": "agents/improvement_verifier.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/improvement_verifier.toml:1"
+        },
+        {
+          "role": "project_docs_auditor",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 656,
+          "sha256": "217a73af5a777ea1e123ddbb6143ea624567324c626ef6de400c5046d2169456",
+          "managed_by_graph_installer": true,
+          "source": "agents/project_docs_auditor.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/project_docs_auditor.toml:1"
+        },
+        {
+          "role": "project_docs_curator",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "registered": true,
+          "instructions_chars": 668,
+          "sha256": "df397e5579c503b56510c22145db34d0832acc94cbfc750f13061fb32eb9913c",
+          "managed_by_graph_installer": true,
+          "source": "agents/project_docs_curator.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/project_docs_curator.toml:1"
+        },
+        {
+          "role": "project_docs_verifier",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 3924,
+          "sha256": "07e08b728a305272e68b8398160aa87157a03d60af85d8631ebafd8a862e78bc",
+          "managed_by_graph_installer": true,
+          "source": "agents/project_docs_verifier.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/project_docs_verifier.toml:1"
+        },
+        {
+          "role": "research_planner",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 385,
+          "sha256": "37e7c16bc4b4e85779bb5469ed8c4e7674915130616219b2ac0dcb7108517ba8",
+          "managed_by_graph_installer": true,
+          "source": "agents/research_planner.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/research_planner.toml:1"
+        },
+        {
+          "role": "research_scout",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 474,
+          "sha256": "2c6492a2cd109f5fdfeb0c4e9f4864014a4e837b3bc177397816509ef1ede9d5",
+          "managed_by_graph_installer": true,
+          "source": "agents/research_scout.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/research_scout.toml:1"
+        },
+        {
+          "role": "research_synthesizer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 459,
+          "sha256": "3dd35210b1e9714a83214147c270b9593369732367fd8a636be6f3095caa303a",
+          "managed_by_graph_installer": true,
+          "source": "agents/research_synthesizer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "high",
+          "evidence": "/home/artem/.codex/agents/research_synthesizer.toml:1"
+        },
+        {
+          "role": "research_verifier",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 2278,
+          "sha256": "0d9a5014890229115428128710e3b75cb589440c21990eda054aad93aeb9f300",
+          "managed_by_graph_installer": true,
+          "source": "agents/research_verifier.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/research_verifier.toml:1"
+        },
+        {
+          "role": "researcher",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 473,
+          "sha256": "10beae129fbc78abcde438d9d8196842aa53a195039876c8cd4943773839db9c",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/researcher.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/researcher.toml:1"
+        },
+        {
+          "role": "reviewer",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 2103,
+          "sha256": "bcbbbb9e7b8a250dc34273659531350e650faa1c1b4bea29f1bd3133620e3d07",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/reviewer.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/reviewer.toml:1"
+        },
+        {
+          "role": "task_explorer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 431,
+          "sha256": "11229c1e878b3f1d2029d06545fe7d09cf0306a15eb2442bae6ada56153638a6",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_explorer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/task_explorer.toml:1"
+        },
+        {
+          "role": "task_plan_reviewer",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 2398,
+          "sha256": "24c9d58e0a3cc7dff9e361486ce644298ee64c6768c7481ac66818a7e6a448a4",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_plan_reviewer.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/task_plan_reviewer.toml:1"
+        },
+        {
+          "role": "task_result_reviewer",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 3310,
+          "sha256": "768b373f77714f6a45a461d9933f4fc87af958f20f4ecfb8db8c0559c823c63e",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_result_reviewer.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/task_result_reviewer.toml:1"
+        },
+        {
+          "role": "task_risk_reviewer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 580,
+          "sha256": "3cdf08b0f8d39b54bc97fb5bb8fb5cc4c86b3301d27a3384e1eb4061fb703ca7",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_risk_reviewer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "high",
+          "evidence": "/home/artem/.codex/agents/task_risk_reviewer.toml:1"
+        },
+        {
+          "role": "task_worker",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "registered": true,
+          "instructions_chars": 1760,
+          "sha256": "aced3dc83826bbe737a31bdaa07533ff00c7d7b20cb0e64527480bbf48cc662b",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_worker.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "high",
+          "evidence": "/home/artem/.codex/agents/task_worker.toml:1"
+        },
+        {
+          "role": "vacancy_researcher",
+          "model": "gpt-5.6-luna",
+          "effort": "max",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 1662,
+          "sha256": "274dc799507f9d91d5dcbf3239d67cb2d7349444ffd75a566ada8f84e4feb95c",
+          "managed_by_graph_installer": false,
+          "source": "/home/artem/projects/resume_hh/tools/vacancy-research-agent/vacancy_researcher.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/home/artem/.codex/agents/vacancy_researcher.toml:1"
+        },
+        {
+          "role": "worker",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "registered": true,
+          "instructions_chars": 878,
+          "sha256": "2f4dd5e5433c30c40ee0c0100f6962aa0917b082b745347fd8c8c7ea0e676ac4",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/worker.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "high",
+          "evidence": "/home/artem/.codex/agents/worker.toml:1"
+        }
+      ],
+      "disabled_skills_count": 42,
+      "policy_root_model": "gpt-6-astra",
+      "policy_root_effort": "xhigh"
+    },
+    {
+      "surface": "desktop",
+      "root_model": "gpt-6.1-sol",
+      "root_effort": "max",
+      "default_subagent_model": "gpt-6-sol",
+      "default_subagent_reasoning_effort": "medium",
+      "max_threads": 6,
+      "max_depth": 2,
+      "multi_agent": true,
+      "multi_agent_v2_enabled": false,
+      "profiles": [],
+      "roles": [
+        {
+          "role": "block_reviewer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 1964,
+          "sha256": "a9e4577c6f63a623dddd926fdc9e546148769acee5a6c156169558aeda7aec9e",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/block_reviewer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/block_reviewer.toml:1"
+        },
+        {
+          "role": "default",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": null,
+          "registered": true,
+          "instructions_chars": 322,
+          "sha256": "2900a21b0bcce4210d80ced6064c2407926fc97f56da982da3791f622f575750",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/default.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/default.toml:1"
+        },
+        {
+          "role": "explorer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 477,
+          "sha256": "5320796a6483d244f74051f5e44934efb8933bd25f5d664d892917b7dcece2a7",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/explorer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/explorer.toml:1"
+        },
+        {
+          "role": "improvement_verifier",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 2259,
+          "sha256": "66a55371021649dc0f5a673e06900e0125918bc4d274f5fd4f2962c8378c2635",
+          "managed_by_graph_installer": true,
+          "source": "agents/improvement_verifier.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/improvement_verifier.toml:1"
+        },
+        {
+          "role": "project_docs_auditor",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 656,
+          "sha256": "217a73af5a777ea1e123ddbb6143ea624567324c626ef6de400c5046d2169456",
+          "managed_by_graph_installer": true,
+          "source": "agents/project_docs_auditor.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/project_docs_auditor.toml:1"
+        },
+        {
+          "role": "project_docs_curator",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "registered": true,
+          "instructions_chars": 668,
+          "sha256": "df397e5579c503b56510c22145db34d0832acc94cbfc750f13061fb32eb9913c",
+          "managed_by_graph_installer": true,
+          "source": "agents/project_docs_curator.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/project_docs_curator.toml:1"
+        },
+        {
+          "role": "project_docs_verifier",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 3924,
+          "sha256": "07e08b728a305272e68b8398160aa87157a03d60af85d8631ebafd8a862e78bc",
+          "managed_by_graph_installer": true,
+          "source": "agents/project_docs_verifier.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/project_docs_verifier.toml:1"
+        },
+        {
+          "role": "research_planner",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 385,
+          "sha256": "37e7c16bc4b4e85779bb5469ed8c4e7674915130616219b2ac0dcb7108517ba8",
+          "managed_by_graph_installer": true,
+          "source": "agents/research_planner.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/research_planner.toml:1"
+        },
+        {
+          "role": "research_scout",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 474,
+          "sha256": "2c6492a2cd109f5fdfeb0c4e9f4864014a4e837b3bc177397816509ef1ede9d5",
+          "managed_by_graph_installer": true,
+          "source": "agents/research_scout.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/research_scout.toml:1"
+        },
+        {
+          "role": "research_synthesizer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 459,
+          "sha256": "3dd35210b1e9714a83214147c270b9593369732367fd8a636be6f3095caa303a",
+          "managed_by_graph_installer": true,
+          "source": "agents/research_synthesizer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "high",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/research_synthesizer.toml:1"
+        },
+        {
+          "role": "research_verifier",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 2278,
+          "sha256": "0d9a5014890229115428128710e3b75cb589440c21990eda054aad93aeb9f300",
+          "managed_by_graph_installer": true,
+          "source": "agents/research_verifier.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/research_verifier.toml:1"
+        },
+        {
+          "role": "researcher",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 473,
+          "sha256": "10beae129fbc78abcde438d9d8196842aa53a195039876c8cd4943773839db9c",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/researcher.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/researcher.toml:1"
+        },
+        {
+          "role": "reviewer",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 2103,
+          "sha256": "bcbbbb9e7b8a250dc34273659531350e650faa1c1b4bea29f1bd3133620e3d07",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/reviewer.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/reviewer.toml:1"
+        },
+        {
+          "role": "task_explorer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 431,
+          "sha256": "11229c1e878b3f1d2029d06545fe7d09cf0306a15eb2442bae6ada56153638a6",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_explorer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/task_explorer.toml:1"
+        },
+        {
+          "role": "task_plan_reviewer",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 2398,
+          "sha256": "24c9d58e0a3cc7dff9e361486ce644298ee64c6768c7481ac66818a7e6a448a4",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_plan_reviewer.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/task_plan_reviewer.toml:1"
+        },
+        {
+          "role": "task_result_reviewer",
+          "model": "gpt-6-astra",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 3310,
+          "sha256": "768b373f77714f6a45a461d9933f4fc87af958f20f4ecfb8db8c0559c823c63e",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_result_reviewer.toml",
+          "recommended_model": "gpt-6-astra",
+          "recommended_effort": "medium",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/task_result_reviewer.toml:1"
+        },
+        {
+          "role": "task_risk_reviewer",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "registered": true,
+          "instructions_chars": 580,
+          "sha256": "3cdf08b0f8d39b54bc97fb5bb8fb5cc4c86b3301d27a3384e1eb4061fb703ca7",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_risk_reviewer.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "high",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/task_risk_reviewer.toml:1"
+        },
+        {
+          "role": "task_worker",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "registered": true,
+          "instructions_chars": 1760,
+          "sha256": "aced3dc83826bbe737a31bdaa07533ff00c7d7b20cb0e64527480bbf48cc662b",
+          "managed_by_graph_installer": true,
+          "source": "agents/task_worker.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "high",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/task_worker.toml:1"
+        },
+        {
+          "role": "worker",
+          "model": "gpt-6-sol",
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "registered": true,
+          "instructions_chars": 878,
+          "sha256": "2f4dd5e5433c30c40ee0c0100f6962aa0917b082b745347fd8c8c7ea0e676ac4",
+          "managed_by_graph_installer": true,
+          "source": "agents/native/worker.toml",
+          "recommended_model": "gpt-6.1-sol",
+          "recommended_effort": "high",
+          "evidence": "/mnt/c/Users/artem/.codex/agents/worker.toml:1"
+        }
+      ],
+      "disabled_skills_count": 0,
+      "policy_root_model": "gpt-6-astra",
+      "policy_root_effort": "xhigh"
+    }
+  ],
+  "project_role_inventory": [
+    {
+      "project": "CRM_Dima",
+      "path": "/home/artem/projects/CRM_Dima",
+      "role_file_count": 16,
+      "explicit_registered_roles": [],
+      "roles": [
+        {
+          "filename": "crm-dima-backend-tdd-worker.toml",
+          "name": "crm_dima_backend_tdd_worker",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "workspace-write",
+          "sha256": "02b4f01a98a8553bae8be9ab5e6d2d0b506780c209945aa5eb8e3d59f576d7c7",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-desk-shell-auditor.toml",
+          "name": "crm_dima_desk_shell_auditor",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "f57eecec3a16765ae3cd0b7ed588bb464cde8c43ad8e01e2793ade3fcb7eb260",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-desk-ui-reviewer.toml",
+          "name": "crm_dima_desk_ui_reviewer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "d9ed2ddcd522c7b10ac1be71ac9d4c2c0012980236e6d754fde771ebd0e566e9",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-docs-source-curator.toml",
+          "name": "crm_dima_docs_source_curator",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "7c538f61bfd90a68d9bab24a9f6339fff4807c3daaa01b30978157a5eb60411a",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-docs-updater.toml",
+          "name": "crm_dima_docs_updater",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "sha256": "9203d4aef5d99ce95bb7dd19f650cd7e967b057ab1224dd1d700f0dc7cfd612c",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-ed-business-flow-cartographer.toml",
+          "name": "crm_dima_ed_business_flow_cartographer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "4e8b8728b62878a45b495517f57e78c9b8ee2c1fc1394442ac64840d6c22eebc",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-ed-lifecycle-tracer.toml",
+          "name": "crm_dima_ed_lifecycle_tracer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "6da0b487d19af2877968d7213741220166a267250c11799d6903d9032ed88471",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-ed-package-export-tracer.toml",
+          "name": "crm_dima_ed_package_export_tracer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "22adfcc431d371e80472fe95193c90e3f3361b31dc70987b9e540cde7360a16c",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-ed-permission-auditor.toml",
+          "name": "crm_dima_ed_permission_auditor",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "65ee8b4176fe6f7f8e1010dad70f9b41da1a3afc4067814ef60b6f66b8ec8213",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-fix-reviewer.toml",
+          "name": "crm_dima_fix_reviewer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "ebe475dc6de2a7cb810416165129c4bc3ff2e2920585e5a1c44f170a05a4e0f3",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-frappe-docs-researcher.toml",
+          "name": "crm_dima_frappe_docs_researcher",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "0dac06da269cac97c3177452fb49bc3dc65e3e13113bddd0e31541e8cca7fa95",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-localization-guard.toml",
+          "name": "crm_dima_localization_guard",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "cb63c3617f8df1a4faa1f24b53e3560e555a73ef3dabcc62d70a6e9d34d31769",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-quality-file-auditor.toml",
+          "name": "crm_dima_quality_file_auditor",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "b0f51f7ca32e2dd43c612601e1251b30069e26710bc62b4b7f566c9259dd30ef",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-setup-patch-reviewer.toml",
+          "name": "crm_dima_setup_patch_reviewer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "2f5d4130c57803c6089854f06a0781e4bce22718271aa2873fa903367f56fc43",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-verification-scout.toml",
+          "name": "crm_dima_verification_scout",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "sha256": "7c9e5fba44ae41bc55416804a511cf3df4dacee838faa4812b69e963545e2fb3",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-workspace-report-navigator.toml",
+          "name": "crm_dima_workspace_report_navigator",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "883b60cde45bd18dddd985f4c26865c41d70c8ea7edf6c349fcf1952751671d4",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        }
+      ]
+    },
+    {
+      "project": "CRM_Dima-parser-refactor",
+      "path": "/home/artem/projects/CRM_Dima-parser-refactor",
+      "role_file_count": 16,
+      "explicit_registered_roles": [],
+      "roles": [
+        {
+          "filename": "crm-dima-backend-tdd-worker.toml",
+          "name": "crm_dima_backend_tdd_worker",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "workspace-write",
+          "sha256": "c6c7e788cd05dc49a60845e0d1f21cf45e86953e1b085545d951de4461badd2c",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-desk-shell-auditor.toml",
+          "name": "crm_dima_desk_shell_auditor",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "f57eecec3a16765ae3cd0b7ed588bb464cde8c43ad8e01e2793ade3fcb7eb260",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-desk-ui-reviewer.toml",
+          "name": "crm_dima_desk_ui_reviewer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "d9ed2ddcd522c7b10ac1be71ac9d4c2c0012980236e6d754fde771ebd0e566e9",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-docs-source-curator.toml",
+          "name": "crm_dima_docs_source_curator",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "7c538f61bfd90a68d9bab24a9f6339fff4807c3daaa01b30978157a5eb60411a",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-docs-updater.toml",
+          "name": "crm_dima_docs_updater",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "sha256": "9203d4aef5d99ce95bb7dd19f650cd7e967b057ab1224dd1d700f0dc7cfd612c",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-ed-business-flow-cartographer.toml",
+          "name": "crm_dima_ed_business_flow_cartographer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "4e8b8728b62878a45b495517f57e78c9b8ee2c1fc1394442ac64840d6c22eebc",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-ed-lifecycle-tracer.toml",
+          "name": "crm_dima_ed_lifecycle_tracer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "6da0b487d19af2877968d7213741220166a267250c11799d6903d9032ed88471",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-ed-package-export-tracer.toml",
+          "name": "crm_dima_ed_package_export_tracer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "22adfcc431d371e80472fe95193c90e3f3361b31dc70987b9e540cde7360a16c",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-ed-permission-auditor.toml",
+          "name": "crm_dima_ed_permission_auditor",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "65ee8b4176fe6f7f8e1010dad70f9b41da1a3afc4067814ef60b6f66b8ec8213",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-fix-reviewer.toml",
+          "name": "crm_dima_fix_reviewer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "ebe475dc6de2a7cb810416165129c4bc3ff2e2920585e5a1c44f170a05a4e0f3",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-frappe-docs-researcher.toml",
+          "name": "crm_dima_frappe_docs_researcher",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "0dac06da269cac97c3177452fb49bc3dc65e3e13113bddd0e31541e8cca7fa95",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-localization-guard.toml",
+          "name": "crm_dima_localization_guard",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "cb63c3617f8df1a4faa1f24b53e3560e555a73ef3dabcc62d70a6e9d34d31769",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-quality-file-auditor.toml",
+          "name": "crm_dima_quality_file_auditor",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "b0f51f7ca32e2dd43c612601e1251b30069e26710bc62b4b7f566c9259dd30ef",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-setup-patch-reviewer.toml",
+          "name": "crm_dima_setup_patch_reviewer",
+          "model": null,
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "2f5d4130c57803c6089854f06a0781e4bce22718271aa2873fa903367f56fc43",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-verification-scout.toml",
+          "name": "crm_dima_verification_scout",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "workspace-write",
+          "sha256": "7c9e5fba44ae41bc55416804a511cf3df4dacee838faa4812b69e963545e2fb3",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "crm-dima-workspace-report-navigator.toml",
+          "name": "crm_dima_workspace_report_navigator",
+          "model": null,
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "883b60cde45bd18dddd985f4c26865c41d70c8ea7edf6c349fcf1952751671d4",
+          "field_lines": {
+            "name": 1,
+            "description": 2,
+            "model_reasoning_effort": 3,
+            "sandbox_mode": 4
+          },
+          "runtime_loaded": "unverified"
+        }
+      ]
+    },
+    {
+      "project": "ECC",
+      "path": "/home/artem/projects/ECC",
+      "role_file_count": 3,
+      "explicit_registered_roles": [
+        "explorer",
+        "reviewer",
+        "docs_researcher"
+      ],
+      "roles": [
+        {
+          "filename": "docs-researcher.toml",
+          "name": null,
+          "model": "gpt-5.4",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "e14712b0a5f5e7378819200a07b2867ff84607d7b7dccd222e6fe38da17533e4",
+          "field_lines": {
+            "model": 1,
+            "model_reasoning_effort": 2,
+            "sandbox_mode": 3
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "explorer.toml",
+          "name": null,
+          "model": "gpt-5.4",
+          "effort": "medium",
+          "sandbox_mode": "read-only",
+          "sha256": "ba9d7a10cf04a9b25a35ae8fc094b840cceef624d542f45b9d7cf3cdc78126ab",
+          "field_lines": {
+            "model": 1,
+            "model_reasoning_effort": 2,
+            "sandbox_mode": 3
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "reviewer.toml",
+          "name": null,
+          "model": "gpt-5.4",
+          "effort": "high",
+          "sandbox_mode": "read-only",
+          "sha256": "9edbc2b5334fed555f2e8001142fcd78938bd1de8355aeb020c0dd8f0315cd80",
+          "field_lines": {
+            "model": 1,
+            "model_reasoning_effort": 2,
+            "sandbox_mode": 3
+          },
+          "runtime_loaded": "unverified"
+        }
+      ]
+    },
+    {
+      "project": "ai_mrketing_agentci",
+      "path": "/home/artem/projects/ai_mrketing_agentci",
+      "role_file_count": 4,
+      "explicit_registered_roles": [],
+      "roles": [
+        {
+          "filename": "explorer.toml",
+          "name": "explorer",
+          "model": null,
+          "effort": null,
+          "sandbox_mode": null,
+          "sha256": "3d69d293ca4b4c334c044b398c9cd804eb2443152187a1cb15f71533e5b4b106",
+          "field_lines": {
+            "name": 1,
+            "description": 2
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "researcher.toml",
+          "name": "researcher",
+          "model": null,
+          "effort": null,
+          "sandbox_mode": null,
+          "sha256": "266efaf9df7d6dfcb71523eba66028988ba33e94156096924ffa9597dcdf3343",
+          "field_lines": {
+            "name": 1,
+            "description": 2
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "reviewer.toml",
+          "name": "reviewer",
+          "model": null,
+          "effort": null,
+          "sandbox_mode": null,
+          "sha256": "d846a801d075107f6a9946390b286e33f3bfe8a6628b9046c67fa7c1f56c1184",
+          "field_lines": {
+            "name": 1,
+            "description": 2
+          },
+          "runtime_loaded": "unverified"
+        },
+        {
+          "filename": "worker.toml",
+          "name": "worker",
+          "model": null,
+          "effort": null,
+          "sandbox_mode": null,
+          "sha256": "689987c35319e283d130f02513ce8979133d06eff73d2f9ac4cf5e3e549494a3",
+          "field_lines": {
+            "name": 1,
+            "description": 2
+          },
+          "runtime_loaded": "unverified"
+        }
+      ]
+    }
+  ],
+  "packaged_ecc_profiles": {
+    "count": 68,
+    "model_label_counts": {
+      "sonnet": 58,
+      "opus": 4,
+      "haiku": 6
+    },
+    "records": [
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/a11y-architect.md",
+        "name": "a11y-architect",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/agent-evaluator.md",
+        "name": "agent-evaluator",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/architect.md",
+        "name": "architect",
+        "model_label": "opus"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/build-error-resolver.md",
+        "name": "build-error-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/chief-of-staff.md",
+        "name": "chief-of-staff",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/code-architect.md",
+        "name": "code-architect",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/code-explorer.md",
+        "name": "code-explorer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/code-reviewer.md",
+        "name": "code-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/code-simplifier.md",
+        "name": "code-simplifier",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/comment-analyzer.md",
+        "name": "comment-analyzer",
+        "model_label": "haiku"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/conversation-analyzer.md",
+        "name": "conversation-analyzer",
+        "model_label": "haiku"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/cpp-build-resolver.md",
+        "name": "cpp-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/cpp-reviewer.md",
+        "name": "cpp-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/csharp-reviewer.md",
+        "name": "csharp-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/dart-build-resolver.md",
+        "name": "dart-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/database-reviewer.md",
+        "name": "database-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/django-build-resolver.md",
+        "name": "django-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/django-reviewer.md",
+        "name": "django-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/doc-updater.md",
+        "name": "doc-updater",
+        "model_label": "haiku"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/docs-lookup.md",
+        "name": "docs-lookup",
+        "model_label": "haiku"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/e2e-runner.md",
+        "name": "e2e-runner",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/fastapi-reviewer.md",
+        "name": "fastapi-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/flutter-reviewer.md",
+        "name": "flutter-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/fsharp-reviewer.md",
+        "name": "fsharp-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/gan-evaluator.md",
+        "name": "gan-evaluator",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/gan-generator.md",
+        "name": "gan-generator",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/gan-planner.md",
+        "name": "gan-planner",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/go-build-resolver.md",
+        "name": "go-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/go-reviewer.md",
+        "name": "go-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/harmonyos-app-resolver.md",
+        "name": "harmonyos-app-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/harness-optimizer.md",
+        "name": "harness-optimizer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/healthcare-reviewer.md",
+        "name": "healthcare-reviewer",
+        "model_label": "opus"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/homelab-architect.md",
+        "name": "homelab-architect",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/java-build-resolver.md",
+        "name": "java-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/java-reviewer.md",
+        "name": "java-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/kotlin-build-resolver.md",
+        "name": "kotlin-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/kotlin-reviewer.md",
+        "name": "kotlin-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/loop-operator.md",
+        "name": "loop-operator",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/marketing-agent.md",
+        "name": "marketing-agent",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/mle-reviewer.md",
+        "name": "mle-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/network-architect.md",
+        "name": "network-architect",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/network-config-reviewer.md",
+        "name": "network-config-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/network-troubleshooter.md",
+        "name": "network-troubleshooter",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/opensource-forker.md",
+        "name": "opensource-forker",
+        "model_label": "haiku"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/opensource-packager.md",
+        "name": "opensource-packager",
+        "model_label": "haiku"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/opensource-sanitizer.md",
+        "name": "opensource-sanitizer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/performance-optimizer.md",
+        "name": "performance-optimizer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/php-reviewer.md",
+        "name": "php-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/planner.md",
+        "name": "planner",
+        "model_label": "opus"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/pr-test-analyzer.md",
+        "name": "pr-test-analyzer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/python-reviewer.md",
+        "name": "python-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/pytorch-build-resolver.md",
+        "name": "pytorch-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/rag-pipeline-reviewer.md",
+        "name": "rag-pipeline-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/react-build-resolver.md",
+        "name": "react-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/react-reviewer.md",
+        "name": "react-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/refactor-cleaner.md",
+        "name": "refactor-cleaner",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/rust-build-resolver.md",
+        "name": "rust-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/rust-reviewer.md",
+        "name": "rust-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/security-reviewer.md",
+        "name": "security-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/seo-specialist.md",
+        "name": "seo-specialist",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/silent-failure-hunter.md",
+        "name": "silent-failure-hunter",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/spec-miner.md",
+        "name": "spec-miner",
+        "model_label": "opus"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/swift-build-resolver.md",
+        "name": "swift-build-resolver",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/swift-reviewer.md",
+        "name": "swift-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/tdd-guide.md",
+        "name": "tdd-guide",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/type-design-analyzer.md",
+        "name": "type-design-analyzer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/typescript-reviewer.md",
+        "name": "typescript-reviewer",
+        "model_label": "sonnet"
+      },
+      {
+        "file": "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/agents/vue-reviewer.md",
+        "name": "vue-reviewer",
+        "model_label": "sonnet"
+      }
+    ],
+    "status": "Markdown package profiles; ECC Codex manifest has no agents entry. Not counted as current native Codex roles."
+  },
+  "findings": [
+    {
+      "id": "F01",
+      "severity": "high",
+      "title": "Canonical root routing contradicts current root settings",
+      "mechanism": "Both homes configure gpt-6.1-sol/max, but canonical and installed policy still specify gpt-6-astra/xhigh. Full installer candidate changes exactly model and model_reasoning_effort.",
+      "source_layer": "System prompt and persistence",
+      "root_cause": "Manual/runtime root preference was not persisted to the canonical routing policy.",
+      "evidence_refs": [
+        "policies/model-routing.toml:25",
+        "scripts/model_routing.py:217",
+        "/home/artem/.codex/config.toml:1",
+        "/mnt/c/Users/artem/.codex/config.toml:1"
+      ],
+      "confidence": 1.0,
+      "recommended_fix": "Set canonical root to gpt-6.1-sol/max before installation; regenerate managed instructions and verify both homes."
+    },
+    {
+      "id": "F02",
+      "severity": "high",
+      "title": "Existing Desktop sync check fails before deployment",
+      "mechanism": "Read-only --check returns Planned config failed to synchronize [agents]. In-memory candidate omits vacancy_researcher registration. Family extraction assumes contiguous tables, while the source [agents] defaults and registrations are separated by other table families.",
+      "source_layer": "Persistence",
+      "root_cause": "Unversioned helper uses first contiguous family span instead of all TOML family members.",
+      "evidence_refs": [
+        "/home/artem/projects/codex-profile-sync/sync_codex_desktop.py:134",
+        "/home/artem/projects/codex-profile-sync/sync_codex_desktop.py:157",
+        "/home/artem/projects/codex-profile-sync/sync_codex_desktop.py:285",
+        "/home/artem/projects/codex-profile-sync/sync_codex_desktop.py:303",
+        "/home/artem/.codex/config.toml:549"
+      ],
+      "confidence": 1.0,
+      "recommended_fix": "Consolidate synchronization in a tracked installer, support separated tables, preserve unmanaged settings, and require dry-run plus fixture verification before live deployment."
+    },
+    {
+      "id": "F03",
+      "severity": "medium",
+      "title": "Auxiliary roles still pin the previous Sol model",
+      "mechanism": "13 managed auxiliary files and both defaults use gpt-6-sol/medium. Updating only defaults cannot override explicit per-role model fields.",
+      "source_layer": "Tool selection and system prompt",
+      "root_cause": "Canonical auxiliary class remains gpt-6-sol.",
+      "evidence_refs": [
+        "policies/model-routing.toml:29",
+        "scripts/model_routing.py:68",
+        "/home/artem/.codex/agents/block_reviewer.toml:2",
+        "/home/artem/.codex/config.toml:171"
+      ],
+      "confidence": 1.0,
+      "recommended_fix": "Change the canonical class to gpt-6.1-sol/medium and regenerate every explicit auxiliary role."
+    },
+    {
+      "id": "F04",
+      "severity": "medium",
+      "title": "Vacancy researcher is outside managed parity and Git coverage",
+      "mechanism": "WSL has vacancy_researcher on gpt-5.6-luna/max. Desktop has neither its file nor registration. Matching local source is ignored by resume_hh .gitignore and is not tracked.",
+      "source_layer": "Persistence",
+      "root_cause": "Specialist role has a separate local-only source outside the 19-role canonical installer.",
+      "evidence_refs": [
+        "/home/artem/.codex/agents/vacancy_researcher.toml:1",
+        "/home/artem/.codex/config.toml:549",
+        "/home/artem/projects/resume_hh/tools/vacancy-research-agent/vacancy_researcher.toml:1",
+        "/home/artem/projects/resume_hh/.gitignore:6"
+      ],
+      "confidence": 1.0,
+      "recommended_fix": "Choose one versioned owning template for this role, preserve its research/privacy boundaries, route to Sol 6.1/Medium and include file plus registration in both homes."
+    },
+    {
+      "id": "F05",
+      "severity": "medium",
+      "title": "Project roles can retain or bypass global routing",
+      "mechanism": "ECC registers three GPT-5.4 role files. CRM_Dima and its worktree pin ten roles to High. ai_mrketing_agentci has same-name local reviewer/explorer/researcher/worker files with no model, effort or sandbox fields; if selected, they inherit defaults rather than the explicit global role route. Effective project loading was not tested.",
+      "source_layer": "System prompt and tool selection",
+      "root_cause": "Multiple project role authorities exist without explicit routing reconciliation.",
+      "evidence_refs": [
+        "/home/artem/projects/ECC/.codex/config.toml:104",
+        "/home/artem/projects/ECC/.codex/agents/reviewer.toml:1",
+        "/home/artem/projects/CRM_Dima/.codex/agents/crm-dima-ed-permission-auditor.toml:3",
+        "/home/artem/projects/ai_mrketing_agentci/.codex/agents/reviewer.toml:1"
+      ],
+      "confidence": 0.98,
+      "recommended_fix": "Reconcile project roles in their own repositories; retain narrow Sol reviews while reserving the global Astra acceptor for required whole-outcome acceptance."
+    },
+    {
+      "id": "F06",
+      "severity": "medium",
+      "title": "Desktop compatibility settings conflict with leaf-only parity",
+      "mechanism": "WSL max_depth=1; Desktop max_depth=2 and features.multi_agent_v2.enabled=false. Desktop comments identify codex-chatgpt-web Compatibility V1 as owner. Runtime need and currently active ownership are unverified.",
+      "source_layer": "Tool selection",
+      "root_cause": "Separate Desktop compatibility workflow owns overlapping orchestration fields.",
+      "evidence_refs": [
+        "/home/artem/.codex/config.toml:175",
+        "/mnt/c/Users/artem/.codex/config.toml:215",
+        "/mnt/c/Users/artem/.codex/config.toml:573",
+        "policies/orchestration.md:26"
+      ],
+      "confidence": 1.0,
+      "recommended_fix": "Resolve compatibility ownership before changing these fields; native Codex baseline should remain leaf-only. Share portable model/role policy, not entire machine-specific configuration."
+    },
+    {
+      "id": "F07",
+      "severity": "medium",
+      "title": "Per-role High is not supported by current route renderer",
+      "mechanism": "role_route returns the complete class route. An in-memory worker effort=high field still resolves medium. load_policy does not reject that unsupported role field.",
+      "source_layer": "Persistence and system prompt",
+      "root_cause": "Only class-wide routes are implemented and per-role unknown keys are not validated.",
+      "evidence_refs": [
+        "scripts/model_routing.py:33",
+        "scripts/model_routing.py:56"
+      ],
+      "confidence": 1.0,
+      "recommended_fix": "For the recommended selective-High variant, add explicit validated effort overrides within auxiliary roles and render those exceptions in the generated policy; test unknown-key rejection."
+    },
+    {
+      "id": "F08",
+      "severity": "low",
+      "title": "Some optional ECC skills prescribe fixed agent counts and gates",
+      "mechanism": "orch-pipeline says each phase delegates and names package agent roles absent from the current native role catalog. dev-team and council prescribe four and three agents. These are static instruction findings; invocation frequency and added cost were not measured.",
+      "source_layer": "System prompt and hidden agent layers",
+      "root_cause": "Harness-specific workflow recipes are not fully adapted to the active root-first Codex policy.",
+      "evidence_refs": [
+        "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/skills/orch-pipeline/SKILL.md:58",
+        "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/skills/dev-team/SKILL.md:19",
+        "/home/artem/.codex/plugins/cache/ecc-local/ecc/2.2.1-local.1/skills/council/SKILL.md:85"
+      ],
+      "confidence": 1.0,
+      "recommended_fix": "Use principal managed workflows by default; preserve opt-in multi-voice skills and adapt unsupported named package roles via applicable native Sol roles. Edit owned source, not plugin cache."
+    },
+    {
+      "id": "F09",
+      "severity": "low",
+      "title": "Parser-refactor backend role contains a stale project path",
+      "mechanism": "The two CRM role sets differ only in the backend worker instructions; the refactor copy names /home/artem/CRM_Dima.",
+      "source_layer": "System prompt",
+      "root_cause": "Worktree-specific instruction copy retained a historical absolute path.",
+      "evidence_refs": [
+        "/home/artem/projects/CRM_Dima-parser-refactor/.codex/agents/crm-dima-backend-tdd-worker.toml:6"
+      ],
+      "confidence": 1.0,
+      "recommended_fix": "Use the assigned repository root and preserve worktree ownership when reconciling the role."
+    }
+  ],
+  "proposals": {
+    "A": {
+      "root": {
+        "model": "gpt-6.1-sol",
+        "effort": "max"
+      },
+      "auxiliary": {
+        "model": "gpt-6.1-sol",
+        "effort": "medium"
+      },
+      "acceptance": {
+        "model": "gpt-6-astra",
+        "effort": "medium"
+      },
+      "effort_overrides": {},
+      "status": "proposed"
+    },
+    "B_recommended": {
+      "root": {
+        "model": "gpt-6.1-sol",
+        "effort": "max"
+      },
+      "auxiliary": {
+        "model": "gpt-6.1-sol",
+        "effort": "medium"
+      },
+      "acceptance": {
+        "model": "gpt-6-astra",
+        "effort": "medium"
+      },
+      "effort_overrides": {
+        "research_synthesizer": "high",
+        "task_risk_reviewer": "high",
+        "task_worker": "high",
+        "worker": "high"
+      },
+      "status": "proposed_requires_renderer_support"
+    }
+  },
+  "verification": {
+    "canonical_check_all": {
+      "exit_code": 0,
+      "result": "All workflow checks passed.",
+      "log_sha256": "7728a79e1dabe28b94c835787191f4597f5249646b905e177ab25842a46bb644"
+    },
+    "installed_verify": {
+      "exit_code": 2,
+      "environments": [
+        {
+          "environment": "wsl",
+          "status": "failed",
+          "issues": [
+            "config managed-agent-block: drift"
+          ],
+          "items": [
+            {
+              "kind": "runtime",
+              "name": "agent-graph-runtime",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "agent-introspection-debugging",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "market-research",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "production-audit",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "verification-loop",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "ai-regression-testing",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "agent-graph-builder",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "continuous-improvement",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "development-recovery",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "project-start",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "research",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "task-delivery",
+              "status": "in-sync"
+            },
+            {
+              "kind": "routing-policy",
+              "name": "model-routing",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "improvement_verifier",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "project_docs_auditor",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "project_docs_curator",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "project_docs_verifier",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "research_planner",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "research_scout",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "research_synthesizer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "research_verifier",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_explorer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_worker",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_plan_reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_result_reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_risk_reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "worker",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "default",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "explorer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "researcher",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "block_reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "profile",
+              "name": "astra-luna.config",
+              "status": "in-sync"
+            },
+            {
+              "kind": "profile",
+              "name": "astra-xhigh-baseline.config",
+              "status": "in-sync"
+            },
+            {
+              "kind": "profile",
+              "name": "astra-medium-baseline.config",
+              "status": "in-sync"
+            },
+            {
+              "kind": "profile",
+              "name": "astra-luna-xhigh.config",
+              "status": "in-sync"
+            },
+            {
+              "kind": "config",
+              "name": "managed-agent-block",
+              "status": "drift"
+            },
+            {
+              "kind": "policy",
+              "name": "managed-global-policies",
+              "status": "in-sync"
+            }
+          ]
+        },
+        {
+          "environment": "desktop",
+          "status": "failed",
+          "issues": [
+            "config managed-agent-block: drift",
+            "policy managed-global-policies: drift"
+          ],
+          "items": [
+            {
+              "kind": "runtime",
+              "name": "agent-graph-runtime",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "agent-introspection-debugging",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "market-research",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "production-audit",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "verification-loop",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "ai-regression-testing",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "agent-graph-builder",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "continuous-improvement",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "development-recovery",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "project-start",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "research",
+              "status": "in-sync"
+            },
+            {
+              "kind": "skill",
+              "name": "task-delivery",
+              "status": "in-sync"
+            },
+            {
+              "kind": "routing-policy",
+              "name": "model-routing",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "improvement_verifier",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "project_docs_auditor",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "project_docs_curator",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "project_docs_verifier",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "research_planner",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "research_scout",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "research_synthesizer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "research_verifier",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_explorer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_worker",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_plan_reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_result_reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "task_risk_reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "worker",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "default",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "explorer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "researcher",
+              "status": "in-sync"
+            },
+            {
+              "kind": "agent",
+              "name": "block_reviewer",
+              "status": "in-sync"
+            },
+            {
+              "kind": "profile",
+              "name": "astra-luna.config",
+              "status": "in-sync"
+            },
+            {
+              "kind": "profile",
+              "name": "astra-xhigh-baseline.config",
+              "status": "in-sync"
+            },
+            {
+              "kind": "profile",
+              "name": "astra-medium-baseline.config",
+              "status": "in-sync"
+            },
+            {
+              "kind": "profile",
+              "name": "astra-luna-xhigh.config",
+              "status": "in-sync"
+            },
+            {
+              "kind": "config",
+              "name": "managed-agent-block",
+              "status": "drift"
+            },
+            {
+              "kind": "policy",
+              "name": "managed-global-policies",
+              "status": "drift"
+            }
+          ]
+        }
+      ]
+    },
+    "desktop_policy_blocks": "All four managed blocks have equal content between homes; Desktop exact-file drift is block ordering around an unmanaged browser note, not differing managed meaning.",
+    "desktop_sync_check": {
+      "exit_code": 1,
+      "error": "Planned config failed to synchronize [agents]",
+      "in_memory_missing_registration": "vacancy_researcher"
+    },
+    "cli_version": "0.159.0",
+    "desktop_app_version": "26.928.1915.0",
+    "runtime_inference_on_target_profile": "not_run",
+    "active_configuration_changed": false,
+    "measured_cost_or_quality_improvement": false
+  },
+  "sources": [
+    {
+      "url": "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+      "checked": "2026-09-30"
+    },
+    {
+      "url": "https://learn.chatgpt.com/docs/agent-configuration/subagents",
+      "checked": "2026-09-30"
+    }
+  ],
+  "ordered_fix_plan": [
+    {
+      "order": 1,
+      "goal": "Adopt variant A or B and canonicalize root/default/acceptance routes",
+      "why_now": "Prevent reinstallation from reverting root preference",
+      "expected_effect": "One authoritative portable routing policy"
+    },
+    {
+      "order": 2,
+      "goal": "Implement validated per-role effort overrides only for variant B",
+      "why_now": "Current renderer silently ignores this proposal",
+      "expected_effect": "Selected High roles are actually generated and visible in policy"
+    },
+    {
+      "order": 3,
+      "goal": "Version the vacancy role and reconcile project overrides",
+      "why_now": "Global default alone does not cover all audited definitions",
+      "expected_effect": "No untracked Luna role or unintentional GPT-5.4 override"
+    },
+    {
+      "order": 4,
+      "goal": "Repair and version synchronization and settle compatibility ownership",
+      "why_now": "Current helper fails preflight and owns overlapping Desktop fields",
+      "expected_effect": "Safe repeatable file/registration parity with machine-specific settings preserved"
+    },
+    {
+      "order": 5,
+      "goal": "Validate temporary homes, install with backups, verify WSL/Desktop and fresh native sessions",
+      "why_now": "Static equality cannot prove the running Desktop reloaded configuration",
+      "expected_effect": "Verified file parity plus separate bounded runtime evidence"
+    }
+  ]
+}
