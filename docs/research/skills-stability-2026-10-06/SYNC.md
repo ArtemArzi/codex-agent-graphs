@@ -28,5 +28,32 @@ This digest predates this status annotation; instructions/code are unchanged.
   degraded; it does not claim verified-controller completion. Fixture is not
   product code and independent fixture review joins the final acceptor.
 
-GitHub readback and final independent live reconciliation remain pending.
+## Installed and published acceptance
+
+Final independent installed/published acceptance PASS:
+`RESULT-20261006-SKILLS-LIVE-4c54359e-9b389910`.
+
+Code publication: [4c54359ef7fa7f67bc1e12fc974cb70ced924897](https://github.com/ArtemArzi/codex-agent-graphs/commit/4c54359ef7fa7f67bc1e12fc974cb70ced924897).
+Root and independent reviewer each observed remote `main` matching that commit.
+All 275 published file bytes matched candidate, canonical worktree and Git blobs.
+The source worktree was clean.
+
+The strict staged check additionally found whitespace in seven preserved
+companion licenses and CRLF in the browser license. Normalization preserved
+identical license tokens/copyright/notices and original byte backups. The
+resources were installed again (WSL 8, Desktop 7 changed directories); final
+verify and repeat install again confirmed all 59 items in sync with zero
+replacements. Additional resource backups:
+
+- WSL `backups/agent-graphs/20261006-201925-241580-1323530`.
+- Desktop `backups/agent-graphs/20261006-201925-352716-1323530`.
+
+The same final reviewer independently checked all seven protected settings,
+319 unmanaged bodies, final installed manifests and remote SHA. It ran all six
+fixture tests successfully and proved the original implementation fails the
+12 boolean subcases. No production/controller PASS is attributed to the fixture.
+
+This subsequent status-only documentation commit changes no skill or runtime.
+Its push/readback is checked separately before the user-facing completion reply.
+No GitHub Actions workflow is configured; no CI PASS is claimed.
 Raw local snapshots/config contents and session records are not published.

@@ -1,6 +1,6 @@
 # Skills and graph stability audit — 2026-10-06
 
-Status: independently accepted; implementation and validation in progress.
+Status: implementation, independent installed/published acceptance and synchronization complete; final status-document push/readback only.
 
 Plan acceptance: PLAN-20261006-SKILLS-STABILITY-837da29f-5ae8-492d-8f1c-208e5f6ee9b2, accepted original document SHA256 c27f03a9819ab029c36261d6baeb6f05be78c836503282b3685ca5a5914775dc. This status annotation does not change the accepted method or scope.
 
