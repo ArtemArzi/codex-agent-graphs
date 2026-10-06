@@ -1,0 +1,6 @@
+interface:
+  display_name: "Session Retrospective"
+  short_description: "Review observed recurring agent workflow failures"
+  default_prompt: "Use $retro to review this session's recurring failures and recommend bounded improvements."
+policy:
+  allow_implicit_invocation: true

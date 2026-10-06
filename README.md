@@ -81,6 +81,13 @@ Supporting capabilities keep those workflows healthy:
 | `$ai-regression-testing` | Protects changed and critical behavior with meaningful regression checks, including before the first incident |
 | Large-codebase discovery | A managed global policy that bounds repository exploration and joins the evidence before planning; it deliberately adds no new skill or graph |
 
+Native companions select useful discipline at the relevant moment:
+`writing-for-agents` for instructions, `retro` for repeated observed environment
+failures, `to-questionnaire` for an external owner's answers, `pr` for PR bodies,
+and the existing `grilling`, `domain-modeling` and `codebase-design` disciplines.
+They are separate automatically discoverable skills integrated into Project
+Start and Task Delivery. See [sources, adaptation and invocation boundaries](docs/MATT_POCOCK_COMPANIONS_2026-10-02.md).
+
 Project Start retains its bundled [architecture playbook](skills/project-start/references/architecture-playbook.md),
 including examples and the rule to consult project guidance first. Task Delivery
 carries the selected architectural constraints into plans, implementation and review.
@@ -160,6 +167,24 @@ root efforts across homes. Close Desktop before applying a full portable snapsho
 to avoid an active app writing the profile; the native installer also detects
 concurrent config edits. The previous `codex-profile-sync` entry point forwards
 to this tracked helper on the configured host. No background sync is installed.
+
+## Stability update — 6 October 2026
+
+Task Delivery 3.9.1 binds effective scope across admission and completion;
+Project Start 3.5.1 supports preserved-state control degradation. Old identities
+and digest algorithms remain supported. See the [audit and coverage](docs/research/skills-stability-2026-10-06/REPORT.ru.md).
+
+For skill updates that must preserve model/provider/global configuration:
+
+```bash
+python3 scripts/install.py plan --skills-only --all
+python3 scripts/install.py install --skills-only --all
+python3 scripts/install.py verify --skills-only --all
+```
+
+This syncs 28 maintained skills and shared runtime; the browser companion updates
+only where already present. It backs up replacements, verifies manifests and
+rolls back owned writes on failure. Full/routing installation stays strict.
 
 ## Quick start
 

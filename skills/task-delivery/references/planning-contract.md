@@ -162,7 +162,17 @@ Runner вычисляет SHA-256 только из текста между
 после start-marker не входит в digest. Не проси человека выбирать между
 runner-digest и внешним digest семантически одинакового контракта: используй
 канонический runner-digest и сохрани старый алгоритм только для уже активного
-run его версии.
+run его версии. Без start/end markers хешируется весь документ. В `3.9.1`
+требуется ровно один полный scope block, внутри hashed region, если она задана.
+Черновой `full/plan` scope можно уточнять до реального review; `implement`
+фиксирует принятую selection при admission. Запись work, выдача/приём packet,
+checkpoints и completion повторно сравнивают selection с review authority,
+учитывая ordered technical amendments. Изменённые hashes рабочих файлов не
+используются для восстановления authority: содержимое внутри принятой
+директории может законно меняться и получать новые файлы. Legacy authority
+восстанавливается только из captured review/work/packet evidence; ambiguous
+outside-region packet без captured scope остаётся fail closed, state не
+мигрируется и obligations не очищаются.
 
 `REJECT` означает «этот кандидат ещё нельзя реализовывать», а не автоматически
 «нужно решение пользователя». Если repair list касается marker/digest

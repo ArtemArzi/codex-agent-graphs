@@ -1247,6 +1247,88 @@ class ProjectGraphTests(unittest.TestCase):
         self.init("bootstrap")
         self.assertEqual("*\n", (self.root / ".agent-graphs/.gitignore").read_text(encoding="utf-8"))
 
+    def test_degraded_control_preserves_docs_and_shared_authority(self) -> None:
+        run, _ = self.maintenance()
+        target = self.root / "docs/project/FOUNDATION.md"
+        target.write_text("# Foundation\n\nPreserved native work.\n")
+        project = self.root / ".project-start/state.json"
+        shared_before = project.read_bytes()
+        state_before = self.read_json(run / graph.STATE_NAME)
+        response = graph.degrade_control(run, "Cannot persist a controller receipt")
+        self.assertEqual("degraded", response["status"])
+        self.assertEqual(shared_before, project.read_bytes())
+        self.assertIn("Preserved native work", target.read_text())
+        state = self.read_json(run / graph.STATE_NAME)
+        for field in ("status", "current", "decisions", "nodes", "project_state_sha256"):
+            self.assertEqual(state_before[field], state[field])
+        self.assertEqual("degraded", graph.ready(run)["status"])
+        self.assertEqual("degraded", graph.status(run)["data"]["control_status"])
+        target.write_text(target.read_text() + "\nAdditional authorized native edit.\n")
+        self.assertIn("Additional authorized", target.read_text())
+        with self.assertRaisesRegex(graph.GraphError, "Degraded control"):
+            graph.complete(run)
+        state_bytes = (run / graph.STATE_NAME).read_bytes()
+        graph.degrade_control(run, "Cannot persist a controller receipt")
+        self.assertEqual(state_bytes, (run / graph.STATE_NAME).read_bytes())
+
+    def test_degradation_does_not_answer_or_clear_a_decision(self) -> None:
+        run, docs = self.maintenance()
+        pending = {"question": "Which public contract should be canonical?", "recommended": "Keep compatibility", "scope": ["docs/project/FOUNDATION.md"]}
+        self.write_work(run, self.work_payload("maintenance", docs, classification="semantic", decision=pending))
+        graph.record(run, "work", "decision")
+        before = self.read_json(run / graph.STATE_NAME)
+        graph.degrade_control(run, "Controller receipt processing is unavailable")
+        after = self.read_json(run / graph.STATE_NAME)
+        self.assertEqual(before["decisions"], after["decisions"])
+        self.assertEqual("decision-required", after["status"])
+        self.assertEqual("decision-required", graph.ready(run)["status"])
+        with self.assertRaisesRegex(graph.GraphError, "Degraded control"):
+            graph.complete(run)
+
+    def test_degradation_keeps_task_obligation_and_verifier_requirement(self) -> None:
+        handoff, _, docs = self.task_delivery_obligation("TD-DEGRADED")
+        payload = graph.initialize(str(self.root), "maintenance", "Task completed", "task-delivery", handoff)
+        run = Path(payload["data"]["run"])
+        self.write_work(run, self.work_payload("maintenance", docs, classification="no-change", verification="independent"))
+        graph.record(run, "work", "verify")
+        before = self.read_json(run / graph.STATE_NAME)
+        shared_before = (self.root / ".project-start/state.json").read_bytes()
+        graph.degrade_control(run, "Read-only verifier cannot write a receipt")
+        after = self.read_json(run / graph.STATE_NAME)
+        self.assertEqual(before["consumed_obligation"], after["consumed_obligation"])
+        self.assertTrue(after["verification_required"])
+        self.assertEqual(before["nodes"], after["nodes"])
+        self.assertEqual(shared_before, (self.root / ".project-start/state.json").read_bytes())
+
+    def test_known_350_run_keeps_identity_without_migration(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        state = self.read_json(run / graph.STATE_NAME)
+        state["graph_version"] = "3.5.0"
+        state["graph_sha256"] = "92379ab93564c64ee743ddf247367baed0ad1d66a063a3d33be45c16159839f7"
+        state.pop("control_status")
+        state.pop("control_issues")
+        graph.save_state(run, state)
+        self.write_work(run, self.work_payload("bootstrap", docs, classification="bootstrap-ready", created=docs))
+        graph.record(run, "work", "succeeded")
+        graph.complete(run)
+        self.assertEqual("3.5.0", self.read_json(run / graph.STATE_NAME)["graph_version"])
+
+    def test_degradation_rejects_terminal_and_unknown_identity(self) -> None:
+        run, _ = self.completed_bootstrap()
+        before = (run / graph.STATE_NAME).read_bytes()
+        with self.assertRaisesRegex(graph.GraphError, "Завершённый"):
+            graph.degrade_control(run, "Cannot alter a completed result")
+        self.assertEqual(before, (run / graph.STATE_NAME).read_bytes())
+        fresh = self.init("maintenance")
+        state = self.read_json(fresh / graph.STATE_NAME)
+        state["graph_sha256"] = "0" * 64
+        (fresh / graph.STATE_NAME).write_text(json.dumps(state))
+        before = (fresh / graph.STATE_NAME).read_bytes()
+        with self.assertRaisesRegex(graph.GraphError, "неподдерживаемой"):
+            graph.degrade_control(fresh, "Unsupported state needs outside handoff")
+        self.assertEqual(before, (fresh / graph.STATE_NAME).read_bytes())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

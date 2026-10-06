@@ -1,0 +1,68 @@
+[
+  {
+    "skill": "agentic-engineering",
+    "original_sha256": "c202c6bfe6c98a6842b2e2c99c0bf030d82200fccf1f9fdb0143d7b51f0a3d13",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "blueprint",
+    "original_sha256": "f74f4f312e2cca732e3764f618caebcc43aea3e62b0a59cccca041941d7302d9",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "configure-ecc",
+    "original_sha256": "48bda5a6b91e039f86766c1d4dc796142bc453044486fffe052a1d261a4c4975",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "continuous-agent-loop",
+    "original_sha256": "b557889be2db327a966a30410825f6a461b5583a29eb009b9123e6ca3f766c12",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "data-scraper-agent",
+    "original_sha256": "cf0e128c18d212b086645136b1708f2afe2607d1b811783dc965dc679f2a8361",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "ecc-tools-cost-audit",
+    "original_sha256": "5cc4bb2dbf0a448dfb0a633f1bc1e3c1292e9bc599999c8fe848fda8d9d7f73c",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "playwright-interactive",
+    "original_sha256": "f6c1155d923e6ae3ccc12abfef2266f119f8e9546df2ddeee1f5eb369845a0a1",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "local existing Playwright Interactive; original NOTICE and Apache license retained"
+  },
+  {
+    "skill": "prompt-optimizer",
+    "original_sha256": "77145e9eae58e9ccf365d161e3274a0e2b8d101b7fad5e6318ecbf98252437ae",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "security-scan",
+    "original_sha256": "6facddfa83c1c53eb02d21e0fc4cfe70d785b9fd5159ed91e918c47466bf12d8",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "skill-stocktake",
+    "original_sha256": "b48b54c68e5d41d4a722afb267d5b02d4a356c4ee5b24cf4e8cc356fc65c11ee",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  },
+  {
+    "skill": "token-budget-advisor",
+    "original_sha256": "c87bfe27ebd13ed12715967ac3a5e57f908147469058b79a7667526f5098a709",
+    "adaptation": "2026-10-06 maintained host-policy and availability corrections",
+    "source": "https://github.com/affaan-m/everything-claude-code"
+  }
+]

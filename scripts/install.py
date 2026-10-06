@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import hashlib
 import importlib.util
@@ -32,6 +33,23 @@ SKILLS = (
     "production-audit",
     "verification-loop",
     "ai-regression-testing",
+    "agentic-engineering",
+    "blueprint",
+    "configure-ecc",
+    "continuous-agent-loop",
+    "data-scraper-agent",
+    "ecc-tools-cost-audit",
+    "prompt-optimizer",
+    "security-scan",
+    "skill-stocktake",
+    "token-budget-advisor",
+    "writing-for-agents",
+    "retro",
+    "to-questionnaire",
+    "pr",
+    "grilling",
+    "domain-modeling",
+    "codebase-design",
     "agent-graph-builder",
     "continuous-improvement",
     "development-recovery",
@@ -39,6 +57,10 @@ SKILLS = (
     "research",
     "task-delivery",
 )
+# Preserve host-specific availability; do not introduce this legacy browser
+# workflow into a home that did not already select it.
+OPTIONAL_EXISTING_SKILLS = ("playwright-interactive",)
+UNCHECKED_PREIMAGE = object()
 _routing_spec = importlib.util.spec_from_file_location("codex_model_routing", REPO_ROOT / "scripts/model_routing.py")
 assert _routing_spec and _routing_spec.loader
 routing = importlib.util.module_from_spec(_routing_spec)
@@ -338,7 +360,8 @@ def backup_root(codex_home: Path) -> Path:
     return codex_home / "backups" / "agent-graphs" / f"{stamp}-{os.getpid()}"
 
 
-def replace_directory(source: Path, target: Path, backup: Path) -> str:
+def replace_directory(source: Path, target: Path, backup: Path, *,
+                      expected_preimage: Any = UNCHECKED_PREIMAGE) -> str:
     status = path_status(source, target)
     if status == "in-sync":
         return status
@@ -351,6 +374,8 @@ def replace_directory(source: Path, target: Path, backup: Path) -> str:
         shutil.copytree(source, staged)
         if manifest(source) != manifest(staged):
             raise InstallError(f"Staged copy failed verification: {source}")
+        if expected_preimage is not UNCHECKED_PREIMAGE and directory_preimage(target) != expected_preimage:
+            raise InstallError(f"Concurrent skill edit before replacement: {target}")
         if target.exists() or target.is_symlink():
             backup.parent.mkdir(parents=True, exist_ok=True)
             os.replace(target, backup)
@@ -363,6 +388,140 @@ def replace_directory(source: Path, target: Path, backup: Path) -> str:
             os.replace(backup, target)
         raise
     return "installed"
+
+
+def directory_preimage(path: Path) -> dict[str, str] | None:
+    if path.is_symlink() or (path.exists() and not path.is_dir()):
+        raise InstallError(f"Unsafe skill/runtime target: {path}")
+    return manifest(path) if path.exists() else None
+
+
+def skills_preflight(codex_home: Path) -> list[dict[str, Any]]:
+    """Only inspect owned skill/runtime surfaces, never model/auth settings."""
+    for relative in ("skills", "backups", "backups/agent-graphs"):
+        parent = codex_home / relative
+        if parent.is_symlink() or (parent.exists() and not parent.is_dir()):
+            raise InstallError(f"Unsafe install parent: {parent}")
+    names = list(SKILLS) + [name for name in OPTIONAL_EXISTING_SKILLS
+                            if (codex_home / "skills" / name).exists()
+                            or (codex_home / "skills" / name).is_symlink()]
+    sources = [("runtime", GRAPH_RUNTIME_TARGET, GRAPH_RUNTIME_ROOT)] + [
+        ("skill", name, SKILLS_ROOT / name) for name in names]
+    items = []
+    for kind, name, source in sources:
+        if source.is_symlink() or not source.is_dir():
+            raise InstallError(f"Unsafe install source: {source}")
+        relative = Path(name) if kind == "runtime" else Path("skills") / name
+        before = directory_preimage(codex_home / relative)
+        desired = manifest(source)
+        items.append({"kind": kind, "name": name, "relative": relative,
+                      "source": source, "desired": desired, "before": before,
+                      "status": "missing" if before is None else "in-sync" if before == desired else "drift"})
+    return items
+
+
+def plan_skills_environment(codex_home: Path) -> dict[str, Any]:
+    try:
+        items = skills_preflight(codex_home)
+        return {"status": "ok", "codex_home": str(codex_home), "scope": "skills-only",
+                "items": [{key: item[key] for key in ("kind", "name", "status")} for item in items]}
+    except (InstallError, OSError, ValueError) as exc:
+        return {"status": "failed", "codex_home": str(codex_home), "scope": "skills-only", "issues": [str(exc)]}
+
+
+def verify_skills_environment(codex_home: Path) -> dict[str, Any]:
+    payload = plan_skills_environment(codex_home)
+    if payload["status"] == "ok":
+        payload["issues"] = [f"{item['kind']} {item['name']}: {item['status']}"
+                             for item in payload["items"] if item["status"] != "in-sync"]
+        if payload["issues"]:
+            payload["status"] = "failed"
+    return payload
+
+
+@contextlib.contextmanager
+def skills_install_lock(home: Path):
+    home.mkdir(parents=True, exist_ok=True)
+    lock = home / ".skills-install.lock"
+    try:
+        fd = os.open(lock, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise InstallError(f"Another skill installer owns {lock}; preserve the lock and retry only after its owner finishes") from exc
+    token = f"{os.getpid()}:{dt.datetime.now().isoformat()}"
+    try:
+        with os.fdopen(fd, "w") as handle:
+            handle.write(token)
+        yield
+    finally:
+        if not lock.is_symlink() and lock.is_file() and lock.read_text() == token:
+            lock.unlink()
+
+
+def install_skills_batch(homes: list[tuple[str, Path]]) -> list[dict[str, Any]]:
+    """Preflight both homes, serialize writers and roll back only owned bytes."""
+    plans = [(label, home, skills_preflight(home)) for label, home in homes]
+    touched: list[dict[str, Any]] = []
+    environments: list[dict[str, Any]] = []
+    with contextlib.ExitStack() as locks:
+        for _, home, _ in sorted(plans, key=lambda item: str(item[1])):
+            locks.enter_context(skills_install_lock(home))
+        try:
+            for label, home, items in plans:
+                backup = backup_root(home)
+                changes = []
+                for item in items:
+                    source, target = item["source"], home / item["relative"]
+                    if manifest(source) != item["desired"]:
+                        raise InstallError(f"Concurrent install source edit: {source}")
+                    if directory_preimage(target) != item["before"]:
+                        raise InstallError(f"Concurrent skill edit: {target}")
+                    status = replace_directory(source, target, backup / item["relative"],
+                                               expected_preimage=item["before"])
+                    if status == "installed":
+                        touched.append({"target": target, "backup": backup / item["relative"],
+                                        "before": item["before"], "desired": item["desired"]})
+                    if directory_preimage(target) != item["desired"]:
+                        raise InstallError(f"Installed skill readback failed: {target}")
+                    changes.append({"kind": item["kind"], "name": item["name"], "status": status,
+                                    "target": str(target)})
+                environments.append({"status": "ok", "environment": label, "scope": "skills-only",
+                                     "codex_home": str(home), "changes": changes,
+                                     "backup": str(backup) if backup.exists() else None})
+            for _, home, items in plans:
+                for item in items:
+                    if manifest(item["source"]) != item["desired"] or directory_preimage(home / item["relative"]) != item["desired"]:
+                        raise InstallError(f"Batch verification failed: {home / item['relative']}")
+            return environments
+        except (InstallError, OSError, ValueError) as exc:
+            conflicts = []
+            for item in reversed(touched):
+                target, backup = item["target"], item["backup"]
+                try:
+                    if directory_preimage(target) != item["desired"]:
+                        conflicts.append(str(target))
+                        continue
+                    if item["before"] is not None and directory_preimage(backup) != item["before"]:
+                        conflicts.append(str(target))
+                        continue
+                    rollback = target.parent / f".{target.name}.skills-rollback-{os.getpid()}"
+                    if rollback.exists() or rollback.is_symlink():
+                        conflicts.append(str(target))
+                        continue
+                    os.replace(target, rollback)
+                    try:
+                        if item["before"] is not None:
+                            os.replace(backup, target)
+                    except OSError:
+                        os.replace(rollback, target)
+                        raise
+                    shutil.rmtree(rollback)
+                except (InstallError, OSError):
+                    conflicts.append(str(target))
+            error = InstallError(f"Skills-only installation stopped: {exc}; " +
+                                 (f"external edits preserved, rollback conflicts: {conflicts}" if conflicts else "owned writes rolled back"))
+            error.partial_install = {"environments": environments, "rollback_conflicts": conflicts,
+                                     "backups": sorted({str(item["backup"]) for item in touched})}
+            raise error from exc
 
 
 def replace_file(source: Path, target: Path, backup: Path) -> str:
@@ -903,7 +1062,9 @@ def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description=__doc__)
     command.add_argument("action", choices=("plan", "install", "verify"))
     command.add_argument("--all", action="store_true", help="Target both WSL and Desktop")
-    command.add_argument("--routing-only", action="store_true", help="Update model routing without skills or root model changes")
+    scopes = command.add_mutually_exclusive_group()
+    scopes.add_argument("--routing-only", action="store_true", help="Update model routing without skills or root model changes")
+    scopes.add_argument("--skills-only", action="store_true", help="Update maintained skills/runtime only; preserve profiles, models, config, roles, policies and credentials")
     command.add_argument("--wsl", action="store_true", help="Target WSL only")
     command.add_argument("--desktop", action="store_true", help="Target Desktop only")
     command.add_argument("--wsl-home", default=str(Path.home() / ".codex"))
@@ -918,12 +1079,18 @@ def main(argv: list[str] | None = None) -> int:
         homes = selected_homes(args)
         if args.action == "install":
             for _, home in homes:
-                if args.routing_only:
+                if args.skills_only:
+                    skills_preflight(home)
+                elif args.routing_only:
                     routing_only_candidates(home)
                 else:
                     preflight_environment(home)
-        for label, home in homes:
-            if args.routing_only:
+        if args.skills_only and args.action == "install":
+            environments = install_skills_batch(homes)
+        for label, home in ([] if args.skills_only and args.action == "install" else homes):
+            if args.skills_only:
+                payload = plan_skills_environment(home) if args.action == "plan" else verify_skills_environment(home)
+            elif args.routing_only:
                 if args.action == "plan":
                     payload = plan_routing_environment(home)
                 elif args.action == "install":
@@ -938,11 +1105,13 @@ def main(argv: list[str] | None = None) -> int:
                 payload = verify_environment(home)
             payload["environment"] = label
             environments.append(payload)
-        failed = any(payload.get("status") == "failed" for payload in environments)
+        failed = any(payload.get("status") == "failed" or
+                     any(item.get("status") == "conflict" for item in payload.get("items", []))
+                     for payload in environments)
         response = {
             "status": "failed" if failed else "ok",
             "summary": f"{args.action} completed for {len(environments)} environment(s)",
-            "next_actions": [] if not failed else ["Resolve drift or conflicts and retry"],
+            "next_actions": [] if not failed else ["Inspect the reported conflict; an unrelated isolated model profile may use --skills-only without changing routing. Do not retry unchanged conditions."],
             "artifacts": [str(REPO_ROOT)],
             "data": {"environments": environments},
         }

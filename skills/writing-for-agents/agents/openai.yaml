@@ -1,0 +1,6 @@
+interface:
+  display_name: "Writing for Agents"
+  short_description: "Write clear agent instructions and document pointers"
+  default_prompt: "Use $writing-for-agents to revise this agent-facing document while preserving its essential constraints."
+policy:
+  allow_implicit_invocation: true

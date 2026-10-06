@@ -29,6 +29,114 @@ class InstallerTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
+    def test_skills_only_preserves_isolated_profile_and_all_settings(self) -> None:
+        config = self.home / "config.toml"
+        policy = self.home / "AGENTS.md"
+        profile = self.home / "isolated.config.toml"
+        profile.write_text("model='example-provider-model'\nmodel_provider='isolated'\n")
+        protected = {p: p.read_bytes() for p in (config, policy, profile)}
+        response = installer.install_skills_batch([("fixture", self.home)])
+        self.assertEqual("ok", installer.verify_skills_environment(self.home)["status"])
+        self.assertIsNone(response[0]["backup"])
+        self.assertEqual(protected, {p: p.read_bytes() for p in protected})
+        self.assertFalse((self.home / "agents").exists())
+        with self.assertRaisesRegex(installer.InstallError, "Unmanaged profile"):
+            installer.preflight_environment(self.home)
+        again = installer.install_skills_batch([("fixture", self.home)])
+        self.assertTrue(all(x["status"] == "in-sync" for x in again[0]["changes"]))
+        self.assertIsNone(again[0]["backup"])
+
+    def test_skills_only_updates_optional_browser_only_when_present(self) -> None:
+        optional = self.home / "skills/playwright-interactive"
+        installer.install_skills_batch([("fixture", self.home)])
+        self.assertFalse(optional.exists())
+        optional.mkdir()
+        (optional / "SKILL.md").write_text("old host-selected version")
+        installer.install_skills_batch([("fixture", self.home)])
+        self.assertEqual(installer.manifest(installer.SKILLS_ROOT / "playwright-interactive"), installer.manifest(optional))
+
+    def test_skills_only_unsafe_second_home_prevents_first_write(self) -> None:
+        first = Path(self.temp.name) / "not-created"
+        second = Path(self.temp.name) / "unsafe-home"
+        second.mkdir()
+        unrelated = Path(self.temp.name) / "unrelated"
+        unrelated.mkdir()
+        (second / "skills").symlink_to(unrelated, target_is_directory=True)
+        with self.assertRaisesRegex(installer.InstallError, "Unsafe install parent"):
+            installer.install_skills_batch([("one", first), ("two", second)])
+        self.assertFalse(first.exists())
+        self.assertEqual([], list(unrelated.iterdir()))
+
+    def test_skills_only_rolls_back_first_home_after_second_home_failure(self) -> None:
+        second = Path(self.temp.name) / "second"
+        second.mkdir()
+        prior = self.home / installer.GRAPH_RUNTIME_TARGET
+        prior.mkdir()
+        (prior / "old.py").write_text("existing user runtime")
+        before = installer.manifest(prior)
+        original = installer.replace_directory
+        def fail_in_second(source, target, backup, **kwargs):
+            if target.parent == second:
+                raise OSError("injected write failure in second home")
+            return original(source, target, backup, **kwargs)
+        with mock.patch.object(installer, "replace_directory", side_effect=fail_in_second):
+            with self.assertRaisesRegex(installer.InstallError, "owned writes rolled back"):
+                installer.install_skills_batch([("one", self.home), ("two", second)])
+        self.assertEqual(before, installer.manifest(prior))
+        self.assertEqual([], list((self.home / "skills").iterdir()))
+        self.assertFalse((self.home / ".skills-install.lock").exists())
+        self.assertFalse((second / ".skills-install.lock").exists())
+
+    def test_skills_only_rollback_preserves_external_concurrent_edit(self) -> None:
+        second = Path(self.temp.name) / "second"
+        second.mkdir()
+        protected = self.home / installer.GRAPH_RUNTIME_TARGET
+        protected.mkdir()
+        (protected / "before.txt").write_text("original")
+        original = installer.replace_directory
+        def fail_after_external_edit(source, target, backup, **kwargs):
+            if target.parent == second:
+                (protected / "external.txt").write_text("external concurrent work")
+                raise OSError("injected second-home failure")
+            return original(source, target, backup, **kwargs)
+        with mock.patch.object(installer, "replace_directory", side_effect=fail_after_external_edit):
+            with self.assertRaisesRegex(installer.InstallError, "external edits preserved") as raised:
+                installer.install_skills_batch([("one", self.home), ("two", second)])
+        self.assertEqual("external concurrent work", (protected / "external.txt").read_text())
+        self.assertIn(str(protected), raised.exception.partial_install["rollback_conflicts"])
+        self.assertTrue(list((self.home / "backups").rglob("before.txt")))
+
+    def test_skills_only_preimage_is_rechecked_after_staging(self) -> None:
+        target = self.home / "skills/research"
+        target.mkdir(parents=True)
+        (target / "SKILL.md").write_text("user original")
+        original = installer.shutil.copytree
+        def stage_with_edit(source, staged, *args, **kwargs):
+            response = original(source, staged, *args, **kwargs)
+            if Path(source) == installer.SKILLS_ROOT / "research":
+                (target / "SKILL.md").write_text("external changed during staging")
+            return response
+        with mock.patch.object(installer.shutil, "copytree", side_effect=stage_with_edit):
+            with self.assertRaisesRegex(installer.InstallError, "Concurrent skill edit"):
+                installer.install_skills_batch([("fixture", self.home)])
+        self.assertEqual("external changed during staging", (target / "SKILL.md").read_text())
+
+    def test_skills_only_respects_an_existing_installer_lock(self) -> None:
+        lock = self.home / ".skills-install.lock"
+        lock.write_text("another active owner")
+        with self.assertRaisesRegex(installer.InstallError, "Another skill installer"):
+            installer.install_skills_batch([("fixture", self.home)])
+        self.assertEqual("another active owner", lock.read_text())
+        self.assertFalse((self.home / "skills").exists())
+
+    def test_plan_conflicts_return_failure_instead_of_ok(self) -> None:
+        (self.home / "isolated.config.toml").write_text("model='isolated'\n")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            status = installer.main(["plan", "--wsl", "--wsl-home", str(self.home)])
+        self.assertEqual(2, status)
+        self.assertIn('"status": "failed"', output.getvalue())
+
     def test_install_and_verify(self) -> None:
         result = installer.install_environment(self.home)
         self.assertEqual(installer.verify_environment(self.home)["status"], "ok")
@@ -69,6 +177,18 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("generic `explorer` and `researcher` roles", global_policy)
         self.assertFalse((self.home / "skills" / "codebase-discovery").exists())
         self.assertIsNotNone(result["backup"])
+
+    def test_native_companion_trees_are_installed_complete(self) -> None:
+        installer.install_environment(self.home)
+        for skill in ("writing-for-agents", "retro", "to-questionnaire", "pr",
+                      "grilling", "domain-modeling", "codebase-design"):
+            with self.subTest(skill=skill):
+                source = installer.SKILLS_ROOT / skill
+                target = self.home / "skills" / skill
+                self.assertEqual(installer.manifest(source), installer.manifest(target))
+                self.assertTrue((target / "LICENSE").is_file())
+                self.assertTrue((target / "agents" / "openai.yaml").is_file())
+                self.assertFalse((target / "graph.json").exists())
 
     def test_global_policy_install_is_idempotent(self) -> None:
         installer.install_environment(self.home)

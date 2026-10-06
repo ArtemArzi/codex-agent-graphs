@@ -70,6 +70,7 @@ LEGACY_BOOTSTRAP_COVERAGE = {
 BOOTSTRAP_COVERAGE = LEGACY_BOOTSTRAP_COVERAGE | {"engineering_standard"}
 LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.4.0", "658f933cb082d2b1a5070bf35cf2f452b7353dbc2cf16d501338b9797dd020a2"),
+    ("3.5.0", "92379ab93564c64ee743ddf247367baed0ad1d66a063a3d33be45c16159839f7"),
 }
 
 
@@ -748,6 +749,8 @@ def initialize(
         "change_receipt": receipt,
         "consumed_obligation": consumed_obligation,
         "status": "running",
+        "control_status": "healthy",
+        "control_issues": [],
         "current": "work",
         "baseline_docs": baseline_snapshot,
         "baseline_canonical": sorted(set(baseline_canonical)),
@@ -827,6 +830,12 @@ def ready(run_dir: Path) -> dict[str, Any]:
     current = state["current"]
     if state["status"] == "decision-required":
         return result("decision-required", "Нужен только зафиксированный ответ на существенное решение.", data={"decision": state["decisions"][-1]})
+    if state.get("control_status", "healthy") != "healthy" and state["status"] not in {"completed", "superseded"}:
+        return result(
+            "degraded", "Служебный контроль отключён; разрешённую работу с документами можно продолжить.",
+            next_actions=["Сохрани проверки и следующий шаг в существующем handoff. Решения, права и незакрытые обязательства сохраняются; controller completion не подтверждён."],
+            artifacts=[str(run_dir)], data={"task_status": state["status"], "control_status": state.get("control_status"), "control_issues": state.get("control_issues", [])},
+        )
     if state["status"] == "blocked":
         return result("blocked", "Run заблокирован; исправь причину и используй retry.")
     if state["status"] == "completed":
@@ -1366,6 +1375,28 @@ def retry(run_dir: Path, node: str) -> dict[str, Any]:
     return ready(run_dir)
 
 
+def degrade_control(run_dir: Path, reason: str) -> dict[str, Any]:
+    """Annotate controller health without changing shared project authority."""
+    if len(reason.strip()) < 8:
+        raise GraphError("Нужна содержательная причина отключения служебного контроля.")
+    with state_lock(run_dir):
+        state = load_state(run_dir)
+        if state["status"] in {"completed", "superseded"}:
+            raise GraphError("Завершённый run нельзя переводить в degraded control.")
+        issues = state.setdefault("control_issues", [])
+        if reason.strip() not in issues or state.get("control_status") != "degraded":
+            issues.append(reason.strip())
+            state["control_status"] = "degraded"
+            state["events"].append({"at": now(), "event": "control_degraded", "reason": reason.strip()})
+            save_state(run_dir, state)
+    return result(
+        "degraded", "Служебный контроль отключён; документы и обязательства сохранены.",
+        next_actions=["Продолжай только уже разрешённые правки и проверки. Не восстанавливай и не удаляй документы ради controller PASS; сохрани native review и следующий шаг в существующем handoff."],
+        artifacts=[str(run_dir / STATE_NAME)],
+        data={"task_status": state["status"], "control_status": "degraded", "completion_verified": False},
+    )
+
+
 def abandon(run_dir: Path, reason: str) -> dict[str, Any]:
     if not reason.strip():
         raise GraphError("Причина abandon не должна быть пустой.")
@@ -1690,6 +1721,8 @@ def recover(root_raw: str) -> dict[str, Any]:
 def complete(run_dir: Path) -> dict[str, Any]:
     with state_lock(run_dir):
         state = load_state(run_dir)
+        if state.get("control_status", "healthy") != "healthy":
+            raise GraphError("Degraded control не подтверждает completion. Сохрани разрешённый результат и независимую проверку в handoff; решения и обязательства остаются открытыми.")
         if state["status"] == "completed":
             return result("completed", "Project Start run уже завершён.", artifacts=[str(run_dir)])
         if state["status"] != "running" or state["current"] != "complete" or state["nodes"]["complete"]["status"] != "ready":
@@ -1770,7 +1803,7 @@ def status(run_dir: Path) -> dict[str, Any]:
     state = load_state(run_dir)
     if state["status"] in {"completed", "superseded"}:
         check_historical_receipts(state)
-    return result(state["status"], f"Project Start {state['mode']}: {state['current']}.", artifacts=[str(run_dir)], data={"current": state["current"], "mode": state["mode"], "retries": state["node_retries"], "verification_repairs": state["verification_repairs"]})
+    return result(state["status"], f"Project Start {state['mode']}: {state['current']}.", artifacts=[str(run_dir)], data={"current": state["current"], "mode": state["mode"], "retries": state["node_retries"], "verification_repairs": state["verification_repairs"], "control_status": state.get("control_status", "healthy"), "control_issues": state.get("control_issues", [])})
 
 
 def parser() -> argparse.ArgumentParser:
@@ -1799,6 +1832,9 @@ def parser() -> argparse.ArgumentParser:
     abandon_parser = sub.add_parser("abandon")
     abandon_parser.add_argument("--run", required=True)
     abandon_parser.add_argument("--reason", required=True)
+    degrade_parser = sub.add_parser("control-degrade")
+    degrade_parser.add_argument("--run", required=True)
+    degrade_parser.add_argument("--reason", required=True)
     recover_parser = sub.add_parser("recover")
     recover_parser.add_argument("--root", required=True)
     return command
@@ -1825,10 +1861,15 @@ def main(argv: list[str] | None = None) -> int:
                 payload = retry(run_dir, args.node)
             elif args.command == "abandon":
                 payload = abandon(run_dir, args.reason)
+            elif args.command == "control-degrade":
+                payload = degrade_control(run_dir, args.reason)
             else:
                 payload = complete(run_dir)
     except (GraphError, OSError) as exc:
-        payload = result("error", str(exc))
+        payload = result("error", str(exc), next_actions=[
+            "Не повторяй команду без новых фактов. Служебный сбой допускает одну ограниченную проверку, затем control-degrade и разрешённую native работу.",
+            "Если состояние нельзя безопасно прочитать или записать, сохрани его как есть и используй существующий handoff вне controller. Отсутствующие права, решения и реальные нарушения целостности не обходи.",
+        ])
         print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
         return 1
     print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))

@@ -16,6 +16,13 @@ Apply the inherited “Collaboration and useful questions” policy. Before a su
 
 ## Продолжение задачи и проектная память
 
+В применимый момент выбирай нативные companions по
+[карте возможностей](references/capability-routing.md#условные-навыки):
+`grilling` для существенного открытого решения, `writing-for-agents` для
+инструкций и маршрутов чтения, `to-questionnaire` для ответа внешнего владельца,
+`retro` для повторяющегося сбоя среды и `pr` для нужного описания PR.
+Это помощь внутри той же задачи, а не постоянная цепочка этапов.
+
 Перед существенной работой или возобновлением прочитай владельца текущего
 состояния через карту проекта: решения с причинами, свидетельства, важные
 неудачные попытки и следующий шаг. Применяй [правила продолжения](references/project-state.md)
@@ -97,12 +104,15 @@ production path, and relevant tests before controller artifacts. Read controller
 detail only at a current boundary: resume, slice handoff, independent
 verification, or completion.
 
-A digest, marker, receipt, reviewer budget, run partition, or other protocol
-failure is not a task blocker and does not trigger Development Recovery. Make at
-most one bounded controller repair. If it produces no new evidence, run
-`control-degrade` and continue local implementation and tests. Degraded control
-may reject `verified completion`; it may not prevent reading files, changing
-code, running checks, or returning a skill-only handoff.
+Controller health/provenance failures (including a read-only admission lock,
+unsupported loader identity or service metadata mismatch) do not trigger
+Development Recovery. Make at most one bounded repair; never retry the identical
+failure without new evidence. If state loads and can be written safely, use
+`control-degrade`; otherwise preserve it and record native continuation in the
+existing handoff outside state. Continue authorized local work and tests, while
+keeping scope, security authority, receipts and pending obligations intact.
+True scope/authorization/receipt failures remain fail closed. Degradation is
+not approval or verified controller completion.
 
 Stop the task only for missing authority, actual data/security/external-state
 risk, ambiguous business behavior, or proven specification/code/runtime
@@ -401,6 +411,10 @@ python3 scripts/task_graph.py record --run <run-dir> --node work --outcome decis
 python3 scripts/task_graph.py decide --run <run-dir> --answer "<точный ответ>"
 ```
 
+Если действительный ответ уже дан в сессии, внеси его через `decide` со ссылкой
+на исходное решение. Не проси повторного разрешения или специальной фразы ради
+служебных данных; exact release/content/code policies проекта сохраняют силу.
+
 Режим `plan` сам является согласованной остановкой: после `complete` состояние станет `awaiting_implementation`. Режим `full` не добавляет искусственную паузу между планом и кодом.
 
 ## Завершение и совместимость
@@ -419,7 +433,7 @@ python3 scripts/task_graph.py retry --run <run-dir> --node <work|verify>
 
 Не редактируй канонические документы Project Start внутри Task Delivery: передай фактическую документационную дельту через handoff. Если реализация доказала устойчивое новое coding rule, команду качества или framework boundary, укажи `documentation_impact=factual|semantic`; одноразовый workaround не превращай в правило.
 
-Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Поддерживаемые graph `3.0.0`-`3.8.0` runs можно дочитать или явно закрыть через `retire`; их не переписывай под новый контракт. Новые runs используют `3.9.0`: суммарное число агентов и оценка слайсов не блокируют продолжение. Активные 3.8 runs сохраняют прежние лимиты, проверки и exact graph identity; не переписывай их под 3.9. Если старый лимит мешает, продолжай разрешённую работу через control-degrade, не выдавая её за verified completion. Все новые задачи запускай через `task_graph.py`.
+Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Поддерживаемые graph `3.0.0`-`3.9.0` runs сохраняют exact identity и digest algorithms; их не переписывай под новый контракт. Новые runs используют `3.9.1`: один scope block входит в hashed plan region, а scope authority повторно сверяется с admission/review/packet и разрешёнными amendments. Черновой `full/plan` scope редактируется до review. Старые runs восстанавливают selection из captured receipts/admission manifest; неоднозначность требует native handoff с сохранением state, без controller PASS. Суммарное число агентов и оценка слайсов в 3.9 не блокируют продолжение; старые лимиты сохраняются. Все новые задачи запускай через `task_graph.py`.
 
 ## Служебные ресурсы
 

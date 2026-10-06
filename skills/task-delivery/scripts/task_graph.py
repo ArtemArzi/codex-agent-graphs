@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import errno
 import hashlib
 import json
 import os
@@ -68,19 +69,20 @@ LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.6.0", "ffe9580e03ce2aa76a9947e30e016f0d3d58d1a34a77ac534f59ab083e4653ec"),
     ("3.7.0", "cae9219d58295caf00c2d702134047f11fe8cdfb9409b957068a81d90f77657a"),
     ("3.8.0", "e85e31327b1e370332bf2e65f2d4f6f1776e459072dafbd0ba9f9099830eeb76"),
+    ("3.9.0", "b8d70db20b6ebc57ea1fcb1258bfce9a22eab02089c9c9c4f1d2b1e8b1b75112"),
 }
-SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0"}
-STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0"}
-NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0", "3.9.0"}
+SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1"}
+STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1"}
+NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1"}
 
 
 def adaptive_delegation(state: dict[str, Any]) -> bool:
-    return state.get("graph_version") == "3.9.0"
+    return state.get("graph_version") in {"3.9.0", "3.9.1"}
 
 
 def uses_code_first_contract(state: dict[str, Any]) -> bool:
     # Pin behavior by release, not by whichever graph happens to be installed.
-    return state.get("graph_version") in {"3.8.0", "3.9.0"}
+    return state.get("graph_version") in {"3.8.0", "3.9.0", "3.9.1"}
 
 
 def slice_estimate(state: dict[str, Any]) -> int:
@@ -90,6 +92,31 @@ def slice_estimate(state: dict[str, Any]) -> int:
 
 class GraphError(RuntimeError):
     """A safe, actionable Task Delivery graph error."""
+
+
+class GraphProvenanceError(GraphError):
+    """Unsupported controller identity; its state must remain untouched."""
+
+
+def failure_result(exc: Exception) -> dict[str, Any]:
+    health = isinstance(exc, (OSError, KeyError, ValueError, GraphProvenanceError))
+    if health:
+        kind = "controller-provenance" if isinstance(exc, GraphProvenanceError) else "controller-health"
+        actions = [
+            "Не повторяй ту же команду без нового evidence: максимум одна bounded controller repair.",
+            "Продолжай разрешённую локальную задачу через native workflow, сохраняя scope, approvals и pending obligations.",
+            "Если state валидно загружается и доступно для записи, используй control-degrade; иначе сохрани native handoff вне state. Не объявляй controller completion PASS.",
+        ]
+    else:
+        kind = "contract-or-authority"
+        actions = [
+            "Scope, authorization и receipt checks остаются fail closed; восстанови подлинное evidence или получи необходимое новое решение.",
+            "Не переписывай graph identity, digest или obligations ради PASS. Controller-only repair допускает максимум одну попытку, затем native handoff в пределах действительных полномочий.",
+        ]
+    return result("failed", str(exc), next_actions=actions, data={
+        "failure_class": kind,
+        "read_only_filesystem": isinstance(exc, OSError) and exc.errno == errno.EROFS,
+    })
 
 
 def now() -> str:
@@ -492,14 +519,112 @@ def validate_plan(path: Path, *, graph_version: str | None = None) -> tuple[str,
     if path.is_symlink() or not path.is_file():
         raise GraphError(f"План должен быть обычным существующим файлом: {path}")
     contract = plan_contract_text(path, graph_version=graph_version)
+    text_value = path.read_text(encoding="utf-8")
+    version = graph_version or graph_contract()["graph_version"]
+    if version == "3.9.1":
+        validate_scope_markers(text_value, contract)
     placeholders = [token for token in ("PENDING", "TODO", "{{") if token in contract]
     if placeholders:
         raise GraphError("Контракт плана содержит незаполненные маркеры: " + ", ".join(placeholders))
     try:
-        scope = snapshots.parse_scope(path.read_text(encoding="utf-8"))
+        scope = snapshots.parse_scope(text_value)
     except snapshots.SnapshotError as exc:
         raise GraphError(str(exc)) from exc
     return plan_digest(path, graph_version=graph_version), scope
+
+
+def validate_scope_markers(text_value: str, contract: str) -> None:
+    # Count openers as well as complete blocks: a second malformed block must
+    # not silently disappear from the scope parser.
+    opener = r"<!--\s*task-delivery:scope\b"
+    block = r"<!--\s*task-delivery:scope\s*\n.*?\n\s*-->"
+    matches = list(re.finditer(block, text_value, flags=re.DOTALL))
+    if len(re.findall(opener, text_value)) != 1 or len(matches) != 1:
+        raise GraphError("План требует ровно один однозначный task-delivery:scope block.")
+    if matches[0].group() not in contract:
+        raise GraphError("Scope block должен находиться внутри hashed task-delivery:plan region.")
+
+
+def scope_roots(paths: Any) -> list[str]:
+    values = strings(paths, "reviewed scope", allow_empty=False)
+    normalized = sorted({snapshots.safe_relative(item).as_posix().rstrip("/") for item in values})
+    if "." in normalized:
+        raise GraphError("Reviewed scope не может охватывать весь repository.")
+    return [item for item in normalized if not any(
+        item.startswith(parent + "/") for parent in normalized if parent != item
+    )]
+
+
+def validate_scope_authority(
+    state: dict[str, Any], run_dir: Path, digest: str, scope: list[str]
+) -> None:
+    """Compare selection authority, never edited file hashes, with captured review.
+
+    Draft full/plan runs have no review authority until a work receipt, packet
+    or technical amendment exists. Legacy admission manifests retain directory
+    entries, so their minimal roots conservatively recover effective selection.
+    """
+    candidates: list[tuple[str, list[str]]] = []
+    admission = state.get("scope_authority")
+    if admission is not None:
+        if not isinstance(admission, dict):
+            raise GraphError("Scope authority повреждена.")
+        candidates.append((hex_digest(admission.get("plan_digest"), "scope authority digest"),
+                           scope_roots(admission.get("scope"))))
+    if state["mode"] == "implement":
+        prior = state.get("task_state_snapshot", {}).get("checkpoints", {}).get("plan-review", {})
+        if prior:
+            if prior.get("verdict") != "pass":
+                raise GraphError("Scope authority требует сохранённый approved plan review.")
+            captured = prior.get("scope")
+            if captured is None:
+                captured_manifest = prior.get("review_scope_manifest")
+                if not isinstance(captured_manifest, dict) or not captured_manifest:
+                    raise GraphError("Legacy scope authority не восстанавливается; сохрани state и native handoff.")
+                captured = list(captured_manifest)
+            candidates.append((hex_digest(prior.get("plan_digest"), "review digest"), scope_roots(captured)))
+        elif admission is None:
+            raise GraphError("Legacy implement admission scope authority неоднозначна; сохрани state и native handoff.")
+    for work in state.get("nodes", {}).get("work", {}).get("receipts", []):
+        path = Path(str(work.get("path", "")))
+        if not path.is_file() or sha256_file(path) != work.get("sha256"):
+            raise GraphError("Scope authority work receipt изменился.")
+        candidates.append((hex_digest(work.get("plan_digest"), "work review digest"), scope_roots(work.get("scope"))))
+    chain = validate_amendment_chain(state, run_dir, current_digest=digest)
+    for amendment in chain["receipts"]:
+        candidates.append((amendment["before_digest"], scope_roots(amendment.get("before_scope"))))
+    for record in state.get("slices", {}).values():
+        path = Path(str(record.get("packet_path", "")))
+        if not path.is_file() or sha256_file(path) != record.get("packet_sha256"):
+            raise GraphError("Scope authority slice packet изменился.")
+        packet = load_json(path)
+        captured = packet.get("plan_scope")
+        if captured is None:
+            # Old packets captured a digest but not selection. Recover only if
+            # the exact digest binds a unique contained scope (or its amendment).
+            matching = [a["before_scope"] for a in chain["receipts"]
+                        if a["before_digest"] == packet.get("plan_digest")]
+            if matching:
+                captured = matching[0]
+            elif packet.get("plan_digest") == digest:
+                plan = snapshots.safe_join_no_symlinks(Path(state["root"]), state["plan_path"])
+                validate_scope_markers(plan.read_text(encoding="utf-8"),
+                                       plan_contract_text(plan, graph_version=state.get("graph_version")))
+                captured = scope
+            else:
+                raise GraphError("Legacy packet scope authority неоднозначна; сохрани state и native handoff.")
+        candidates.append((hex_digest(packet.get("plan_digest"), "packet review digest"), scope_roots(captured)))
+    expected = scope_roots(scope)
+    for reviewed_digest, captured in candidates:
+        cursor = reviewed_digest
+        for amendment in chain["receipts"]:
+            if amendment["before_digest"] == cursor:
+                if scope_roots(amendment["before_scope"]) != captured:
+                    raise GraphError("Scope amendment не совпадает с reviewed scope authority.")
+                captured = scope_roots(amendment["after_scope"])
+                cursor = amendment["after_digest"]
+        if cursor != digest or captured != expected:
+            raise GraphError("Effective scope изменился после review/admission; требуется authorized scope amendment или новый review.")
 
 
 def exclusions(plan: str) -> list[str]:
@@ -906,6 +1031,13 @@ def validate_amendment_chain(
             raise GraphError("Scope amendment digest chain разорван.")
         if record.get("before_digest") != before or record.get("after_digest") != after:
             raise GraphError("Scope amendment registry не совпадает с receipt.")
+        before_scope = scope_roots(artifact.get("before_scope"))
+        after_scope = scope_roots(artifact.get("after_scope"))
+        added = scope_roots(artifact.get("added_paths"))
+        if after_scope != scope_roots(before_scope + added):
+            raise GraphError("Scope amendment paths не совпадают с immutable added_paths.")
+        if validated and before_scope != scope_roots(validated[-1]["after_scope"]):
+            raise GraphError("Scope amendment selection chain разорван.")
         cursor = after
         validated.append(artifact)
     effective = current_digest or plan_digest(
@@ -962,12 +1094,16 @@ def load_context_checkpoint(state: dict[str, Any], run_dir: Path) -> tuple[dict[
     current_plan_digest = plan_digest(
         current_plan, graph_version=state.get("graph_version")
     )
+    _, current_scope = validate_plan(current_plan, graph_version=state.get("graph_version"))
+    validate_scope_authority(state, run_dir, current_plan_digest, current_scope)
     if checkpoint.get("plan_digest") != current_plan_digest:
         raise GraphError("Context checkpoint связан с другим plan digest.")
     validate_amendment_chain(state, run_dir, current_digest=current_plan_digest)
     expected_amendments = [item["sha256"] for item in state.get("scope_amendments", [])]
     if checkpoint.get("scope_amendment_receipts") != expected_amendments:
         raise GraphError("Context checkpoint не совпадает с immutable scope amendment chain.")
+    if scope_roots(checkpoint.get("plan_scope")) != scope_roots(current_scope):
+        raise GraphError("Context checkpoint не совпадает с reviewed scope authority.")
     current_repository_digest = snapshots.manifest_digest(
         manifest(Path(state["root"]), state["plan_path"])
     )
@@ -1080,6 +1216,7 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             digest, scope = validate_plan(
                 plan_path, graph_version=state.get("graph_version")
             )
+            validate_scope_authority(state, run_dir, digest, scope)
             if state["mode"] == "implement":
                 prior = state.get("task_state_snapshot", {}).get("checkpoints", {}).get("plan-review")
                 if (
@@ -1198,6 +1335,7 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                 "slice_id": identifier,
                 "strategy": strategy,
                 "plan_digest": digest,
+                "plan_scope": scope,
                 "base_repo_digest": snapshots.manifest_digest(baseline),
                 "objective": objective,
                 "plan_review": plan_review,
@@ -1339,6 +1477,8 @@ def record_slice(run_dir: Path, identifier: str, receipt_path: Path) -> dict[str
                 != packet["plan_digest"]
             ):
                 raise GraphError("План изменился после выдачи slice packet; создай новый packet.")
+            current_digest, current_scope = validate_plan(current_plan, graph_version=state.get("graph_version"))
+            validate_scope_authority(state, run_dir, current_digest, current_scope)
             receipt = load_json(receipt_path.resolve())
             expected_schema = graph_contract()["test_policy"]["packet_schema_version"] if staged_contract else 1
             if receipt.get("schema_version") != expected_schema or slice_id(receipt.get("slice_id")) != identifier:
@@ -1518,6 +1658,7 @@ def write_context_checkpoint(state: dict[str, Any], run_dir: Path, *, next_objec
     digest, scope = validate_plan(
         plan_path, graph_version=state.get("graph_version")
     )
+    validate_scope_authority(state, run_dir, digest, scope)
     accepted: list[dict[str, Any]] = []
     deferred_by_id: dict[str, dict[str, str]] = {}
     verified_discoveries: list[dict[str, str]] = []
@@ -1613,6 +1754,8 @@ def accept_slice(run_dir: Path, identifier: str, acceptance_path: Path) -> dict[
                 current_plan, graph_version=state.get("graph_version")
             ):
                 raise GraphError("План изменился после выдачи slice packet; создай новый packet.")
+            current_digest, current_scope = validate_plan(current_plan, graph_version=state.get("graph_version"))
+            validate_scope_authority(state, run_dir, current_digest, current_scope)
             draft = load_json(acceptance_path.resolve())
             if draft.get("schema_version") != 1 or slice_id(draft.get("slice_id")) != identifier:
                 raise GraphError("Root acceptance требует schema_version 1 и точный slice_id.")
@@ -1838,6 +1981,7 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
             before_digest, before_scope = validate_plan(
                 plan_path, graph_version=state.get("graph_version")
             )
+            validate_scope_authority(state, run_dir, before_digest, before_scope)
             review_receipt = meaningful(
                 draft.get("plan_review_receipt"), "scope amendment plan_review_receipt", 6
             )
@@ -1847,7 +1991,7 @@ def amend_scope(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                 prior_review = state.get("task_state_snapshot", {}).get("checkpoints", {}).get("plan-review")
                 review_bound = (
                     isinstance(prior_review, dict)
-                    and prior_review.get("plan_digest") == before_digest
+                    and reviewed_digest_is_effective(state, run_dir, prior_review.get("plan_digest"), before_digest)
                     and prior_review.get("verdict") == "pass"
                     and review_receipt == "task-state:plan-review"
                 )
@@ -2389,12 +2533,13 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         max_agents=None if adaptive_delegation(state) else (8 if current_contract else 5),
     )
     validate_research(artifact.get("research"))
-    if state.get("graph_version") in {"3.3.0", "3.8.0", "3.9.0"}:
+    if state.get("graph_version") in {"3.3.0", "3.8.0", "3.9.0", "3.9.1"}:
         validate_mcp_capabilities(capabilities)
     plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
     digest, scope = validate_plan(
         plan_path, graph_version=state.get("graph_version")
     )
+    validate_scope_authority(state, run_dir, digest, scope)
     plan = artifact.get("plan")
     if not isinstance(plan, dict) or plan.get("path") != state["plan_path"] or plan.get("digest") != digest:
         raise GraphError("task.json должен быть связан с точным путём и digest плана.")
@@ -2570,7 +2715,7 @@ def load_run_state(run_dir: Path) -> dict[str, Any]:
     identity = (state.get("graph_version"), state.get("graph_sha256"))
     current_identity = (graph["graph_version"], sha256_file(GRAPH_PATH))
     if identity != current_identity and identity not in LEGACY_ACTIVE_GRAPH_IDENTITIES:
-        raise GraphError("Run связан с неподдерживаемой версией Task Delivery graph.")
+        raise GraphProvenanceError("Run связан с неподдерживаемой версией Task Delivery graph.")
     root = root_path(str(state.get("root", "")))
     task_id = legacy.validate_task_id(str(state.get("task_id", "")))
     run_id = str(state.get("run_id", ""))
@@ -2625,6 +2770,9 @@ def suspend(run_dir: Path, reason: str, next_objective: str) -> dict[str, Any]:
             snapshots.safe_join_no_symlinks(root, state["baseline_manifest"])
         )
         changed = snapshots.changed_paths(baseline, manifest(root, state["plan_path"]))
+        plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
+        digest, scope = validate_plan(plan_path, graph_version=state.get("graph_version"))
+        validate_scope_authority(state, run_dir, digest, scope)
         accepted = sorted(
             identifier
             for identifier, item in state.get("slices", {}).items()
@@ -2638,6 +2786,7 @@ def suspend(run_dir: Path, reason: str, next_objective: str) -> dict[str, Any]:
             "plan_digest": plan_digest(
                 root / state["plan_path"], graph_version=state.get("graph_version")
             ),
+            "plan_scope": scope,
             "resume_status": state["status"],
             "current": state["current"],
             "changed_paths": changed,
@@ -2678,6 +2827,10 @@ def resume(run_dir: Path) -> dict[str, Any]:
             raise GraphError("Task checkpoint is missing or changed.")
         checkpoint = load_json(checkpoint_path)
         root = Path(state["root"])
+        digest, scope = validate_plan(root / state["plan_path"], graph_version=state.get("graph_version"))
+        validate_scope_authority(state, run_dir, digest, scope)
+        if "plan_scope" in checkpoint and scope_roots(checkpoint["plan_scope"]) != scope_roots(scope):
+            raise GraphError("Task checkpoint scope authority изменился после suspend.")
         if checkpoint.get("plan_digest") != plan_digest(
             root / state["plan_path"], graph_version=state.get("graph_version")
         ):
@@ -2909,6 +3062,8 @@ def initialize(
         plan_path = snapshots.safe_join_no_symlinks(root, plan)
         if not plan_path.exists():
             atomic_text(plan_path, plan_template(task_id, title.strip(), outcome.strip()))
+        if mode == "implement" and not existing:
+            digest, scope = validate_plan(plan_path, graph_version=graph["graph_version"])
         baseline = manifest(root, plan)
         run_number = len(existing.get("runs", [])) + 1 if existing else 1
         raw_id = (
@@ -2997,6 +3152,8 @@ def initialize(
                 "task_checkpoint_sha256": None,
             },
             "scope_amendments": [],
+            **({"scope_authority": {"plan_digest": digest, "scope": scope}}
+               if mode == "implement" else {}),
             "node_retries": {"work": 0, "verify": 0},
             "decisions": [],
             "nodes": nodes,
@@ -3336,6 +3493,8 @@ def verify_integrity(state: dict[str, Any]) -> dict[str, Any]:
         if not path.is_file() or sha256_file(path) != work["sha256"]:
             raise GraphError("task.json изменился после record.")
     plan = snapshots.safe_join_no_symlinks(root, state["plan_path"])
+    digest, scope = validate_plan(plan, graph_version=state.get("graph_version"))
+    validate_scope_authority(state, run_dir, digest, scope)
     if (
         plan_digest(plan, graph_version=state.get("graph_version"))
         != work["plan_digest"]
@@ -3431,6 +3590,7 @@ def complete(run_dir: Path) -> dict[str, Any]:
             work = integrity["work"]
             task["checkpoints"]["plan-review"] = {
                 "plan_digest": work["plan_digest"],
+                "scope": work["scope"],
                 "verdict": "pass",
                 "mode": "independent" if state["verification_required"] and state["mode"] == "plan" else load_json(Path(work["source"]))["plan"]["review"]["mode"],
                 "profile": state["profile"],
@@ -3710,7 +3870,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             payload = status(run_path(args.run))
     except (GraphError, legacy.TaskError, snapshots.SnapshotError, OSError, KeyError, ValueError) as exc:
-        payload = result("failed", str(exc), next_actions=["Исправь указанное условие и повтори ту же команду."])
+        payload = failure_result(exc)
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 2
     print(json.dumps(payload, ensure_ascii=False, indent=2))

@@ -4,6 +4,10 @@
 from __future__ import annotations
 
 import json
+import errno
+import io
+import re
+import hashlib
 import subprocess
 import sys
 import tempfile
@@ -2249,7 +2253,7 @@ src/app.py
         run = self.initialize(task_id="TD-CURRENT")
         state_path = run / graph.STATE_NAME
         state = self.read(state_path)
-        self.assertEqual("3.9.0", state["graph_version"])
+        self.assertEqual("3.9.1", state["graph_version"])
         state["status"] = "completed"
         state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "нельзя пометить retired"):
@@ -2275,6 +2279,280 @@ src/app.py
         state.write_text('{"schema_version": 2, "task_id": "TD-1"}\n', encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "v2"):
             self.initialize()
+
+    def pin_39(self, run: Path) -> None:
+        state = self.read(run / graph.STATE_NAME)
+        state["graph_version"] = "3.9.0"
+        state["graph_sha256"] = dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.9.0"]
+        state.pop("scope_authority", None)
+        graph.atomic_json(run / graph.STATE_NAME, state)
+
+    def scope_outside_region(self, plan: Path) -> None:
+        text = plan.read_text()
+        block = re.search(r"<!--\s*task-delivery:scope\s*\n.*?\n\s*-->", text, re.S).group()
+        plan.write_text(text.replace(block, "") + "\n" + block + "\n")
+
+    def legacy_implement_with_external_scope(self) -> tuple[Path, Path]:
+        plan_run = self.initialize(mode="plan", profile="light")
+        self.pin_39(plan_run)
+        plan = self.plan()
+        self.scope_outside_region(plan)
+        self.write_work(plan_run, self.work_payload(plan_run))
+        graph.record(plan_run, "work", "succeeded")
+        graph.complete(plan_run)
+        # An actual old checkpoint has the admission manifest, not new scope metadata.
+        task_path = self.root / ".codex/task-delivery/TD-1/state.json"
+        task = self.read(task_path)
+        task["checkpoints"]["plan-review"].pop("scope", None)
+        graph.atomic_json(task_path, task)
+        with mock.patch.object(graph, "GRAPH_PATH", graph.SKILL_DIR / "assets/legacy-graph-v3.9.json"):
+            run = self.initialize(mode="implement", profile="light", plan=str(plan.relative_to(self.root)))
+        self.pin_39(run)
+        return run, plan
+
+    def test_actual_outside_digest_widening_after_legacy_implement_admission_rejected(self) -> None:
+        run, plan = self.legacy_implement_with_external_scope()
+        digest = graph.plan_digest(plan, graph_version="3.9.0")
+        plan.write_text(plan.read_text().replace("task-delivery:scope\nsrc/app.py", "task-delivery:scope\nsrc"))
+        self.assertEqual(digest, graph.plan_digest(plan, graph_version="3.9.0"))
+        self.write("src/extra.py", "ADDED = True\n")
+        self.write_work(run, self.work_payload(run, review_mode="reused", changed=["src/extra.py"]))
+        with self.assertRaisesRegex(graph.GraphError, "scope изменился"):
+            graph.record(run, "work", "succeeded")
+        self.assertEqual([], self.read(run / graph.STATE_NAME)["nodes"]["work"]["receipts"])
+
+    def test_legacy_scope_widening_after_record_before_complete_rejected(self) -> None:
+        run, plan = self.legacy_implement_with_external_scope()
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run, review_mode="reused"))
+        graph.record(run, "work", "succeeded")
+        digest = graph.plan_digest(plan, graph_version="3.9.0")
+        plan.write_text(plan.read_text().replace("task-delivery:scope\nsrc/app.py", "task-delivery:scope\nsrc"))
+        self.assertEqual(digest, graph.plan_digest(plan, graph_version="3.9.0"))
+        with self.assertRaisesRegex(graph.GraphError, "scope изменился"):
+            graph.complete(run)
+
+    def test_legacy_directory_admission_allows_ordinary_edit_and_new_file(self) -> None:
+        plan_run = self.initialize(mode="plan")
+        self.pin_39(plan_run)
+        plan = self.plan(scope="src")
+        self.write_work(plan_run, self.work_payload(plan_run))
+        graph.record(plan_run, "work", "succeeded")
+        graph.complete(plan_run)
+        task_path = self.root / ".codex/task-delivery/TD-1/state.json"
+        task = self.read(task_path)
+        task["checkpoints"]["plan-review"].pop("scope", None)
+        graph.atomic_json(task_path, task)
+        run = self.initialize(mode="implement", plan=str(plan.relative_to(self.root)))
+        self.pin_39(run)
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write("src/new.py", "NEW = True\n")
+        self.write_work(run, self.work_payload(run, review_mode="reused", changed=["src/app.py", "src/new.py"]))
+        graph.record(run, "work", "succeeded")
+        self.assertEqual("completed", graph.complete(run)["status"])
+
+    def test_new_scope_markers_are_unique_contained_and_markerless_supported(self) -> None:
+        self.initialize()
+        plan = self.plan()
+        original = plan.read_text()
+        for suffix in ("\n<!-- task-delivery:scope\nsrc\n-->\n", "\n<!-- task-delivery:scope\n"):
+            plan.write_text(original + suffix)
+            with self.assertRaisesRegex(graph.GraphError, "ровно один"):
+                graph.validate_plan(plan)
+        plan.write_text(original)
+        self.scope_outside_region(plan)
+        with self.assertRaisesRegex(graph.GraphError, "hashed"):
+            graph.validate_plan(plan)
+        markerless = original.replace("<!-- task-delivery:plan:start -->", "").replace("<!-- task-delivery:plan:end -->", "")
+        plan.write_text(markerless)
+        self.assertEqual(["src/app.py"], graph.validate_plan(plan)[1])
+
+    def test_full_and_plan_draft_scope_can_evolve_before_review(self) -> None:
+        for mode in ("full", "plan"):
+            with self.subTest(mode=mode):
+                task_id = "TD-DRAFT-" + mode.upper()
+                run = self.initialize(mode=mode, task_id=task_id)
+                self.plan(task_id=task_id)
+                self.plan(task_id=task_id, scope="src")
+                if mode == "full":
+                    self.write("src/app.py", "VALUE = 2\n")
+                self.write_work(run, self.work_payload(run))
+                graph.record(run, "work", "succeeded")
+                self.assertEqual("completed", graph.complete(run)["status"])
+
+    def test_current_implement_scope_is_bound_at_admission(self) -> None:
+        plan_run = self.initialize(mode="plan")
+        plan = self.plan()
+        self.write_work(plan_run, self.work_payload(plan_run))
+        graph.record(plan_run, "work", "succeeded")
+        graph.complete(plan_run)
+        run = self.initialize(mode="implement", plan=str(plan.relative_to(self.root)))
+        self.assertEqual(["src/app.py"], self.read(run / graph.STATE_NAME)["scope_authority"]["scope"])
+        self.plan(scope="src")
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run, review_mode="reused"))
+        with self.assertRaisesRegex(graph.GraphError, "scope изменился"):
+            graph.record(run, "work", "succeeded")
+
+    def test_implement_external_reviewed_plan_without_previous_plan_run(self) -> None:
+        plan = self.plan()
+        run = self.initialize(mode="implement", plan=str(plan.relative_to(self.root)))
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run, review_mode="self"))
+        graph.record(run, "work", "succeeded")
+        self.assertEqual("completed", graph.complete(run)["status"])
+
+    def test_accepted_packet_binds_full_scope_after_draft(self) -> None:
+        run = self.initialize()
+        self.plan()
+        graph.register_slice(run, self.slice_draft(run))
+        self.plan(scope="src")
+        with self.assertRaisesRegex(graph.GraphError, "scope изменился"):
+            graph.suspend(run, "Task switch requires a checkpoint.", "Continue the next bounded slice.")
+
+    def test_legacy_external_packet_scope_is_ambiguous_and_stays_fail_closed(self) -> None:
+        run = self.initialize()
+        self.pin_39(run)
+        plan = self.plan()
+        self.scope_outside_region(plan)
+        created = graph.register_slice(run, self.slice_draft(run))
+        packet_path = Path(created["data"]["packet"])
+        packet = self.read(packet_path)
+        packet.pop("plan_scope")
+        graph.atomic_json(packet_path, packet)
+        state = self.read(run / graph.STATE_NAME)
+        state["slices"]["implementation-app"]["packet_sha256"] = graph.sha256_file(packet_path)
+        graph.atomic_json(run / graph.STATE_NAME, state)
+        before = (run / graph.STATE_NAME).read_bytes()
+        with self.assertRaisesRegex(graph.GraphError, "hashed"):
+            graph.suspend(run, "Task switch requires a checkpoint.", "Continue the next bounded slice.")
+        self.assertEqual(before, (run / graph.STATE_NAME).read_bytes())
+
+    def test_legacy_contained_packet_reconstructs_scope_without_new_metadata(self) -> None:
+        run = self.initialize()
+        self.pin_39(run)
+        self.plan()
+        created = graph.register_slice(run, self.slice_draft(run))
+        packet_path = Path(created["data"]["packet"])
+        packet = self.read(packet_path)
+        packet.pop("plan_scope")
+        graph.atomic_json(packet_path, packet)
+        state = self.read(run / graph.STATE_NAME)
+        state["slices"]["implementation-app"]["packet_sha256"] = graph.sha256_file(packet_path)
+        graph.atomic_json(run / graph.STATE_NAME, state)
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        implementation = {"status": "complete", "changed_paths": ["src/app.py"],
+                          "strategy": "delegated-sequential", "slices": [self.accepted_slice(run)]}
+        self.write_work(run, self.work_payload(run, agents=[self.worker_agent(run)],
+                                             capabilities=["repository search", "mcp:context7"],
+                                             implementation=implementation))
+        graph.record(run, "work", "succeeded")
+        self.assertEqual("completed", graph.complete(run)["status"])
+
+    def test_legacy_full_packet_external_scope_widening_rejected_at_worker_receipt(self) -> None:
+        run = self.initialize()
+        self.pin_39(run)
+        plan = self.plan()
+        self.scope_outside_region(plan)
+        graph.register_slice(run, self.slice_draft(run))
+        digest = graph.plan_digest(plan, graph_version="3.9.0")
+        plan.write_text(plan.read_text().replace("task-delivery:scope\nsrc/app.py", "task-delivery:scope\nsrc"))
+        self.assertEqual(digest, graph.plan_digest(plan, graph_version="3.9.0"))
+        self.write("src/app.py", "VALUE = 2\n")
+        with self.assertRaisesRegex(graph.GraphError, "scope изменился"):
+            graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+
+    def test_legacy_external_scope_widening_after_context_checkpoint_rejected(self) -> None:
+        run = self.initialize()
+        self.pin_39(run)
+        plan = self.plan()
+        self.scope_outside_region(plan)
+        graph.register_slice(run, self.slice_draft(run))
+        self.write("src/app.py", "VALUE = 2\n")
+        graph.record_slice(run, "implementation-app", self.slice_receipt(run))
+        self.accepted_slice(run)
+        checkpoint = (run / graph.CONTEXT_CHECKPOINT_NAME).read_bytes()
+        plan.write_text(plan.read_text().replace("task-delivery:scope\nsrc/app.py", "task-delivery:scope\nsrc"))
+        with self.assertRaisesRegex(graph.GraphError, "scope изменился"):
+            graph.rehydrate_context(run)
+        self.assertEqual(checkpoint, (run / graph.CONTEXT_CHECKPOINT_NAME).read_bytes())
+
+    def test_markerless_current_full_run_completes(self) -> None:
+        run = self.initialize()
+        plan = self.plan(scope="src")
+        plan.write_text(plan.read_text().replace("<!-- task-delivery:plan:start -->", "").replace("<!-- task-delivery:plan:end -->", ""))
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run))
+        graph.record(run, "work", "succeeded")
+        self.assertEqual("completed", graph.complete(run)["status"])
+
+    def test_two_legitimate_implement_scope_amendments_preserve_review_authority(self) -> None:
+        self.write("src/other.py", "OTHER = 1\n")
+        self.write("src/third.py", "THIRD = 1\n")
+        plan_run = self.initialize(mode="plan")
+        self.plan()
+        self.write_work(plan_run, self.work_payload(plan_run))
+        graph.record(plan_run, "work", "succeeded")
+        graph.complete(plan_run)
+        run = self.initialize(mode="implement", plan="docs/tasks/TD-1/PLAN.md")
+        for path in ("src/other.py", "src/third.py"):
+            graph.amend_scope(run, self.scope_amendment(run, added_paths=[path], plan_review_receipt="task-state:plan-review"))
+        self.write("src/third.py", "THIRD = 2\n")
+        self.write_work(run, self.work_payload(run, review_mode="reused", changed=["src/third.py"]))
+        graph.record(run, "work", "succeeded")
+        self.assertEqual("completed", graph.complete(run)["status"])
+
+    def test_digest_vectors_and_previous_identity_are_retained(self) -> None:
+        plan = self.write("docs/vector.md", "prefix\n<!-- task-delivery:plan:start -->\nAlpha\n<!-- task-delivery:plan:end -->\nsuffix\n")
+        for version in [item[0] for item in graph.LEGACY_ACTIVE_GRAPH_IDENTITIES] + ["3.9.1"]:
+            vector = "Alpha\n" if version in graph.NORMALIZED_PLAN_DIGEST_VERSIONS else "\nAlpha\n"
+            self.assertEqual(hashlib.sha256(vector.encode()).hexdigest(), graph.plan_digest(plan, graph_version=version))
+        self.assertEqual(dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.9.0"], graph.sha256_file(graph.SKILL_DIR / "assets/legacy-graph-v3.9.json"))
+        run = self.initialize()
+        self.pin_39(run)
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run))
+        graph.record(run, "work", "succeeded")
+        self.assertEqual("completed", graph.complete(run)["status"])
+
+    def test_every_supported_legacy_identity_loads_without_rewrite(self) -> None:
+        run = self.initialize()
+        original = self.read(run / graph.STATE_NAME)
+        for version, digest in graph.LEGACY_ACTIVE_GRAPH_IDENTITIES:
+            with self.subTest(version=version):
+                state = {**original, "graph_version": version, "graph_sha256": digest}
+                graph.atomic_json(run / graph.STATE_NAME, state)
+                before = (run / graph.STATE_NAME).read_bytes()
+                self.assertEqual(version, graph.load_run_state(run)["graph_version"])
+                self.assertEqual(before, (run / graph.STATE_NAME).read_bytes())
+
+    def test_erofs_cli_failure_has_finite_native_fallback(self) -> None:
+        output = io.StringIO()
+        error = OSError(errno.EROFS, "Read-only file system", ".codex/task-delivery/.admission.lock")
+        with mock.patch.object(graph, "initialize", side_effect=error), mock.patch("sys.stdout", output):
+            status = graph.main(["init", "--root", str(self.root), "--mode", "full", "--task-id", "TD-1", "--title", "Deliver behavior", "--outcome", "Verified observable behavior"])
+        payload = json.loads(output.getvalue())
+        self.assertEqual(2, status)
+        self.assertEqual("controller-health", payload["data"]["failure_class"])
+        self.assertTrue(payload["data"]["read_only_filesystem"])
+        self.assertTrue(any("native" in action for action in payload["next_actions"]))
+        self.assertFalse(any("повтори ту же команду" in action for action in payload["next_actions"]))
+        authority = graph.failure_result(graph.GraphError("Scope authorization failed"))
+        self.assertEqual("contract-or-authority", authority["data"]["failure_class"])
+        self.assertTrue(any("fail closed" in action for action in authority["next_actions"]))
+
+    def test_unsupported_loader_identity_is_preserved_for_native_handoff(self) -> None:
+        run = self.initialize()
+        state = self.read(run / graph.STATE_NAME)
+        state["graph_sha256"] = "a" * 64
+        graph.atomic_json(run / graph.STATE_NAME, state)
+        before = (run / graph.STATE_NAME).read_bytes()
+        with self.assertRaises(graph.GraphProvenanceError) as raised:
+            graph.degrade_control(run, "The unsupported identity requires native continuation.")
+        self.assertEqual(before, (run / graph.STATE_NAME).read_bytes())
+        self.assertEqual("controller-provenance", graph.failure_result(raised.exception)["data"]["failure_class"])
 
 
 if __name__ == "__main__":
