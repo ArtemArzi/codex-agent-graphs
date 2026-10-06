@@ -99,4 +99,10 @@ Windows `config.toml` изменился после прежней провер�
 repair; это не доказательство полной исправности файловой системы.
 Восстановленная рабочая копия:
 `C:\Users\artem\.codex\backups\skills-stability-20261006-resumed`.
-Финальная приёмка публикации: pending до нормального push и readback.
+Финальная независимая приёмка установленного и опубликованного кода PASS:
+`RESULT-20261006-LEGACY-RESTART-LIVE-5C43F30D-3cb49617`.
+Опубликованный код: [5c43f30d8d411ec64315b80ea344bb52e79d6728](https://github.com/ArtemArzi/codex-agent-graphs/commit/5c43f30d8d411ec64315b80ea344bb52e79d6728).
+Reviewer самостоятельно сверил remote main, чистый source worktree, все 281
+Git blobs, обе установки, повторную установку без замен/backups и семь
+текущих защищённых настроек. Новый канонический `check_all.py` прошёл.
+После этого документируется только этот результат; runtime и skills не меняются.

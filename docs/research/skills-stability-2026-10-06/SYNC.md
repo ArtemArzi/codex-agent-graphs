@@ -57,3 +57,19 @@ This subsequent status-only documentation commit changes no skill or runtime.
 Its push/readback is checked separately before the user-facing completion reply.
 No GitHub Actions workflow is configured; no CI PASS is claimed.
 Raw local snapshots/config contents and session records are not published.
+
+## Legacy restart follow-up
+
+Task Delivery3.9.2 / Project Start3.5.2 installed in both homes.
+Independent installed/published acceptance PASS:
+`RESULT-20261006-LEGACY-RESTART-LIVE-5C43F30D-3cb49617`.
+Normal code push/readback: `5c43f30d8d411ec64315b80ea344bb52e79d6728`;
+281 committed blobs matched, canonical worktree clean, all59 maintained
+skill/runtime items in-sync, repeat install made zero replacements/backups.
+All319 unmanaged bodies and all7 CURRENT protected settings preserved.
+Windows config.toml differs from the original audit baseline; cause unknown,
+current contents preserved. Actual WSL root RW/write probe succeeded after
+space was freed. No shutdown/remount/filesystem repair performed.
+Our own working files copied back to C with 281-file verification; D backup
+retained. Details and honest recovery boundaries: [LEGACY_RESTART.md](LEGACY_RESTART.md).
+This final receipt annotation changes documentation only.
