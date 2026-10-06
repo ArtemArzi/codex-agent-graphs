@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.9.1",
+  "graph_version": "3.9.2",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
@@ -287,5 +287,15 @@
         }
       }
     }
+  },
+  "restart_policy": {
+    "schema_version": 1,
+    "authority": "explicit-user",
+    "eligible": "unfinished-structurally-valid-v3",
+    "ordinary_identity_loading": "strict",
+    "raw_evidence": "preserved",
+    "inherited_constraints": "mandatory-fresh-work-and-review",
+    "successor_acceptance": "never-inherited",
+    "ownership_transfer": "durable-marker-exact-preimage-or-postimage"
   }
 }

@@ -66,7 +66,7 @@ class ImprovementDeliveryIntegrationTests(unittest.TestCase):
         td_fixture.graph.complete(td_run)
         td_state_path = td_run / "state.json"
         td_state = fixture.read(td_state_path)
-        self.assertEqual("3.9.1", td_state["graph_version"])
+        self.assertEqual("3.9.2", td_state["graph_version"])
         self.assertEqual("completed", td_state["status"])
         td_work = td_state["nodes"]["work"]["receipts"][-1]
         task_state = fixture.read(root / ".codex/task-delivery/ci.fix-1/state.json")

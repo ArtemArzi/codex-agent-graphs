@@ -170,8 +170,10 @@ to this tracked helper on the configured host. No background sync is installed.
 
 ## Stability update — 6 October 2026
 
-Task Delivery 3.9.1 binds effective scope across admission and completion;
-Project Start 3.5.1 supports preserved-state control degradation. Old identities
+Task Delivery 3.9.2 binds effective scope across admission and completion;
+Project Start 3.5.2 supports preserved-state control degradation. Both provide
+explicit unfinished-v3 restart with preserved evidence, inherited constraints,
+fresh acceptance and replayable ownership transfer. Old identities
 and digest algorithms remain supported. See the [audit and coverage](docs/research/skills-stability-2026-10-06/REPORT.ru.md).
 
 For skill updates that must preserve model/provider/global configuration:

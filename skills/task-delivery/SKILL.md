@@ -433,7 +433,18 @@ python3 scripts/task_graph.py retry --run <run-dir> --node <work|verify>
 
 Не редактируй канонические документы Project Start внутри Task Delivery: передай фактическую документационную дельту через handoff. Если реализация доказала устойчивое новое coding rule, команду качества или framework boundary, укажи `documentation_impact=factual|semantic`; одноразовый workaround не превращай в правило.
 
-Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Поддерживаемые graph `3.0.0`-`3.9.0` runs сохраняют exact identity и digest algorithms; их не переписывай под новый контракт. Новые runs используют `3.9.1`: один scope block входит в hashed plan region, а scope authority повторно сверяется с admission/review/packet и разрешёнными amendments. Черновой `full/plan` scope редактируется до review. Старые runs восстанавливают selection из captured receipts/admission manifest; неоднозначность требует native handoff с сохранением state, без controller PASS. Суммарное число агентов и оценка слайсов в 3.9 не блокируют продолжение; старые лимиты сохраняются. Все новые задачи запускай через `task_graph.py`.
+Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Поддерживаемые graph `3.0.0`-`3.9.0` runs сохраняют exact identity и digest algorithms; их не переписывай под новый контракт. Новые runs используют `3.9.2`: один scope block входит в hashed plan region, а scope authority повторно сверяется с admission/review/packet и разрешёнными amendments. Черновой `full/plan` scope редактируется до review. Старые runs восстанавливают selection из captured receipts/admission manifest; неоднозначность требует native handoff с сохранением state, без controller PASS. Суммарное число агентов и оценка слайсов в 3.9 не блокируют продолжение; старые лимиты сохраняются. Все новые задачи запускай через `task_graph.py`.
+
+Для явно разрешённой замены незавершённого v3 run (включая неизвестную graph
+identity) используй отдельный `restart --run <absolute-run> --reason <reason>
+--acknowledge-incomplete`, а не переписывание state. Он сохраняет старые
+снимки/план/evidence и создаёт новую full/plan задачу с прежним outcome, scope,
+риском и обязательными решениями/repair requirements, без старого PASS.
+Pending transfer допускает только повтор точной restart-команды. Неразрешённые
+решения, Project Start obligations, symlinks, ownership ambiguity и drift
+остаются блокерами; правила и finite native fallback:
+[restart.md](references/restart.md). Обычный compatible resume и v2 runner не
+меняются.
 
 ## Служебные ресурсы
 

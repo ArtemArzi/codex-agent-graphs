@@ -87,8 +87,8 @@ def main() -> int:
         raise RuntimeError("Project Start must expose exactly bootstrap and maintenance routes")
     if project_graph.get("schema_version") != 2 or project_graph.get("default_mode") != "auto":
         raise RuntimeError("Project Start v3 must use schema 2 and auto mode")
-    if project_graph.get("graph_version") != "3.5.1":
-        raise RuntimeError("Project Start current graph must remain 3.5.1")
+    if project_graph.get("graph_version") != "3.5.2":
+        raise RuntimeError("Project Start current graph must remain 3.5.2")
     documentation_contract = project_graph.get("documentation_contract", {})
     if "engineering_standard" not in documentation_contract.get("coverage", []):
         raise RuntimeError("Project Start must retain the engineering_standard semantic role")
@@ -129,8 +129,8 @@ def main() -> int:
     task_graph = json.loads((ROOT / "skills" / "task-delivery" / "graph.json").read_text(encoding="utf-8"))
     if task_graph.get("schema_version") != 2 or task_graph.get("default_mode") != "full":
         raise RuntimeError("Task Delivery v3 must use schema 2 and full default mode")
-    if task_graph.get("graph_version") != "3.9.1":
-        raise RuntimeError("Task Delivery current graph must remain 3.9.1")
+    if task_graph.get("graph_version") != "3.9.2":
+        raise RuntimeError("Task Delivery current graph must remain 3.9.2")
     if set(task_graph.get("routes", {})) != {"plan", "implement", "full"}:
         raise RuntimeError("Task Delivery must expose plan, implement and full routes")
     for mode in ("plan", "implement", "full"):
@@ -333,6 +333,7 @@ def main() -> int:
     run([sys.executable, "-m", "unittest", "skills/project-start/scripts/test_project_graph.py", "-v"])
     run([sys.executable, "skills/task-delivery/scripts/test_task_delivery.py"])
     run([sys.executable, "-m", "unittest", "skills/task-delivery/scripts/test_task_graph.py", "-v"])
+    run([sys.executable, "-m", "unittest", "discover", "-s", "skills/task-delivery/scripts", "-p", "test_task_restart.py", "-v"])
     # Claude-слой: проекция agents/*.toml -> agents/*.md обязана быть в синхроне.
     run([sys.executable, "scripts/claude_agents_sync.py", "--check"])
     # Бан одностороннего плейсхолдера: формулировка обязана быть двуххостовой.

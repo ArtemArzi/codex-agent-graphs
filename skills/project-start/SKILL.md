@@ -299,15 +299,32 @@ python3 scripts/project_graph.py recover --root <repo>
 
 `complete` повторно сверяет SHA-256 артефактов и документов, переводит bootstrap в `execution`, закрывает maintenance obligation и сохраняет канонический набор вместе с точным `coverage.engineering_standard` в `.project-start/state.json`. После bootstrap следующая программная работа принадлежит `task-delivery`; после неё Project Start снова запускается только для документационной дельты.
 
-Если исходники или конфигурация изменились после `init`, не подменяй baseline.
-Для здорового run доступен `abandon` и свежий `init`; прежние обязательства и
-реальные проверки остаются. При уже изменённых документах этот путь может
-требовать прежний baseline. Не восстанавливай его автоматически: сохрани дельту,
-отключи служебный контроль и продолжи разрешённую native работу. Непроверенный
-run не объявляй завершённым. Чисто технический restart без дрейфа канонических
-документов и обязательной проверки не блокирует независимую Task Delivery;
-незакрытая obligation, document drift, verifier requirement и существенное
-решение сохраняют свои настоящие границы.
+Если старый v3 run не запускается из-за версии либо shared-state hash, или новый
+`init` блокируется прежним unfinished run, используй явную безопасную замену:
+
+```bash
+python3 scripts/project_graph.py restart --run <old-run-dir> --reason "<наблюдаемый сбой>" --acknowledge-incomplete
+```
+
+Сначала прочитай существующие полномочия пользователя. Разрешение продолжить
+задачу/заменить старый запуск позволяет агенту самому выполнить эту служебную
+команду; не требуй новую фразу с хешем. Старый run остаётся unfinished/superseded,
+его state/shared-state/evidence сохраняются; новый run использует текущий graph.
+Полезные документы и код остаются на месте. Принятые scoped decisions и rejected
+repair requirements переходят как ограничения, а PASS не переносится. Новый
+work и verifier должны указать `restart_revalidation_sha256`, точный набор
+`inherited_checked_docs` и `addressed_restart_repairs` из сохранённой
+`restart/revalidation.json`. Все inherited changed/missing документы включаются
+в canonical_docs; отсутствующие обязательные документы требуется восстановить.
+
+Прерванная замена держит durable admission marker. Повтори ту же `restart` с
+исходной reason, чтобы продолжить exact operation. Обычные `init`/`recover` не
+очищают этот marker. Незакрытое существенное решение, ambiguous ownership,
+повреждённая receipt, изменённая Task Delivery obligation или внешняя правка
+во время передачи блокируют автоматическую замену. Сохрани handoff и продолжай
+только разрешённую native работу; не удаляй locks/state, не переписывай graph
+identity и не выдавай unfinished controller за completion. Для здорового run
+по-прежнему доступен `abandon` и свежий `init` с прежними строгими ограничениями.
 
 `recover` нужен только после прерванной записи состояния. Он сверяет identity графа и immutable receipts, снимает незаконченную активацию либо согласует shared/run state. Не используй его для обхода verifier или решения. Для периодического запуска можно передать `--trigger scheduled --cycle <ключ>`; без ключа используется текущий UTC-день.
 

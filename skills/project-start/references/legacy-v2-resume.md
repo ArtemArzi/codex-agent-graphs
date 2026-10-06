@@ -21,3 +21,11 @@ python3 scripts/project_maintenance.py complete --run <existing-run-dir>
 - `maintenance-complete`: достаточно `schema_version: 1`; фактический отчёт завершения создаёт runner.
 
 Для `failed` любой узел принимает `schema_version: 1` и непустой `error`. Не подставляй v3 `project.json` или verification schema в старый run. Auditor, curator и verifier выбирают legacy-форму по graph version.
+
+## Старый v3
+
+Это руководство остаётся только для schema v2. Старый schema v3, включая
+выпущенный Project Start 3.1, заменяется текущим `project_graph.py restart`
+с reason и `--acknowledge-incomplete` в пределах имеющегося разрешения.
+Это сохранение unfinished instance и новая проверка, не миграция старого PASS.
+Неизвестную schema или повреждённый owner не конвертировать автоматически.

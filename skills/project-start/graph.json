@@ -1,8 +1,18 @@
 {
   "schema_version": 2,
   "graph_id": "project-start",
-  "graph_version": "3.5.1",
+  "graph_version": "3.5.2",
   "default_mode": "auto",
+  "restart_policy": {
+    "schema_version": 1,
+    "source": "unfinished-v3-structural-only",
+    "authority": "explicit-user",
+    "old_acceptance": "never-transfer",
+    "inherited_constraints": "decisions-doc-drift-repairs",
+    "verification": "fresh-independent-required",
+    "ownership": "durable-marker-under-admission-guard",
+    "recovery": "exact-preimage-or-postimage"
+  },
   "limits": {
     "max_node_retries": 1,
     "max_verification_repairs": 1,

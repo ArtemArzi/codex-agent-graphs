@@ -302,6 +302,18 @@ def project_state_lock(
         lock.unlink(missing_ok=True)
 
 
+def reject_pending_restart(root: Path) -> None:
+    """Legacy shared-state writes honor the same replacement ownership reservation."""
+    sibling = SKILL_DIR.parent / "task-delivery" / "scripts"
+    if str(sibling) not in sys.path:
+        sys.path.insert(0, str(sibling))
+    import task_delivery
+    try:
+        task_delivery.reject_pending_restart(root)
+    except task_delivery.TaskError as exc:
+        raise ValueError(str(exc)) from exc
+
+
 def save_project_state(
     root: Path,
     state: dict[str, Any],
@@ -316,6 +328,7 @@ def save_project_state(
     payload = dict(state)
     payload.pop("_loaded_state_sha256", None)
     with project_state_lock(root):
+        reject_pending_restart(root)
         current = sha256_file(root, STATE_REL) if path.is_file() else None
         if require_absent and current is not None:
             raise ValueError("Project Start state появился после preview; повтори команду на свежем состоянии.")
@@ -772,6 +785,7 @@ def cmd_bootstrap(args: argparse.Namespace) -> int:
     changed: list[str] = []
     kept: list[str] = []
     try:
+        reject_pending_restart(root)
         for template, destination_rel in stage_files(state, args.stage):
             action, destination = copy_template(root, template, destination_rel)
             (changed if action == "created" else kept).append(destination)

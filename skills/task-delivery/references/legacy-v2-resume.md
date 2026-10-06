@@ -15,3 +15,9 @@ python3 scripts/task_delivery.py status --root <repo> --task-id <id>
 ```
 
 Если v2-состояние повреждено, остановись с фактической диагностикой. Не редактируй `state.json` вручную и не удаляй lock вслепую.
+
+`task_graph.py restart` заменяет только структурно валидные незавершённые v3
+instances; он не мигрирует v2. Если legacy runner не может безопасно продолжить,
+после одной bounded repair сохрани state/evidence и продолжай разрешённую native
+работу с честным handoff; не объявляй legacy completion PASS и не удаляй pending
+решения или Project Start obligations.

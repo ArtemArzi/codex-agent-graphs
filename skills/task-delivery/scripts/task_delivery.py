@@ -213,6 +213,30 @@ def admission_guard(root: Path, wait_seconds: float = 5.0) -> Iterator[None]:
         lock.unlink(missing_ok=True)
 
 
+def reject_pending_restart(root: Path, allow_marker: Path | None = None) -> None:
+    """Only the exact two workflow markers reserve repository admission.
+
+    The owning restart validates its operation/preimages before passing its
+    absolute marker path. No glob or other marker may grant an exception.
+    """
+    for name in ("restart-task-delivery.json", "restart-project-start.json"):
+        marker = safe_join_no_symlinks(root, Path(".agent-graphs") / name)
+        if not marker.exists():
+            continue
+        if not marker.is_file():
+            fail(f"Restart marker must be a plain file: {marker}")
+        try:
+            value = json.loads(marker.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            fail(f"Restart marker cannot be read: {marker}: {exc}")
+        if not isinstance(value, dict) or value.get("status") not in {"pending", "completed"}:
+            fail(f"Restart marker is malformed: {marker}")
+        if value["status"] != "completed" and not (
+            allow_marker is not None and allow_marker.is_absolute() and allow_marker == marker
+        ):
+            fail(f"Restart transfer is pending: {marker}; resume its exact restart operation.")
+
+
 @contextmanager
 def mutation_guard(
     root: Path,
@@ -221,6 +245,7 @@ def mutation_guard(
     *,
     allow_project_obligation: bool = False,
     skip_project_reopen: bool = False,
+    restart_marker: Path | None = None,
 ) -> Iterator[None]:
     if not enabled:
         yield
@@ -228,6 +253,7 @@ def mutation_guard(
     parent = safe_join_no_symlinks(root, Path(".codex") / "task-delivery")
     parent.mkdir(parents=True, exist_ok=True)
     with admission_guard(root):
+        reject_pending_restart(root, restart_marker)
         lock = lock_path(root, task_id)
         try:
             lock.mkdir()
@@ -1196,6 +1222,7 @@ def cmd_checkpoint(args: argparse.Namespace) -> None:
 
 def cmd_recover_lock(args: argparse.Namespace) -> None:
     root = root_path(args.root)
+    reject_pending_restart(root)
     lock = lock_path(root, args.task_id)
     info = inspect_lock(lock)
     if info["owner_alive"]:

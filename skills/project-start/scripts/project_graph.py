@@ -35,6 +35,7 @@ import task_delivery as task_delivery_runtime  # noqa: E402
 GRAPH_PATH = SKILL_DIR / "graph.json"
 RUNTIME_REL = Path(".agent-graphs/project-start-runs")
 STATE_NAME = "state.json"
+RESTART_REL = Path(".agent-graphs/restart-project-start.json")
 LOCK_NAME = ".state.lock"
 WORK_NAME = "project.json"
 VERIFY_NAME = "verification.json"
@@ -71,6 +72,7 @@ BOOTSTRAP_COVERAGE = LEGACY_BOOTSTRAP_COVERAGE | {"engineering_standard"}
 LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.4.0", "658f933cb082d2b1a5070bf35cf2f452b7353dbc2cf16d501338b9797dd020a2"),
     ("3.5.0", "92379ab93564c64ee743ddf247367baed0ad1d66a063a3d33be45c16159839f7"),
+    ("3.5.1", "3d916649349edc188dcd7b97b8bbe8b5ae6cc4310e22f90425e19a928e6807ae"),
 }
 
 
@@ -414,6 +416,7 @@ def commit_initial_state(
     project_path = safe_path(root, project_runtime.STATE_REL, expected="file")
     try:
         with task_delivery_runtime.admission_guard(root):
+            task_delivery_runtime.reject_pending_restart(root)
             with project_runtime.project_state_lock(root):
                 current = sha256_file(project_path) if project_path.is_file() else None
                 if require_absent and current is not None:
@@ -615,12 +618,17 @@ def initialize(
     trigger: str,
     change_receipt: str | None,
     cycle_key: str | None = None,
+    *,
+    _replacement: dict[str, Any] | None = None,
+    _prepare_only: bool = False,
 ) -> dict[str, Any]:
     if not reason.strip():
         raise GraphError("Причина запуска не должна быть пустой.")
     root = root_path(root_raw)
     graph = graph_contract()
-    project = project_state(root)
+    if _replacement is None:
+        task_delivery_runtime.reject_pending_restart(root)
+    project = project_state(root) if _replacement is None else json.loads(json.dumps(_replacement["project"]))
     mode = resolve_mode(requested_mode, project)
     if trigger not in {"manual", "task-delivery", "drift", "scheduled"}:
         raise GraphError("Неизвестный trigger.")
@@ -629,7 +637,8 @@ def initialize(
     except legacy_maintenance.MaintenanceError as exc:
         raise GraphError(str(exc)) from exc
     validate_pending_obligation(project, mode, trigger, receipt)
-    validate_pending_drift(project, root)
+    if _replacement is None:
+        validate_pending_drift(project, root)
     validate_task_delivery_freshness(root, receipt)
     repo_sha256 = repository_sha(root)
     source_sha256 = source_sha(root)
@@ -650,12 +659,14 @@ def initialize(
         restart_nonce,
     )
     runtime_root = safe_path(root, RUNTIME_REL, expected="dir")
-    runtime_root.mkdir(parents=True, exist_ok=True)
+    if not _prepare_only:
+        runtime_root.mkdir(parents=True, exist_ok=True)
     ignore = safe_path(root, RUNTIME_REL.parent / ".gitignore", expected="file")
-    if not ignore.exists():
-        write_text(ignore, "*\n", root)
-    elif "*" not in {line.strip() for line in ignore.read_text(encoding="utf-8").splitlines()}:
-        write_text(ignore, ignore.read_text(encoding="utf-8").rstrip() + "\n*\n", root)
+    if not _prepare_only:
+        if not ignore.exists():
+            write_text(ignore, "*\n", root)
+        elif "*" not in {line.strip() for line in ignore.read_text(encoding="utf-8").splitlines()}:
+            write_text(ignore, ignore.read_text(encoding="utf-8").rstrip() + "\n*\n", root)
     run_dir = safe_path(root, RUNTIME_REL / run_id, expected="dir")
     state_path = run_dir / STATE_NAME
     if state_path.is_file():
@@ -773,6 +784,17 @@ def initialize(
         "updated_at": stamp,
         "events": [{"at": stamp, "event": "run_initialized", "node": "work"}],
     }
+    if _replacement is not None:
+        state["verification_required"] = True
+        state["decisions"] = _replacement["constraints"]["decisions"]
+        state["restart_revalidation"] = _replacement["binding"]
+        state["predecessor_run_id"] = _replacement["old_run_id"]
+        # A missing predecessor document must be restored, not forgotten by a fresh baseline.
+        for relative, digest in _replacement["constraints"]["baseline_docs"].items():
+            if state["baseline_docs"].get(relative, "missing") == "missing" and digest != "missing":
+                state["baseline_docs"][relative] = digest
+    if _prepare_only:
+        return {"project": project, "state": state, "run_dir": str(run_dir)}
     project_sha = commit_initial_state(root, project, expected, new_project, run_dir, state)
     return result(
         "running",
@@ -790,6 +812,7 @@ def load_state(run_dir: Path) -> dict[str, Any]:
     if not supported_graph_identity(state):
         raise GraphError("Run связан с неподдерживаемой версией Project Start graph.")
     root = root_path(state.get("root", ""))
+    task_delivery_runtime.reject_pending_restart(root)
     expected_dir = safe_path(root, RUNTIME_REL / state.get("run_id", ""), expected="dir")
     if expected_dir != run_dir.resolve():
         raise GraphError("Run directory не соответствует root/run_id.")
@@ -1159,6 +1182,7 @@ def validate_work(
         if not changed_set.issubset(set(resolved.get("scope", []))):
             raise GraphError("Полная document delta выходит за пределы resolved decision scope.")
     if outcome != "decision":
+        validate_restart_revalidation(state, artifact, canonical)
         contract = documentation_contract_for_state(state)
         expected_coverage = set(contract["coverage"])
         if not isinstance(coverage, dict) or set(coverage) != expected_coverage:
@@ -1203,6 +1227,7 @@ def validate_verification(state: dict[str, Any], artifact: dict[str, Any], outco
     if artifact.get("schema_version") != 3 or artifact.get("verdict") not in {"pass", "reject"}:
         raise GraphError("verification.json требует schema_version 3 и verdict pass|reject.")
     work_receipt = state["nodes"]["work"]["receipts"][-1]
+    validate_restart_revalidation(state, artifact, work_receipt["canonical_docs"])
     if artifact.get("work_sha256") != work_receipt["sha256"]:
         raise GraphError("Verifier проверил не текущий project.json.")
     checked = strings(artifact.get("checked_docs"), "checked_docs")
@@ -1478,8 +1503,272 @@ def abandon(run_dir: Path, reason: str) -> dict[str, Any]:
     return result("superseded", "Run безопасно закрыт; теперь можно выполнить свежий init.", artifacts=[str(run_dir)])
 
 
+def restart_constraints(root: Path, run_dir: Path, state: dict[str, Any]) -> dict[str, Any]:
+    """Carry restrictions, never old acceptance, across an explicit replacement."""
+    baseline = state.get("baseline_docs")
+    if not isinstance(baseline, dict):
+        raise GraphError("Restart требует точный document baseline; используй native handoff.")
+    for relative, digest in baseline.items():
+        if not isinstance(relative, str) or not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}|missing", digest):
+            raise GraphError("Повреждённый document baseline.")
+        safe_path(root, relative, expected="file")
+    decisions = state.get("decisions", [])
+    if not isinstance(decisions, list) or len(decisions) > 1:
+        raise GraphError("Restart не угадывает неизвестную decision schema.")
+    for decision in decisions:
+        if not isinstance(decision, dict) or not all(isinstance(decision.get(key), str) and decision[key].strip() for key in ("id", "question", "answer", "resolved_at")):
+            raise GraphError("Незакрытое существенное решение блокирует restart.")
+        for relative in strings(decision.get("scope"), "decision.scope", allow_empty=False):
+            safe_path(root, relative, expected="file")
+        if not isinstance(decision.get("docs"), dict):
+            raise GraphError("Resolved decision не содержит исходный scoped baseline.")
+    repairs: list[str] = []
+    nodes = state.get("nodes")
+    if not isinstance(nodes, dict) or set(nodes) != {"work", "verify", "complete"}:
+        raise GraphError("Restart не угадывает неизвестную node schema.")
+    for node in ("work", "verify"):
+        receipts = nodes[node].get("receipts") if isinstance(nodes[node], dict) else None
+        if not isinstance(receipts, list):
+            raise GraphError("Некорректные historical receipts.")
+        for receipt in receipts:
+            if not isinstance(receipt, dict):
+                raise GraphError("Некорректная historical receipt.")
+            path = safe_path(root, receipt.get("path", ""), expected="file")
+            if run_dir not in path.parents or not path.is_file() or sha256_file(path) != receipt.get("sha256"):
+                raise GraphError("Historical evidence повреждён; сохраняй state и используй native handoff.")
+            if node == "verify" and receipt.get("outcome") == "failed":
+                repairs.extend(strings(load_json(path).get("repair_list"), "repair_list", allow_empty=False))
+    previous_binding = state.get("restart_revalidation")
+    if previous_binding is not None:
+        if not isinstance(previous_binding, dict):
+            raise GraphError("Повреждённый inherited restart binding.")
+        previous_path = safe_path(root, previous_binding.get("path", ""), expected="file")
+        if not previous_path.is_file() or sha256_file(previous_path) != previous_binding.get("sha256"):
+            raise GraphError("Inherited restart constraints изменились или исчезли.")
+        previous = load_json(previous_path)
+        if not all(item in decisions for item in previous.get("decisions", [])):
+            raise GraphError("Inherited accepted decisions потеряны.")
+        repairs.extend(strings(previous.get("repair_requirements"), "inherited repair requirements"))
+        for relative in strings(previous.get("changed_paths"), "inherited changed paths"):
+            safe_path(root, relative, expected="file")
+            baseline[relative] = previous.get("baseline_docs", {}).get(relative, "missing")
+    pending_drift = project_state(root).get("maintenance", {}).get("pending_drift", {})
+    if pending_drift:
+        inherited = pending_drift.get("baseline")
+        if not isinstance(inherited, dict):
+            raise GraphError("Повреждённый pending_drift baseline.")
+        for relative, digest in inherited.items():
+            safe_path(root, relative, expected="file")
+            if not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}|missing", digest):
+                raise GraphError("Повреждённый pending_drift hash.")
+            baseline[relative] = digest
+    current = snapshot(root, sorted(set(baseline) | set(discover_docs(root))))
+    changed = sorted(path for path in set(baseline) | set(current) if baseline.get(path, "missing") != current.get(path, "missing"))
+    return {
+        "schema_version": 1,
+        "source_run": str(run_dir),
+        "source_identity": {"version": state.get("graph_version"), "sha256": state.get("graph_sha256")},
+        "baseline_docs": baseline,
+        "captured_docs": current,
+        "changed_paths": changed,
+        "decisions": decisions,
+        "repair_requirements": sorted(set(repairs)),
+        "verification_required": True,
+    }
+
+
+def validate_restart_revalidation(state: dict[str, Any], artifact: dict[str, Any], canonical: list[str]) -> None:
+    binding = state.get("restart_revalidation")
+    if binding is None:
+        return
+    root = Path(state["root"])
+    path = safe_path(root, binding.get("path", ""), expected="file")
+    if not path.is_file() or sha256_file(path) != binding.get("sha256"):
+        raise GraphError("Inherited restart constraints изменились или исчезли.")
+    constraints = load_json(path)
+    if artifact.get("restart_revalidation_sha256") != binding["sha256"]:
+        raise GraphError("Fresh work/verifier должен проверять точный restart_revalidation digest.")
+    if strings(artifact.get("inherited_checked_docs"), "inherited_checked_docs") != constraints["changed_paths"]:
+        raise GraphError("Fresh review должен покрыть все inherited changed/missing paths.")
+    if not set(constraints["changed_paths"]).issubset(set(canonical)):
+        raise GraphError("Inherited changed/missing documents должны входить в canonical_docs; восстанови отсутствующие.")
+    if any(value == "missing" for value in snapshot(root, constraints["changed_paths"]).values()):
+        raise GraphError("Restart не разрешает удалять обязательные документы; восстанови отсутствующие.")
+    if strings(artifact.get("addressed_restart_repairs"), "addressed_restart_repairs") != constraints["repair_requirements"]:
+        raise GraphError("Fresh review должен явно проверить inherited repair requirements.")
+    if state.get("decisions") != constraints["decisions"]:
+        # Later fresh decisions cannot erase previously accepted scoped answers.
+        if not all(item in state.get("decisions", []) for item in constraints["decisions"]):
+            raise GraphError("Inherited accepted decisions потеряны или изменились.")
+
+
+def restart(run_dir: Path, reason: str, acknowledge_incomplete: bool = False) -> dict[str, Any]:
+    """Replace a v3 run using preflighted, replayable compare-and-swap writes."""
+    if not reason.strip() or not acknowledge_incomplete:
+        raise GraphError("Restart требует reason и --acknowledge-incomplete; старый run не становится PASS.")
+    state = load_json(run_dir / STATE_NAME)
+    if state.get("schema_version") != 3 or state.get("graph_id") != "project-start":
+        raise GraphError("Restart поддерживает только v3; v2 продолжай через legacy runner.")
+    root = root_path(state.get("root", ""))
+    if not re.fullmatch(r"[a-f0-9]{16}", str(state.get("run_id", ""))) or safe_path(root, RUNTIME_REL / state["run_id"], expected="dir") != run_dir:
+        raise GraphError("Run containment/identity повреждён.")
+    safe_path(root, run_dir / STATE_NAME, expected="file")
+    marker_path = safe_path(root, RESTART_REL, expected="file")
+    try:
+        with task_delivery_runtime.admission_guard(root):
+            task_delivery_runtime.reject_pending_restart(root, allow_marker=marker_path)
+            with state_lock(run_dir), project_runtime.project_state_lock(root):
+                state = load_json(run_dir / STATE_NAME)
+                if marker_path.is_file():
+                    marker = load_json(marker_path)
+                    if marker.get("old_run_id") == state["run_id"]:
+                        if marker.get("reason") != reason.strip():
+                            raise GraphError("Повтори restart с исходной reason для exact-marker recovery.")
+                        return replay_restart(root, run_dir, marker_path, marker)
+                    if marker.get("status") != "completed":
+                        raise GraphError("Другой restart удерживает admission.")
+                if state.get("status") == "superseded" and state.get("successor_run_id"):
+                    successor = safe_path(root, RUNTIME_REL / state["successor_run_id"], expected="dir")
+                    current = load_state(successor)
+                    return result(current["status"], "У этого run уже есть successor.", artifacts=[str(successor)], data={"run": str(successor)})
+                if state.get("status") not in {"running", "blocked"} or state.get("mode") not in {"bootstrap", "maintenance"}:
+                    raise GraphError("Restart доступен только unfinished run без нерешённого решения.")
+                if not isinstance(state.get("graph_version"), str) or not re.fullmatch(r"[a-f0-9]{64}", str(state.get("graph_sha256", ""))):
+                    raise GraphError("Повреждённая исходная graph identity.")
+                project = project_state(root)
+                if project is None:
+                    raise GraphError("Shared project state отсутствует.")
+                project.pop("_loaded_state_sha256", None)
+                maintenance = project.get("maintenance", {})
+                active = maintenance.get("active_run", {})
+                if active.get("run_id") != state["run_id"] or active.get("run_dir") != str(run_dir):
+                    raise GraphError("Restart требует единственного matching active owner.")
+                if maintenance.get("pending_reopen"):
+                    raise GraphError("Pending decision/reopen блокирует restart.")
+                if maintenance.get("maintenance_required"):
+                    raise GraphError("Неоднозначный shared Task Delivery obligation блокирует restart.")
+                obligation = state.get("consumed_obligation")
+                if active.get("consumed_obligation") != obligation:
+                    raise GraphError("Consumed obligation owner не совпадает.")
+                constraints = restart_constraints(root, run_dir, state)
+                old_raw = (run_dir / STATE_NAME).read_bytes()
+                shared_path = safe_path(root, project_runtime.STATE_REL, expected="file")
+                shared_raw = shared_path.read_bytes()
+                replacement = json.loads(json.dumps(project))
+                replacement_maintenance = replacement["maintenance"]
+                replacement_maintenance.pop("active_run", None)
+                replacement_maintenance.pop("pending_drift", None)
+                replacement_maintenance["pending_restart"] = {"run_id": state["run_id"], "reason": reason.strip(), "requires_verification": True}
+                replacement_maintenance["status"] = "restart-required"
+                if isinstance(obligation, dict):
+                    replacement_maintenance["maintenance_required"] = obligation
+                    replacement_maintenance["status"] = "maintenance-required"
+                nonce = hashlib.sha256(old_raw + shared_raw + reason.strip().encode()).hexdigest()[:16]
+                replacement.setdefault("graph_v3", {})["restart_nonce"] = nonce
+                constraints_path = run_dir / "restart" / "revalidation.json"
+                constraints_bytes = restart_json_bytes(constraints)
+                binding = {"path": str(constraints_path.relative_to(root)), "sha256": hashlib.sha256(constraints_bytes).hexdigest()}
+                prepared = initialize(str(root), state["mode"], reason, state.get("trigger", "manual"), state.get("change_receipt", {}).get("path") if isinstance(state.get("change_receipt"), dict) else None, state.get("cycle"), _prepare_only=True, _replacement={"project": replacement, "constraints": constraints, "binding": binding, "old_run_id": state["run_id"]})
+                successor = safe_path(root, prepared["run_dir"], expected="dir")
+                if successor.exists():
+                    raise GraphError("Successor directory collision; старое состояние сохранено.")
+                if prepared["state"]["baseline_source_sha256"] != source_sha(root) or snapshot(root, sorted(set(constraints["captured_docs"]) | set(discover_docs(root)))) != constraints["captured_docs"]:
+                    raise GraphError("Source/docs изменились во время successor preflight; старый owner сохранён.")
+                new_project = prepared["project"]
+                new_state = prepared["state"]
+                new_project.setdefault("maintenance", {}).setdefault("history", []).append({"at": now(), "event": "project-graph-restarted", "predecessor": state["run_id"], "successor": new_state["run_id"]})
+                new_shared_raw = restart_json_bytes(new_project)
+                new_state["project_state_sha256"] = hashlib.sha256(new_shared_raw).hexdigest()
+                retired = json.loads(old_raw)
+                retired["status"] = "superseded"
+                retired["successor_run_id"] = new_state["run_id"]
+                retired["events"].append({"at": now(), "event": "run_replaced_unfinished", "reason": reason.strip(), "successor_run_id": new_state["run_id"]})
+                writes: list[dict[str, Any]] = []
+                def add(path: Path, payload: bytes, original: bytes | None = None) -> None:
+                    safe_path(root, path, expected="file")
+                    if original is None and path.exists():
+                        raise GraphError(f"Restart artifact collision: {path}")
+                    writes.append({"path": str(path.relative_to(root)), "before": hashlib.sha256(original).hexdigest() if original is not None else None, "after": hashlib.sha256(payload).hexdigest(), "payload": payload.hex()})
+                add(run_dir / "restart" / "old-state.json", old_raw)
+                add(run_dir / "restart" / "old-project-state.json", shared_raw)
+                add(constraints_path, constraints_bytes)
+                add(run_dir / STATE_NAME, restart_json_bytes(retired), old_raw)
+                add(shared_path, new_shared_raw, shared_raw)
+                add(successor / STATE_NAME, restart_json_bytes(new_state))
+                marker = {"schema_version": 1, "kind": "project-start-restart", "status": "pending", "root": str(root), "old_run_id": state["run_id"], "successor_run_id": new_state["run_id"], "reason": reason.strip(), "graph_sha256": sha256_file(GRAPH_PATH), "source_sha256": source_sha(root), "captured_docs": constraints["captured_docs"], "writes": writes}
+                write_json(marker_path, marker, root)
+                return replay_restart(root, run_dir, marker_path, marker)
+    except task_delivery_runtime.TaskError as exc:
+        raise GraphError(str(exc)) from exc
+
+
+def restart_json_bytes(value: dict[str, Any]) -> bytes:
+    return (json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+
+
+def replay_restart(root: Path, run_dir: Path, marker_path: Path, marker: dict[str, Any]) -> dict[str, Any]:
+    if marker.get("schema_version") != 1 or marker.get("kind") != "project-start-restart" or marker.get("root") != str(root) or marker.get("old_run_id") != run_dir.name:
+        raise GraphError("Некорректный restart marker; сохрани state, используй native handoff.")
+    if not re.fullmatch(r"[a-f0-9]{16}", str(marker.get("successor_run_id", ""))):
+        raise GraphError("Некорректный successor identity.")
+    successor = safe_path(root, RUNTIME_REL / marker["successor_run_id"], expected="dir")
+    if marker.get("status") == "completed":
+        current = load_state(successor)
+        return result(current["status"], "Restart уже выполнен; продолжай successor.", artifacts=[str(successor)], data={"run": str(successor)})
+    if marker.get("status") != "pending" or marker.get("graph_sha256") != sha256_file(GRAPH_PATH):
+        raise GraphError("Restart marker/version не соответствует этому runner.")
+    if source_sha(root) != marker.get("source_sha256") or snapshot(root, sorted(set(marker.get("captured_docs", {})) | set(discover_docs(root)))) != marker.get("captured_docs"):
+        raise GraphError("Source/docs изменились во время restart; partial state сохранён, нужна проверка native handoff.")
+    writes = marker.get("writes")
+    expected_paths = [run_dir / "restart" / "old-state.json", run_dir / "restart" / "old-project-state.json", run_dir / "restart" / "revalidation.json", run_dir / STATE_NAME, root / project_runtime.STATE_REL, successor / STATE_NAME]
+    if not isinstance(writes, list) or [item.get("path") for item in writes if isinstance(item, dict)] != [str(path.relative_to(root)) for path in expected_paths]:
+        raise GraphError("Restart marker содержит неизвестные writes.")
+    checked: list[tuple[Path, bytes, bool]] = []
+    for item in writes:
+        path = safe_path(root, item["path"], expected="file")
+        try:
+            payload = bytes.fromhex(item["payload"])
+        except (ValueError, TypeError, KeyError) as exc:
+            raise GraphError("Повреждённый restart payload.") from exc
+        if hashlib.sha256(payload).hexdigest() != item.get("after"):
+            raise GraphError("Restart postimage hash mismatch.")
+        actual = sha256_file(path) if path.is_file() else None
+        if actual not in {item.get("before"), item["after"]}:
+            raise GraphError(f"Concurrent edit блокирует restart recovery: {path}")
+        checked.append((path, payload, actual == item["after"]))
+    if successor.exists() and any(path != successor / STATE_NAME for path in successor.iterdir()):
+        raise GraphError("Concurrent successor artifacts блокируют restart recovery.")
+    for path, payload, done in checked:
+        if not done:
+            # Check again directly before every write; never overwrite observed external edits.
+            entry = next(item for item in writes if item["path"] == str(path.relative_to(root)))
+            actual = sha256_file(path) if path.is_file() else None
+            if actual != entry.get("before"):
+                raise GraphError(f"Concurrent edit перед записью: {path}")
+            write_text(path, payload.decode("utf-8"), root)
+    marker["status"] = "completed"
+    marker["completed_at"] = now()
+    operation_marker = safe_path(root, run_dir / "restart/transition.json", expected="file")
+    marker_bytes = restart_json_bytes(marker)
+    if operation_marker.exists() and operation_marker.read_bytes() != marker_bytes:
+        # Preserve the first completion timestamp across a crash before global acknowledgement.
+        previous = load_json(operation_marker)
+        comparable = {key: value for key, value in previous.items() if key != "completed_at"}
+        if comparable != {key: value for key, value in marker.items() if key != "completed_at"}:
+            raise GraphError("Completed restart journal изменён конкурентно.")
+        marker = previous
+    else:
+        write_json(operation_marker, marker, root)
+    write_json(marker_path, marker, root)
+    return result("running", "Старый Project Start сохранён как unfinished; текущий successor требует fresh work/verify.", artifacts=[str(successor), str(run_dir / "restart")], data={"run": str(successor), "predecessor": str(run_dir), "completion_verified": False})
+
+
 def check_integrity(state: dict[str, Any]) -> None:
     root = Path(state["root"])
+    if state.get("restart_revalidation"):
+        validate_restart_revalidation(state, load_json(Path(state["nodes"]["work"]["receipts"][-1]["path"])), state["nodes"]["work"]["receipts"][-1]["canonical_docs"])
+        if state.get("verification_required") and state["nodes"]["verify"]["receipts"]:
+            validate_restart_revalidation(state, load_json(Path(state["nodes"]["verify"]["receipts"][-1]["path"])), state["nodes"]["work"]["receipts"][-1]["canonical_docs"])
     if source_sha(root) != state.get("baseline_source_sha256"):
         raise GraphError("Исходный код или конфигурация изменились после work receipt.")
     work_receipts = state["nodes"]["work"]["receipts"]
@@ -1539,6 +1828,7 @@ def recovery_nonce(run_id: str, reason: str) -> str:
 def recover(root_raw: str) -> dict[str, Any]:
     """Reconcile a crash between shared project-state and per-run state writes."""
     root = root_path(root_raw)
+    task_delivery_runtime.reject_pending_restart(root)
     project = project_state(root)
     if project is None:
         return result("clean", "Project Start state ещё не создан; восстанавливать нечего.")
@@ -1614,6 +1904,7 @@ def recover(root_raw: str) -> dict[str, Any]:
                             }
                         )
                         latest["updated_at"] = stamp
+                        task_delivery_runtime.reject_pending_restart(root)
                         project_runtime.write_json_atomic(root, root / project_runtime.STATE_REL, latest)
                 except ValueError as exc:
                     raise GraphError(str(exc)) from exc
@@ -1835,6 +2126,10 @@ def parser() -> argparse.ArgumentParser:
     degrade_parser = sub.add_parser("control-degrade")
     degrade_parser.add_argument("--run", required=True)
     degrade_parser.add_argument("--reason", required=True)
+    restart_parser = sub.add_parser("restart")
+    restart_parser.add_argument("--run", required=True)
+    restart_parser.add_argument("--reason", required=True)
+    restart_parser.add_argument("--acknowledge-incomplete", action="store_true")
     recover_parser = sub.add_parser("recover")
     recover_parser.add_argument("--root", required=True)
     return command
@@ -1848,7 +2143,8 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "recover":
             payload = recover(args.root)
         else:
-            run_dir = run_path(args.run)
+            # Restart must validate lexical ancestry before .resolve() can hide symlinks.
+            run_dir = Path(args.run).expanduser().absolute() if args.command == "restart" else run_path(args.run)
             if args.command == "ready":
                 payload = ready(run_dir)
             elif args.command == "status":
@@ -1861,11 +2157,13 @@ def main(argv: list[str] | None = None) -> int:
                 payload = retry(run_dir, args.node)
             elif args.command == "abandon":
                 payload = abandon(run_dir, args.reason)
+            elif args.command == "restart":
+                payload = restart(run_dir, args.reason, args.acknowledge_incomplete)
             elif args.command == "control-degrade":
                 payload = degrade_control(run_dir, args.reason)
             else:
                 payload = complete(run_dir)
-    except (GraphError, OSError) as exc:
+    except (GraphError, task_delivery_runtime.TaskError, OSError) as exc:
         payload = result("error", str(exc), next_actions=[
             "Не повторяй команду без новых фактов. Служебный сбой допускает одну ограниченную проверку, затем control-degrade и разрешённую native работу.",
             "Если состояние нельзя безопасно прочитать или записать, сохрани его как есть и используй существующий handoff вне controller. Отсутствующие права, решения и реальные нарушения целостности не обходи.",

@@ -1,0 +1,121 @@
+{
+  "provenance": {
+    "commit": "2e25f661a217",
+    "graph_version": "3.1.0",
+    "graph_sha256": "f27635bb0d2dd02a5c2167231a8077647ac5dc84baab751a5af388c566578a0a",
+    "generation": "actual historical project_graph.py init; only root paths replaced by ${ROOT}"
+  },
+  "state": {
+    "baseline_canonical": [],
+    "baseline_docs": {
+      "README.md": "87363b69d36b3e643971e28cfc0a00d16c4fd5631649b9ade8d50314f8822044"
+    },
+    "baseline_repo_sha256": "2d6a21a2897fd27e66e712370425621d5e304afd354b15d83f429d97033b36d7",
+    "baseline_source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "change_receipt": null,
+    "consumed_obligation": null,
+    "created_at": "2026-10-06T15:46:32+00:00",
+    "current": "work",
+    "cycle": "",
+    "decisions": [],
+    "events": [
+      {
+        "at": "2026-10-06T15:46:32+00:00",
+        "event": "run_initialized",
+        "node": "work"
+      }
+    ],
+    "graph_id": "project-start",
+    "graph_sha256": "f27635bb0d2dd02a5c2167231a8077647ac5dc84baab751a5af388c566578a0a",
+    "graph_version": "3.1.0",
+    "mode": "bootstrap",
+    "node_retries": {
+      "complete": 0,
+      "verify": 0,
+      "work": 0
+    },
+    "nodes": {
+      "complete": {
+        "attempts": 0,
+        "receipts": [],
+        "status": "pending"
+      },
+      "verify": {
+        "attempts": 0,
+        "receipts": [],
+        "status": "pending"
+      },
+      "work": {
+        "attempts": 0,
+        "receipts": [],
+        "status": "ready"
+      }
+    },
+    "operational_baseline_known": false,
+    "operational_docs": {},
+    "preexisting_drift": {
+      "changed": [],
+      "created": [],
+      "deleted": []
+    },
+    "project_state_sha256": "bc8787df682f6790cbb5158fc09626b3161ac838726b4012f1752047bfa96248",
+    "reason": "Historical compatibility fixture",
+    "root": "${ROOT}",
+    "run_id": "f559a34dde95ac10",
+    "schema_version": 3,
+    "status": "running",
+    "trigger": "manual",
+    "updated_at": "2026-10-06T15:46:32+00:00",
+    "verification_repairs": 0,
+    "verification_required": false
+  },
+  "shared": {
+    "approvals": {
+      "business": null,
+      "foundation": null,
+      "plan": null
+    },
+    "artifacts": {
+      "adr_dir": "docs/adr",
+      "agent_operations": "docs/project/AGENT-OPERATIONS.md",
+      "authority": "docs/project/AUTHORITY.md",
+      "business": "docs/project/PROJECT.md",
+      "codebase": "docs/project/CODEBASE.md",
+      "context": "CONTEXT.md",
+      "decisions": "docs/project/DECISIONS.md",
+      "foundation": "docs/project/FOUNDATION.md",
+      "foundation_manifest": ".project-start/foundation.json",
+      "plan": "docs/project/PLAN.md",
+      "quality": "docs/project/QUALITY.md",
+      "verification": "docs/project/VERIFICATION.md"
+    },
+    "created_at": "2026-10-06T15:46:32+00:00",
+    "graph_sha256": "f27635bb0d2dd02a5c2167231a8077647ac5dc84baab751a5af388c566578a0a",
+    "graph_version": "3.1.0",
+    "history": [
+      {
+        "at": "2026-10-06T15:46:32+00:00",
+        "event": "initialized",
+        "phase": "discovery"
+      }
+    ],
+    "maintenance": {
+      "active_run": {
+        "mode": "bootstrap",
+        "node": "work",
+        "reason": "Historical compatibility fixture",
+        "run_dir": "${ROOT}/.agent-graphs/project-start-runs/f559a34dde95ac10",
+        "run_id": "f559a34dde95ac10",
+        "trigger": "manual",
+        "updated_at": "2026-10-06T15:46:32+00:00"
+      },
+      "history": [],
+      "status": "running"
+    },
+    "phase": "discovery",
+    "records": {},
+    "schema_version": 2,
+    "updated_at": "2026-10-06T15:46:32+00:00"
+  },
+  "README.md": "# Historical project\n\nKeep these useful documents.\n"
+}

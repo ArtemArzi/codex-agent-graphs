@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import contextlib
+import io
 import sys
 import tempfile
 import threading
@@ -1328,6 +1330,232 @@ class ProjectGraphTests(unittest.TestCase):
         with self.assertRaisesRegex(graph.GraphError, "неподдерживаемой"):
             graph.degrade_control(fresh, "Unsupported state needs outside handoff")
         self.assertEqual(before, (fresh / graph.STATE_NAME).read_bytes())
+
+    def historical_restart(self) -> Path:
+        fixture_path = graph.SKILL_DIR / "assets" / "legacy-v3.1-restart-fixture.json"
+        fixture = json.loads(fixture_path.read_text().replace("${ROOT}", str(self.root)))
+        self.write("README.md", fixture["README.md"])
+        run = self.root / graph.RUNTIME_REL / fixture["state"]["run_id"]
+        project = self.root / graph.project_runtime.STATE_REL
+        project.parent.mkdir(parents=True, exist_ok=True)
+        graph.write_json(project, fixture["shared"], self.root)
+        fixture["state"]["project_state_sha256"] = graph.sha256_file(project)
+        graph.write_json(run / graph.STATE_NAME, fixture["state"], self.root)
+        return run
+
+    def replacement(self, run: Path, reason: str = "Replace obsolete control") -> Path:
+        return Path(graph.restart(run, reason, True)["data"]["run"])
+
+    def restart_fields(self, successor: Path) -> dict:
+        state = graph.load_state(successor)
+        binding = state["restart_revalidation"]
+        constraints = self.read_json(self.root / binding["path"])
+        return {
+            "restart_revalidation_sha256": binding["sha256"],
+            "inherited_checked_docs": constraints["changed_paths"],
+            "addressed_restart_repairs": constraints["repair_requirements"],
+        }
+
+    def verify_replacement(self, successor: Path, docs: list[str]) -> None:
+        fields = self.restart_fields(successor)
+        payload = self.work_payload("bootstrap", docs, classification="bootstrap-ready", verification="independent")
+        payload.update(fields)
+        self.write_work(successor, payload)
+        graph.record(successor, "work", "verify")
+        state = graph.load_state(successor)
+        work = state["nodes"]["work"]["receipts"][-1]
+        self.write(str((successor / graph.VERIFY_NAME).relative_to(self.root)), json.dumps({
+            "schema_version": 3, "verdict": "pass", "work_sha256": work["sha256"],
+            "checked_docs": docs, "docs_sha256": graph.snapshot_digest(work["docs"]),
+            "residual_risks": [], "repair_list": [], **fields,
+        }))
+        graph.record(successor, "verify", "succeeded")
+        graph.complete(successor)
+
+    def test_restart_real_historical31_shape_preserves_old_bytes(self) -> None:
+        run = self.historical_restart()
+        original = (run / graph.STATE_NAME).read_bytes()
+        shared = (self.root / graph.project_runtime.STATE_REL).read_bytes()
+        doc = (self.root / "README.md").read_bytes()
+        with self.assertRaisesRegex(graph.GraphError, "неподдерживаемой"):
+            graph.load_state(run)
+        successor = self.replacement(run)
+        state = graph.load_state(successor)
+        self.assertEqual(state["graph_version"], graph.graph_contract()["graph_version"])
+        self.assertTrue(state["verification_required"])
+        self.assertEqual(state["nodes"]["verify"]["receipts"], [])
+        self.assertEqual((run / "restart/old-state.json").read_bytes(), original)
+        self.assertEqual((run / "restart/old-project-state.json").read_bytes(), shared)
+        self.assertEqual((self.root / "README.md").read_bytes(), doc)
+        self.assertEqual(self.read_json(run / graph.STATE_NAME)["successor_run_id"], successor.name)
+        self.assertEqual(self.replacement(run), successor)
+        with self.assertRaises(graph.GraphError):
+            graph.complete(successor)
+
+    def test_restart_shared_hash_drift_re_admits_without_losing_fields(self) -> None:
+        run = self.init("bootstrap")
+        shared_path = self.root / graph.project_runtime.STATE_REL
+        shared = self.read_json(shared_path)
+        shared["owner_note"] = "Preserve concurrent useful fact"
+        graph.write_json(shared_path, shared, self.root)
+        with self.assertRaisesRegex(graph.GraphError, "конкурентно"):
+            graph.load_state(run)
+        successor = self.replacement(run)
+        self.assertEqual(self.read_json(shared_path)["owner_note"], shared["owner_note"])
+        self.assertTrue(graph.load_state(successor)["verification_required"])
+
+    def test_restart_inherited_drift_requires_exact_fresh_work_and_verifier(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        before = {path: (self.root / path).read_bytes() for path in docs}
+        successor = self.replacement(run)
+        self.assertEqual({path: (self.root / path).read_bytes() for path in docs}, before)
+        payload = self.work_payload("bootstrap", docs, classification="bootstrap-ready", verification="independent")
+        self.write_work(successor, payload)
+        with self.assertRaisesRegex(graph.GraphError, "restart_revalidation"):
+            graph.record(successor, "work", "verify")
+        self.verify_replacement(successor, docs)
+        self.assertEqual(graph.load_state(successor)["status"], "completed")
+        self.assertEqual(self.read_json(run / graph.STATE_NAME)["status"], "superseded")
+
+    def test_restart_missing_document_cannot_be_forgotten(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        # Baseline existed before run, then an old agent removed a mandatory file.
+        state = self.read_json(run / graph.STATE_NAME)
+        state["baseline_docs"] = graph.snapshot(self.root, docs)
+        graph.write_json(run / graph.STATE_NAME, state, self.root)
+        (self.root / "CONTEXT.md").unlink()
+        successor = self.replacement(run)
+        payload = self.work_payload("bootstrap", [path for path in docs if path != "CONTEXT.md"], classification="bootstrap-ready", verification="independent")
+        payload.update(self.restart_fields(successor))
+        self.write_work(successor, payload)
+        with self.assertRaisesRegex(graph.GraphError, "не удаляет"):
+            graph.record(successor, "work", "verify")
+
+    def test_restart_pending_decision_blocks_and_resolved_scope_is_carried(self) -> None:
+        run = self.init("bootstrap")
+        state = self.read_json(run / graph.STATE_NAME)
+        decision = {"id": "choice", "question": "Can README change?", "recommended": "Only README", "scope": ["README.md"], "docs": {}}
+        state["decisions"] = [decision]
+        graph.write_json(run / graph.STATE_NAME, state, self.root)
+        original = (run / graph.STATE_NAME).read_bytes()
+        with self.assertRaisesRegex(graph.GraphError, "Незакрытое"):
+            self.replacement(run)
+        self.assertEqual((run / graph.STATE_NAME).read_bytes(), original)
+        decision["answer"] = "Only README"
+        decision["resolved_at"] = "2026-10-06T12:00:00+00:00"
+        graph.write_json(run / graph.STATE_NAME, state, self.root)
+        successor = self.replacement(run)
+        self.assertEqual(graph.load_state(successor)["decisions"], [decision])
+        docs = self.bootstrap_docs()
+        payload = self.work_payload("bootstrap", docs, classification="bootstrap-ready", created=docs, verification="independent", decision={"id": "choice"})
+        payload.update(self.restart_fields(successor))
+        self.write_work(successor, payload)
+        with self.assertRaisesRegex(graph.GraphError, "scope"):
+            graph.record(successor, "work", "verify")
+
+    def test_restart_rejected_repairs_are_mandatory(self) -> None:
+        run = self.init("bootstrap")
+        docs = self.bootstrap_docs()
+        self.write_work(run, self.work_payload("bootstrap", docs, classification="bootstrap-ready", created=docs, verification="independent"))
+        graph.record(run, "work", "verify")
+        state = graph.load_state(run)
+        work = state["nodes"]["work"]["receipts"][-1]
+        self.write(str((run / graph.VERIFY_NAME).relative_to(self.root)), json.dumps({"schema_version": 3, "verdict": "reject", "work_sha256": work["sha256"], "checked_docs": docs, "docs_sha256": graph.snapshot_digest(work["docs"]), "residual_risks": [], "repair_list": ["Recheck glossary meaning"]}))
+        graph.record(run, "verify", "failed")
+        successor = self.replacement(run)
+        self.assertEqual(self.restart_fields(successor)["addressed_restart_repairs"], ["Recheck glossary meaning"])
+        successor = self.replacement(successor, "Replace again before fresh review")
+        self.assertEqual(self.restart_fields(successor)["addressed_restart_repairs"], ["Recheck glossary meaning"])
+        self.verify_replacement(successor, docs)
+
+    def test_restart_crash_marker_blocks_admission_and_replays_once(self) -> None:
+        run = self.historical_restart()
+        original_write = graph.write_text
+        count = 0
+        def interrupted(path, content, root):
+            nonlocal count
+            count += 1
+            if count == 5:
+                raise OSError("Injected crash after old retirement")
+            return original_write(path, content, root)
+        with mock.patch.object(graph, "write_text", side_effect=interrupted):
+            with self.assertRaises(OSError):
+                self.replacement(run)
+        with self.assertRaises(graph.task_delivery_runtime.TaskError):
+            self.init("bootstrap", "Competing admission")
+        with self.assertRaises(graph.task_delivery_runtime.TaskError):
+            graph.recover(str(self.root))
+        with self.assertRaises(graph.task_delivery_runtime.TaskError):
+            with graph.task_delivery_runtime.mutation_guard(self.root, "competing-task", True):
+                self.fail("Task Delivery stole pending Project Start ownership")
+        with self.assertRaises(ValueError):
+            project = graph.project_state(self.root)
+            graph.project_runtime.save_project_state(self.root, project)
+        successor = self.replacement(run)
+        self.assertEqual(self.replacement(run), successor)
+        self.assertEqual(len(list((self.root / graph.RUNTIME_REL).iterdir())), 2)
+
+    def test_restart_recovery_preserves_concurrent_shared_edit(self) -> None:
+        run = self.historical_restart()
+        with mock.patch.object(graph, "write_text", side_effect=OSError("Injected crash")):
+            with self.assertRaises(OSError):
+                self.replacement(run)
+        shared_path = self.root / graph.project_runtime.STATE_REL
+        shared = self.read_json(shared_path)
+        shared["external_edit"] = "Keep"
+        graph.write_json(shared_path, shared, self.root)
+        exact = shared_path.read_bytes()
+        with self.assertRaisesRegex(graph.GraphError, "Concurrent edit"):
+            self.replacement(run)
+        self.assertEqual(shared_path.read_bytes(), exact)
+
+    def test_restart_second_successor_keeps_prior_lineage(self) -> None:
+        original = self.historical_restart()
+        first = self.replacement(original)
+        second = self.replacement(first, "Replace next unfinished control")
+        self.assertNotEqual(first, second)
+        self.assertEqual(self.replacement(original), first)
+        self.assertEqual(self.read_json(first / graph.STATE_NAME)["successor_run_id"], second.name)
+        self.assertTrue((original / "restart/transition.json").is_file())
+
+    def test_restart_cli_symlink_source_path_preserves_old_owner(self) -> None:
+        run = self.historical_restart()
+        alias = self.root / "alias-run"
+        alias.symlink_to(run, target_is_directory=True)
+        exact = (run / graph.STATE_NAME).read_bytes()
+        shared = (self.root / graph.project_runtime.STATE_REL).read_bytes()
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            code = graph.main(["restart", "--run", str(alias), "--reason", "Replace old run", "--acknowledge-incomplete"])
+        self.assertEqual(code, 1, output.getvalue())
+        self.assertEqual(json.loads(output.getvalue())["status"], "error")
+        self.assertEqual((run / graph.STATE_NAME).read_bytes(), exact)
+        self.assertEqual((self.root / graph.project_runtime.STATE_REL).read_bytes(), shared)
+        self.assertFalse((self.root / graph.RESTART_REL).exists())
+
+    def test_restart_symlink_snapshot_collision_preserves_owner(self) -> None:
+        run = self.historical_restart()
+        destination = self.write("outside.json", "Keep original")
+        (run / "restart").mkdir()
+        (run / "restart/old-state.json").symlink_to(destination)
+        before = (run / graph.STATE_NAME).read_bytes()
+        with self.assertRaises(graph.GraphError):
+            self.replacement(run)
+        self.assertEqual((run / graph.STATE_NAME).read_bytes(), before)
+        self.assertEqual(destination.read_text(), "Keep original")
+        self.assertFalse((self.root / graph.RESTART_REL).exists())
+
+    def test_restart_corrupt_geometry_and_v2_do_not_mutate(self) -> None:
+        run = self.historical_restart()
+        state = self.read_json(run / graph.STATE_NAME)
+        state["schema_version"] = 2
+        graph.write_json(run / graph.STATE_NAME, state, self.root)
+        exact = (run / graph.STATE_NAME).read_bytes()
+        with self.assertRaisesRegex(graph.GraphError, "legacy"):
+            self.replacement(run)
+        self.assertEqual((run / graph.STATE_NAME).read_bytes(), exact)
+        self.assertFalse((self.root / graph.RESTART_REL).exists())
 
 
 if __name__ == "__main__":

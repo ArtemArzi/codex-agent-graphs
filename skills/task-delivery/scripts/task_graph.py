@@ -70,19 +70,20 @@ LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.7.0", "cae9219d58295caf00c2d702134047f11fe8cdfb9409b957068a81d90f77657a"),
     ("3.8.0", "e85e31327b1e370332bf2e65f2d4f6f1776e459072dafbd0ba9f9099830eeb76"),
     ("3.9.0", "b8d70db20b6ebc57ea1fcb1258bfce9a22eab02089c9c9c4f1d2b1e8b1b75112"),
+    ("3.9.1", "a7bf37b8e79edaefa345dbf6401eb8d34dbdfdd2deaacc0d73d69e286af0b713"),
 }
-SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1"}
-STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1"}
-NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1"}
+SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2"}
+STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2"}
+NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2"}
 
 
 def adaptive_delegation(state: dict[str, Any]) -> bool:
-    return state.get("graph_version") in {"3.9.0", "3.9.1"}
+    return state.get("graph_version") in {"3.9.0", "3.9.1", "3.9.2"}
 
 
 def uses_code_first_contract(state: dict[str, Any]) -> bool:
     # Pin behavior by release, not by whichever graph happens to be installed.
-    return state.get("graph_version") in {"3.8.0", "3.9.0", "3.9.1"}
+    return state.get("graph_version") in {"3.8.0", "3.9.0", "3.9.1", "3.9.2"}
 
 
 def slice_estimate(state: dict[str, Any]) -> int:
@@ -521,7 +522,7 @@ def validate_plan(path: Path, *, graph_version: str | None = None) -> tuple[str,
     contract = plan_contract_text(path, graph_version=graph_version)
     text_value = path.read_text(encoding="utf-8")
     version = graph_version or graph_contract()["graph_version"]
-    if version == "3.9.1":
+    if version in {"3.9.1", "3.9.2"}:
         validate_scope_markers(text_value, contract)
     placeholders = [token for token in ("PENDING", "TODO", "{{") if token in contract]
     if placeholders:
@@ -2533,13 +2534,14 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         max_agents=None if adaptive_delegation(state) else (8 if current_contract else 5),
     )
     validate_research(artifact.get("research"))
-    if state.get("graph_version") in {"3.3.0", "3.8.0", "3.9.0", "3.9.1"}:
+    if state.get("graph_version") in {"3.3.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2"}:
         validate_mcp_capabilities(capabilities)
     plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
     digest, scope = validate_plan(
         plan_path, graph_version=state.get("graph_version")
     )
     validate_scope_authority(state, run_dir, digest, scope)
+    validate_restart_constraints(state, artifact, scope)
     plan = artifact.get("plan")
     if not isinstance(plan, dict) or plan.get("path") != state["plan_path"] or plan.get("digest") != digest:
         raise GraphError("task.json должен быть связан с точным путём и digest плана.")
@@ -2640,7 +2642,7 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     strings(artifact.get("residual_risks"), "residual_risks")
     if profile == "critical" and mode != "plan" and not review_receipts(agents, "task_risk_reviewer"):
         raise GraphError("Critical реализация требует отдельный task_risk_reviewer receipt.")
-    required_verify = profile_requires_verify(mode, profile, confidence)
+    required_verify = bool(state.get("verification_required")) or profile_requires_verify(mode, profile, confidence)
     if outcome == "verify" and not required_verify:
         required_verify = True
     if outcome == "succeeded" and required_verify:
@@ -2681,6 +2683,7 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
 
 
 def validate_verification(state: dict[str, Any], artifact: dict[str, Any], outcome: str) -> None:
+    validate_restart_constraints(state, artifact)
     if artifact.get("schema_version") != 3 or artifact.get("task_id") != state["task_id"]:
         raise GraphError("verification.json требует schema_version 3 и точный task_id.")
     if artifact.get("mode") != state["mode"]:
@@ -2717,6 +2720,7 @@ def load_run_state(run_dir: Path) -> dict[str, Any]:
     if identity != current_identity and identity not in LEGACY_ACTIVE_GRAPH_IDENTITIES:
         raise GraphProvenanceError("Run связан с неподдерживаемой версией Task Delivery graph.")
     root = root_path(str(state.get("root", "")))
+    legacy.reject_pending_restart(root)
     task_id = legacy.validate_task_id(str(state.get("task_id", "")))
     run_id = str(state.get("run_id", ""))
     if not re.fullmatch(r"[0-9a-f]{16}", run_id):
@@ -2964,6 +2968,356 @@ def retire(run_dir: Path, reason: str, acknowledge_incomplete: bool) -> dict[str
     )
 
 
+RESTART_MARKER_REL = Path(".agent-graphs/restart-task-delivery.json")
+
+
+def load_restart_source(run_dir: Path) -> tuple[Path, dict[str, Any], Path, dict[str, Any]]:
+    """Structural lifecycle loading, never old evidence execution/admission."""
+    state = load_json(run_dir / STATE_NAME)
+    if state.get("schema_version") != 3 or state.get("graph_id") != "task-delivery":
+        raise GraphError("Restart requires structurally valid Task Delivery v3; resume v2 with task_delivery.py.")
+    root = root_path(str(state.get("root", "")))
+    run_id = state.get("run_id")
+    if not isinstance(run_id, str) or not re.fullmatch(r"[0-9a-f]{16}", run_id):
+        raise GraphError("Restart run_id is malformed.")
+    expected = snapshots.safe_join_no_symlinks(root, RUNS_REL / run_id)
+    if run_dir != expected or not (expected / STATE_NAME).is_file():
+        raise GraphError("Restart run path must exactly match its root/run_id without symlinks.")
+    snapshots.safe_join_no_symlinks(root, (run_dir / STATE_NAME).relative_to(root))
+    if state.get("mode") not in MODES or state.get("profile") not in PROFILES:
+        raise GraphError("Restart mode/profile is unsupported.")
+    if state.get("status") not in {"running", "blocked", "decision-required", "suspended"}:
+        raise GraphError("Restart requires an unfinished run.")
+    if not isinstance(state.get("graph_version"), str) or not state["graph_version"] or not isinstance(state.get("graph_sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", state["graph_sha256"]):
+        raise GraphError("Restart graph identity is structurally malformed.")
+    if state.get("current") not in {"work", "verify", "complete"}:
+        raise GraphError("Restart current node is malformed.")
+    task_id = legacy.validate_task_id(str(state.get("task_id", "")))
+    task_path, task = load_task_state(root, task_id)
+    if not isinstance(task.get("artifacts"), dict) or task["artifacts"].get("plan") != state.get("plan_path"):
+        raise GraphError("Restart plan ownership disagrees with the task index.")
+    if task.get("profile") != state["profile"] or task.get("phase") not in {"running", "blocked", "suspended", "implementing", "decision-required"}:
+        raise GraphError("Restart task index profile/phase disagrees with its owner.")
+    if task.get("current_run") != run_id and not (state["status"] == "suspended" and task.get("current_run") is None and task.get("phase") == "suspended"):
+        raise GraphError("Restart requires exact current task ownership.")
+    runs = task.get("runs")
+    if not isinstance(runs, list) or len([item for item in runs if isinstance(item, dict) and item.get("run_id") == run_id]) != 1:
+        raise GraphError("Restart task index does not contain exactly one source run.")
+    meaningful(task.get("title"), "original title", 3)
+    meaningful(task.get("outcome"), "original outcome", 8)
+    if not isinstance(state.get("nodes"), dict) or set(state["nodes"]) != {"work", "verify", "complete"}:
+        raise GraphError("Restart node structure is malformed.")
+    for node in state["nodes"].values():
+        if not isinstance(node, dict) or not isinstance(node.get("receipts"), list) or not isinstance(node.get("attempts"), int):
+            raise GraphError("Restart node receipts/attempts are malformed.")
+    decisions = state.get("decisions")
+    if not isinstance(decisions, list) or any(not isinstance(d, dict) or not isinstance(d.get("answer"), str) or len(d["answer"].strip()) < 3 or not d.get("resolved_at") for d in decisions):
+        raise GraphError("Restart cannot discard unresolved material decisions.")
+    if state["status"] == "decision-required":
+        raise GraphError("Restart cannot discard a pending material decision status.")
+    if not isinstance(state.get("verification_required"), bool):
+        raise GraphError("Restart verification requirement is malformed.")
+    baseline_rel = f".codex/task-delivery/{task_id}/baseline-{run_id}.json"
+    if state.get("baseline_manifest") != baseline_rel:
+        raise GraphError("Restart baseline path is malformed.")
+    baseline = snapshots.load_manifest(snapshots.safe_join_no_symlinks(root, baseline_rel))
+    if snapshots.manifest_digest(baseline) != state.get("baseline_repo_digest"):
+        raise GraphError("Restart baseline bytes are damaged.")
+    if legacy.obligation_marker(root, task_id).exists() or task.get("phase") == "project_start_obligation_pending":
+        raise GraphError("Restart is blocked by pending Project Start obligation.")
+    return root, state, task_path, task
+
+
+def restart_plan_copy(path: Path) -> tuple[str, list[str]]:
+    """Retain original prose/selection; normalize only the candidate's region."""
+    text_value = path.read_text(encoding="utf-8")
+    # An unfinished draft may contain placeholders. It remains a draft.
+    contract = plan_contract_text(path, graph_version="3.9.1")
+    pattern = r"<!--\s*task-delivery:scope\s*\n.*?\n\s*-->"
+    blocks = list(re.finditer(pattern, text_value, re.DOTALL))
+    if len(blocks) != 1 or len(re.findall(r"<!--\s*task-delivery:scope\b", text_value)) != 1:
+        raise GraphError("Restart requires one unambiguous scope selection in the original plan.")
+    scope = snapshots.parse_scope(text_value)
+    if blocks[0].group() not in contract:
+        text_value = text_value[:blocks[0].start()] + text_value[blocks[0].end():]
+        end = "<!-- task-delivery:plan:end -->"
+        if end not in text_value:
+            raise GraphError("Restart cannot normalize ambiguous plan region.")
+        text_value = text_value.replace(end, blocks[0].group() + "\n" + end, 1)
+    return text_value, scope
+
+
+def validate_restart_scope(state: dict[str, Any], run_dir: Path, scope: list[str]) -> None:
+    """Recover captured selection without adopting any old review as a PASS."""
+    captured = []
+    admission = state.get("scope_authority")
+    if admission is not None:
+        if not isinstance(admission, dict):
+            raise GraphError("Restart scope authority is malformed.")
+        captured.append(scope_roots(admission.get("scope")))
+    prior = state.get("task_state_snapshot", {}).get("checkpoints", {}).get("plan-review")
+    if prior:
+        if not isinstance(prior, dict):
+            raise GraphError("Restart prior scope is malformed.")
+        selection = prior.get("scope")
+        if selection is None:
+            selection = prior.get("review_scope_manifest")
+            if not isinstance(selection, dict) or not selection:
+                raise GraphError("Restart cannot recover unambiguous original scope.")
+            selection = list(selection)
+        captured.append(scope_roots(selection))
+    for receipt in state["nodes"]["work"]["receipts"]:
+        captured.append(scope_roots(receipt.get("scope")))
+    for record in state.get("slices", {}).values():
+        path = snapshots.safe_join_no_symlinks(run_dir, Path(record["packet_path"]).relative_to(run_dir))
+        if not path.is_file() or sha256_file(path) != record.get("packet_sha256"):
+            raise GraphError("Restart slice selection evidence changed.")
+        packet = load_json(path)
+        selection = packet.get("plan_scope")
+        if selection is None:
+            raise GraphError("Restart cannot recover original scope from an ambiguous old slice.")
+        captured.append(scope_roots(selection))
+    if state["mode"] == "implement" and not captured:
+        raise GraphError("Restart implement scope authority is missing.")
+    amendments = validate_amendment_chain(state, run_dir)["receipts"] if state.get("scope_amendments") else []
+    for selection in captured:
+        for amendment in amendments:
+            if selection == scope_roots(amendment["before_scope"]):
+                selection = scope_roots(amendment["after_scope"])
+        if selection != scope_roots(scope):
+            raise GraphError("Restart cannot replace original captured scope with an unapproved selection.")
+
+
+def restart_constraints(state: dict[str, Any], run_dir: Path, scope: list[str]) -> dict[str, Any]:
+    validate_restart_scope(state, run_dir, scope)
+    rejected = []
+    decisions = list(state["decisions"])
+    prior_constraints = None
+    previous = state.get("restart_inheritance")
+    if previous is not None:
+        inherited_path = snapshots.safe_join_no_symlinks(Path(state["root"]), previous["path"])
+        if not inherited_path.is_file() or sha256_file(inherited_path) != previous.get("sha256"):
+            raise GraphError("Restart inherited constraints changed.")
+        prior_constraints = load_json(inherited_path)
+        decisions = prior_constraints["decisions"] + [item for item in decisions if item not in prior_constraints["decisions"]]
+        rejected = list(prior_constraints["rejected_reviews"])
+    for node_name, node in state["nodes"].items():
+        for receipt in node["receipts"]:
+            if not isinstance(receipt, dict):
+                raise GraphError("Restart receipt structure is malformed.")
+            path = Path(str(receipt.get("path", "")))
+            try:
+                relative = path.relative_to(run_dir)
+            except ValueError as exc:
+                raise GraphError("Restart evidence must be contained in its old run.") from exc
+            path = snapshots.safe_join_no_symlinks(run_dir, relative)
+            if not path.is_file() or sha256_file(path) != receipt.get("sha256"):
+                raise GraphError("Restart cannot preserve changed/missing receipt bytes.")
+            artifact = load_json(path)
+            if artifact.get("verdict") == "reject" or receipt.get("outcome") == "failed":
+                repairs = strings(artifact.get("repair_list"), "inherited repair_list", allow_empty=False)
+                rejected.append({"source": str(path), "sha256": receipt["sha256"], "repair_list": repairs, "scope": scope, "node": node_name})
+    return {"schema_version": 1, "source_run": str(run_dir), "original_scope": scope,
+            "decisions": decisions, "rejected_reviews": rejected, "prior_constraints": prior_constraints}
+
+
+def validate_restart_constraints(state: dict[str, Any], artifact: dict[str, Any], scope: list[str] | None = None) -> None:
+    inherited = state.get("restart_inheritance")
+    if inherited is None:
+        return
+    root = Path(state["root"])
+    path = snapshots.safe_join_no_symlinks(root, inherited["path"])
+    if not path.is_file() or sha256_file(path) != inherited["sha256"]:
+        raise GraphError("Inherited restart constraints changed.")
+    constraints = load_json(path)
+    addressed = artifact.get("restart_constraints")
+    repairs = [repair for review in constraints["rejected_reviews"] for repair in review["repair_list"]]
+    if not isinstance(addressed, dict) or addressed.get("sha256") != inherited["sha256"] or addressed.get("decisions") != constraints["decisions"] or addressed.get("repair_requirements") != repairs:
+        raise GraphError("Fresh work/review must explicitly address exact inherited decisions and rejected repair requirements.")
+    if scope is not None and scope_roots(scope) != scope_roots(constraints["original_scope"]) and not state.get("scope_amendments"):
+        raise GraphError("Restart cannot change inherited scope without an authorized amendment.")
+
+
+def restart(run_dir: Path, reason: str, acknowledge_incomplete: bool, successor_task_id: str | None = None) -> dict[str, Any]:
+    """Exact-preimage transfer, with a durable marker reserving admission."""
+    reason = meaningful(reason, "restart reason", 8)
+    if not acknowledge_incomplete:
+        raise GraphError("Restart requires --acknowledge-incomplete and explicit authority.")
+    raw = load_json(run_dir / STATE_NAME)
+    root = root_path(str(raw.get("root", "")))
+    old_task_id = legacy.validate_task_id(str(raw.get("task_id", "")))
+    # Unlike run_path(), this lifecycle entry preserves lexical symlinks.
+    if run_dir != snapshots.safe_join_no_symlinks(root, RUNS_REL / str(raw.get("run_id", ""))):
+        raise GraphError("Restart source path is not its exact contained run.")
+    marker_path = snapshots.safe_join_no_symlinks(root, RESTART_MARKER_REL)
+    global_marker = load_json(marker_path) if marker_path.exists() else None
+    existing_marker = global_marker
+    completion_path = snapshots.safe_join_no_symlinks(root, (run_dir / "restart/completed-marker.json").relative_to(root))
+    owns_marker = global_marker is not None and global_marker.get("source_run") == str(run_dir)
+    if global_marker and not owns_marker and global_marker.get("status") == "completed":
+        existing_marker = load_json(completion_path) if completion_path.exists() else None
+    request = {"source_run": str(run_dir), "reason": reason, "requested_task_id": successor_task_id}
+    snapshots.safe_join_no_symlinks(root, (run_dir / LOCK_NAME).relative_to(root))
+    if existing_marker:
+        operation_path = snapshots.safe_join_no_symlinks(root, (run_dir / "restart/operation.json").relative_to(root))
+        operation = load_json(operation_path)
+        if existing_marker.get("schema_version") != 1 or existing_marker.get("status") not in {"pending", "completed"} or existing_marker.get("source_run") != str(run_dir) or existing_marker.get("operation_sha256") != sha256_file(operation_path) or operation.get("request") != request:
+            raise GraphError("Restart marker belongs to a different or tampered operation.")
+    with legacy.mutation_guard(root, old_task_id, True, restart_marker=marker_path if owns_marker else None):
+        with state_lock(run_dir):
+            stage = snapshots.safe_join_no_symlinks(root, (run_dir / "restart").relative_to(root))
+            # Re-read after obtaining admission: a stale pre-lock marker cannot
+            # authorize reconciliation of a replaced operation.
+            if (load_json(marker_path) if marker_path.exists() else None) != global_marker:
+                raise GraphError("Restart marker changed during admission.")
+            if not existing_marker and stage.exists():
+                # Preparation was published atomically, but marker installation
+                # may have been interrupted before any ownership write.
+                load_restart_source(run_dir)
+                reserved_path = snapshots.safe_join_no_symlinks(root, (stage / "reserved-marker.json").relative_to(root))
+                reserved = load_json(reserved_path)
+                operation_path = snapshots.safe_join_no_symlinks(root, (stage / "operation.json").relative_to(root))
+                operation = load_json(operation_path)
+                if reserved.get("schema_version") != 1 or reserved.get("status") != "pending" or reserved.get("source_run") != str(run_dir) or reserved.get("operation_sha256") != sha256_file(operation_path) or operation.get("request") != request:
+                    raise GraphError("Unpublished restart preparation is not the exact requested operation.")
+                existing_marker = reserved
+                atomic_json(marker_path, existing_marker)
+            if existing_marker:
+                operation_path = snapshots.safe_join_no_symlinks(root, (stage / "operation.json").relative_to(root))
+                operation = load_json(operation_path)
+                if existing_marker.get("schema_version") != 1 or existing_marker.get("source_run") != str(run_dir) or existing_marker.get("operation_sha256") != sha256_file(operation_path) or operation.get("request") != request:
+                    raise GraphError("Restart marker belongs to a different or tampered operation.")
+                if existing_marker.get("status") == "completed":
+                    successor = snapshots.safe_join_no_symlinks(root, operation["successor_run"])
+                    current = load_run_state(successor)
+                    if current.get("restart_inheritance", {}).get("source_run") != str(run_dir):
+                        raise GraphError("Completed restart successor lineage changed.")
+                    return result("restarted", "Restart already completed; successor preserved.", data={"run": str(successor), "task_id": current["task_id"], "idempotent": True})
+            else:
+                root, state, task_path, task = load_restart_source(run_dir)
+                original_plan = snapshots.safe_join_no_symlinks(root, state["plan_path"])
+                if not original_plan.is_file():
+                    raise GraphError("Restart requires a plain existing original plan.")
+                candidate_text, scope = restart_plan_copy(original_plan)
+                constraints = restart_constraints(state, run_dir, scope)
+                suffix = hashlib.sha256(str(run_dir).encode()).hexdigest()[:12]
+                new_id = legacy.validate_task_id(successor_task_id or f"{old_task_id[:58]}-restart-{suffix}")
+                if new_id == old_task_id:
+                    raise GraphError("Restart must use a new task ID.")
+                mode = "plan" if state["mode"] == "plan" else "full"
+                graph = graph_contract()
+                profile = state["profile"]
+                budget = state.get("slice_budget", graph["delegation_policy"]["default_slice_estimate"])
+                if not isinstance(budget, int) or isinstance(budget, bool) or budget < 1:
+                    raise GraphError("Restart slice estimate is malformed.")
+                run_id = hashlib.sha256(f"{new_id}:{mode}:{profile}:root-only:{budget}:{graph['graph_version']}:1".encode()).hexdigest()[:16]
+                new_run = snapshots.safe_join_no_symlinks(root, RUNS_REL / run_id)
+                new_task_path = task_state_path(root, new_id)
+                new_plan_rel = plan_relative(root, None, new_id, mode)
+                new_plan = snapshots.safe_join_no_symlinks(root, new_plan_rel)
+                baseline_rel = f".codex/task-delivery/{new_id}/baseline-{run_id}.json"
+                baseline_path = snapshots.safe_join_no_symlinks(root, baseline_rel)
+                constraints_path = new_run / "restart-constraints.json"
+                targets = [new_run, new_task_path.parent, new_plan.parent]
+                if any(path.exists() for path in targets) or stage.exists():
+                    raise GraphError("Restart successor/staging collision; nothing retired.")
+                standard = project_engineering_standard(root)
+                # Preserve source prose; new candidate gets its own task metadata.
+                candidate_text = f"<!-- Restart candidate for {new_id}; prior review is historical and grants no acceptance. -->\n" + candidate_text
+                baseline = manifest(root, new_plan_rel)
+                stamp = now()
+                constraints_bytes = (json.dumps(constraints, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode()
+                inheritance = {"source_run": str(run_dir), "path": constraints_path.relative_to(root).as_posix(), "sha256": hashlib.sha256(constraints_bytes).hexdigest()}
+                new_task = {"schema_version": 3, "task_id": new_id, "title": task["title"], "outcome": task["outcome"], "phase": "running", "profile": profile,
+                            "artifacts": {"plan": new_plan_rel}, "checkpoints": {}, "runs": [{"run_id": run_id, "mode": mode, "profile": profile, "implementation_strategy_request": "root-only", "slice_budget": budget, "started_at": stamp}],
+                            "revision": 1, "created_at": stamp, "updated_at": stamp, "completed_at": None, "current_run": run_id, "baseline_manifest": baseline_rel,
+                            "baseline_repo_digest": snapshots.manifest_digest(baseline), "engineering_standard": standard, "restart_inheritance": inheritance,
+                            "verification_required": state["verification_required"] or bool(constraints["rejected_reviews"])}
+                nodes = {name: {"status": "ready" if name == "work" else "pending", "attempts": 0, "receipts": []} for name in ("work", "verify", "complete")}
+                new_state = {"schema_version": 3, "graph_id": "task-delivery", "graph_version": graph["graph_version"], "graph_sha256": sha256_file(GRAPH_PATH), "run_id": run_id,
+                             "root": str(root), "task_id": new_id, "mode": mode, "profile": profile, "plan_path": new_plan_rel, "baseline_manifest": baseline_rel,
+                             "baseline_repo_digest": new_task["baseline_repo_digest"], "task_state_snapshot": new_task, "status": "running", "task_status": "active", "control_status": "healthy", "control_issues": [],
+                             "current": "work", "verification_required": new_task["verification_required"], "verification_repairs": 0, "implementation_strategy": "root-only", "implementation_strategy_request": "root-only",
+                             "implementation_strategy_preferred": "root-only", "slice_budget": budget, "engineering_standard": standard, "slices": {}, "context": {}, "scope_amendments": [], "node_retries": {"work": 0, "verify": 0},
+                             "decisions": [], "nodes": nodes, "created_at": stamp, "updated_at": stamp, "restart_inheritance": inheritance}
+                old_run_bytes = (run_dir / STATE_NAME).read_bytes()
+                old_task_bytes = task_path.read_bytes()
+                retired_state = json.loads(old_run_bytes)
+                retired_task = json.loads(old_task_bytes)
+                retired_state.update(status="retired", task_status="retired", updated_at=stamp)
+                retirement = {"schema_version": 1, "authority": "explicit-user", "reason": reason, "retired_at": stamp, "previous_status": state["status"], "successor_run": str(new_run), "successor_task_id": new_id,
+                              "run_state_snapshot": {"path": str(stage / "pre-run-state.json"), "sha256": hashlib.sha256(old_run_bytes).hexdigest()}, "task_state_snapshot": {"path": str(stage / "pre-task-state.json"), "sha256": hashlib.sha256(old_task_bytes).hexdigest()}}
+                retired_state["retirement"] = retirement
+                retired_task.update(phase="retired", current_run=None, completed_at=None, updated_at=stamp, revision=int(task.get("revision", 0)) + 1, successor_task_id=new_id)
+                for item in retired_task["runs"]:
+                    if item["run_id"] == state["run_id"]:
+                        item.update(status="retired", retirement_reason=reason, retired_at=stamp, successor_run=str(new_run))
+                encode = lambda value: (json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode()
+                outputs = [(stage / "pre-run-state.json", old_run_bytes), (stage / "pre-task-state.json", old_task_bytes), (stage / "pre-plan.md", original_plan.read_bytes()),
+                           (run_dir / STATE_NAME, encode(retired_state)), (task_path, encode(retired_task)), (new_plan, candidate_text.encode()), (baseline_path, encode(baseline)),
+                           (constraints_path, constraints_bytes), (new_task_path, encode(new_task)), (new_run / STATE_NAME, encode(new_state))]
+                reads = []
+                for path in sorted(run_dir.rglob("*")):
+                    if path.name == LOCK_NAME:
+                        continue
+                    snapshots.safe_join_no_symlinks(root, path.relative_to(root))
+                    if path.is_file() and path != run_dir / STATE_NAME:
+                        reads.append({"path": path.relative_to(root).as_posix(), "sha256": sha256_file(path)})
+                for review in constraints["rejected_reviews"]:
+                    evidence = snapshots.safe_join_no_symlinks(root, Path(review["source"]).relative_to(root))
+                    if not evidence.is_file() or sha256_file(evidence) != review["sha256"]:
+                        raise GraphError("Restart inherited rejected evidence changed.")
+                    reads.append({"path": evidence.relative_to(root).as_posix(), "sha256": review["sha256"]})
+                reads.extend([{"path": original_plan.relative_to(root).as_posix(), "sha256": sha256_file(original_plan)}, {"path": state["baseline_manifest"], "sha256": sha256_file(root / state["baseline_manifest"])}])
+                # Exact source/code/doc basis is required throughout an interrupted transfer.
+                operation = {"schema_version": 1, "request": request, "successor_run": new_run.relative_to(root).as_posix(), "basis": baseline, "basis_plan": new_plan_rel, "reads": reads, "writes": []}
+                preparation = Path(tempfile.mkdtemp(prefix=".restart-preparation-", dir=run_dir))
+                for index, (target, content) in enumerate(outputs):
+                    staged = stage / f"write-{index}.bin"
+                    atomic_bytes(preparation / staged.name, content)
+                    operation["writes"].append({"path": target.relative_to(root).as_posix(), "preimage": sha256_file(target) if target.exists() else None, "postimage": hashlib.sha256(content).hexdigest(), "staged": staged.relative_to(root).as_posix()})
+                operation_path = preparation / "operation.json"
+                atomic_json(operation_path, operation)
+                existing_marker = {"schema_version": 1, "status": "pending", "source_run": str(run_dir), "operation_sha256": sha256_file(operation_path)}
+                atomic_json(preparation / "reserved-marker.json", existing_marker)
+                os.rename(preparation, stage)
+                atomic_json(marker_path, existing_marker)
+            # Validate EVERY source/target before any continuation write. Never
+            # overwrite an external edit just because a prior stage succeeded.
+            if manifest(root, operation["basis_plan"]) != operation["basis"]:
+                raise GraphError("Restart repository basis changed; preserve pending transfer for diagnosis.")
+            for entry in operation["reads"]:
+                path = snapshots.safe_join_no_symlinks(root, entry["path"])
+                if not path.is_file() or sha256_file(path) != entry["sha256"]:
+                    raise GraphError("Restart source evidence changed.")
+            pending = []
+            for entry in operation["writes"]:
+                target = snapshots.safe_join_no_symlinks(root, entry["path"])
+                staged = snapshots.safe_join_no_symlinks(root, entry["staged"])
+                if not staged.is_file() or sha256_file(staged) != entry["postimage"]:
+                    raise GraphError("Restart staged bytes changed.")
+                current = sha256_file(target) if target.is_file() else None
+                if target.exists() and not target.is_file():
+                    raise GraphError("Restart target is not a plain file.")
+                if current not in {entry["preimage"], entry["postimage"]}:
+                    raise GraphError("Restart target preimage changed; no overwrite allowed.")
+                if current != entry["postimage"]:
+                    pending.append((target, staged, entry))
+            for target, staged, entry in pending:
+                current = sha256_file(target) if target.is_file() else None
+                if current != entry["preimage"] or (target.exists() and not target.is_file()):
+                    raise GraphError("Restart target changed during transfer; no overwrite allowed.")
+                content = staged.read_bytes()
+                if hashlib.sha256(content).hexdigest() != entry["postimage"]:
+                    raise GraphError("Restart staged bytes changed during transfer.")
+                atomic_bytes(target, content)
+            existing_marker["status"] = "completed"
+            atomic_json(completion_path, existing_marker)
+            atomic_json(marker_path, existing_marker)
+            successor = snapshots.safe_join_no_symlinks(root, operation["successor_run"])
+            return result("restarted", "Unfinished run preserved and retired; current successor requires fresh work and review.", artifacts=[str(marker_path), str(successor)], data={"run": str(successor), "task_id": load_run_state(successor)["task_id"], "idempotent": False})
+
+
 def degrade_control(run_dir: Path, reason: str) -> dict[str, Any]:
     reason = meaningful(reason, "control degradation reason", 8)
     with state_lock(run_dir):
@@ -3135,7 +3489,9 @@ def initialize(
             "control_status": "healthy",
             "control_issues": [],
             "current": "work",
-            "verification_required": False,
+            "verification_required": bool(existing and existing.get("verification_required")),
+            **({"restart_inheritance": existing["restart_inheritance"]}
+               if existing and existing.get("restart_inheritance") else {}),
             "verification_repairs": 0,
             "implementation_strategy": "root-only",
             "implementation_strategy_request": strategy_request,
@@ -3788,6 +4144,11 @@ def parser() -> argparse.ArgumentParser:
     retire_parser.add_argument("--run", required=True)
     retire_parser.add_argument("--reason", required=True)
     retire_parser.add_argument("--acknowledge-incomplete", action="store_true")
+    restart_parser = sub.add_parser("restart")
+    restart_parser.add_argument("--run", required=True)
+    restart_parser.add_argument("--reason", required=True)
+    restart_parser.add_argument("--acknowledge-incomplete", action="store_true")
+    restart_parser.add_argument("--successor-task-id")
     control_degrade = sub.add_parser("control-degrade")
     control_degrade.add_argument("--run", required=True)
     control_degrade.add_argument("--reason", required=True)
@@ -3847,6 +4208,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = resume(run_path(args.run))
         elif args.command == "retire":
             payload = retire(run_path(args.run), args.reason, args.acknowledge_incomplete)
+        elif args.command == "restart":
+            payload = restart(Path(args.run).expanduser().absolute(), args.reason, args.acknowledge_incomplete, args.successor_task_id)
         elif args.command == "control-degrade":
             payload = degrade_control(run_path(args.run), args.reason)
         elif args.command == "slice-create":

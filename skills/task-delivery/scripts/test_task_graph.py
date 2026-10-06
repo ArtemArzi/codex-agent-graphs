@@ -2253,7 +2253,7 @@ src/app.py
         run = self.initialize(task_id="TD-CURRENT")
         state_path = run / graph.STATE_NAME
         state = self.read(state_path)
-        self.assertEqual("3.9.1", state["graph_version"])
+        self.assertEqual("3.9.2", state["graph_version"])
         state["status"] = "completed"
         state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "нельзя пометить retired"):
@@ -2505,7 +2505,7 @@ src/app.py
 
     def test_digest_vectors_and_previous_identity_are_retained(self) -> None:
         plan = self.write("docs/vector.md", "prefix\n<!-- task-delivery:plan:start -->\nAlpha\n<!-- task-delivery:plan:end -->\nsuffix\n")
-        for version in [item[0] for item in graph.LEGACY_ACTIVE_GRAPH_IDENTITIES] + ["3.9.1"]:
+        for version in [item[0] for item in graph.LEGACY_ACTIVE_GRAPH_IDENTITIES] + ["3.9.2"]:
             vector = "Alpha\n" if version in graph.NORMALIZED_PLAN_DIGEST_VERSIONS else "\nAlpha\n"
             self.assertEqual(hashlib.sha256(vector.encode()).hexdigest(), graph.plan_digest(plan, graph_version=version))
         self.assertEqual(dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.9.0"], graph.sha256_file(graph.SKILL_DIR / "assets/legacy-graph-v3.9.json"))

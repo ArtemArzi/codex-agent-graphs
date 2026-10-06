@@ -68,3 +68,19 @@ compatibility в SKILL.md без ложной квитанции заверше�
 Bootstrap заканчивается фазой `execution`: Project Start не реализует задачи. Task Delivery после завершения пишет точный maintenance obligation. Новый Project Start maintenance run принимает `HANDOFF.md` только пока текущий implementation digest всё ещё совпадает с завершённой Task Delivery, синхронизирует канонические документы и возвращает статус `operational`. Любой неизвестный maintenance status блокирует следующую задачу fail-closed.
 
 Если процесс оборвался между shared state и run receipt, выполни `project_graph.py recover --root <repo>`. Recover принимает только текущую версию/sha графа и не переоценивает уже committed completion по более позднему состоянию исходников.
+
+## Replacement of an unfinished v3 instance
+
+`project_graph.py restart --run <old> --reason <observed failure>
+--acknowledge-incomplete` preflights a current successor before retirement.
+Exact snapshots retain old bytes; a durable repository admission marker
+reserves the ownership transfer. Retrying the same operation compares every
+preimage/postimage and never overwrites observed external edits. Old identity
+and receipts stay unchanged; the old run becomes unfinished superseded and
+links its successor. Accepted scoped answers and rejected repair requirements
+are inherited restrictions. A frozen document baseline/current record includes
+missing paths and binds fresh work and verification; mandatory missing docs
+must be restored. Completion requires fresh evidence and required independent
+verification. Unknown schema, unresolved decisions, ambiguous ownership or
+damaged obligation evidence remain blocked/native. No active-run sweep or
+delete/reset operation is part of replacement.
