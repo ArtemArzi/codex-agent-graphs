@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "required_skills": [
+    {
+      "name": "task-delivery",
+      "phase": "task-delivery",
+      "reason": "Owns the delivery lifecycle and applicable testing, review and Project Start handoff."
+    }
+  ]
+}

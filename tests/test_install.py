@@ -5,6 +5,8 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -54,6 +56,21 @@ class InstallerTests(unittest.TestCase):
         (optional / "SKILL.md").write_text("old host-selected version")
         installer.install_skills_batch([("fixture", self.home)])
         self.assertEqual(installer.manifest(installer.SKILLS_ROOT / "playwright-interactive"), installer.manifest(optional))
+
+    def test_software_factory_tree_is_installed_with_runnable_helper(self) -> None:
+        protected = {p: p.read_bytes() for p in (self.home / "config.toml", self.home / "AGENTS.md")}
+        installer.install_skills_batch([("fixture", self.home)])
+        source = installer.SKILLS_ROOT / "software-factory"
+        target = self.home / "skills/software-factory"
+        self.assertEqual(installer.manifest(source), installer.manifest(target))
+        self.assertTrue((target / "references/routing-and-context.md").is_file())
+        self.assertTrue((target / "skill-dependencies.json").is_file())
+        helper = target / "scripts/factory.py"
+        result = subprocess.run([sys.executable, "-B", str(helper), "--help"],
+                                cwd=self.temp.name, text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("prepare", result.stdout)
+        self.assertEqual(protected, {p: p.read_bytes() for p in protected})
 
     def test_skills_only_unsafe_second_home_prevents_first_write(self) -> None:
         first = Path(self.temp.name) / "not-created"

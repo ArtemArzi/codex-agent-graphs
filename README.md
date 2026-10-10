@@ -65,6 +65,7 @@ verified    → tracked execution plus independent exact-candidate review
 | --- | --- | --- |
 | `$project-start` | A canonical project foundation or a focused documentation-maintenance pass | New repositories, inherited codebases, and keeping `AGENTS.md` plus project docs aligned with reality |
 | `$research` | Cited, decision-ready research that starts fast and deepens only when the evidence demands it | Technical investigation, comparisons, current facts, and high-confidence research reports |
+| `$software-factory` | Optional ordinary, sequential or isolated parallel Codex delivery through Task Delivery | Independent worktree jobs with explicit context packets and combined checks; no dashboard or extra controller |
 | `$task-delivery` | One scoped software task from Markdown plan through implementation, tests, review, and handoff | Features, fixes, refactors, plan-only work, or implementation from an accepted plan |
 | `$continuous-improvement` | One evidence-backed repository improvement or an honest no-op/issue-ready result | Bounded autonomous maintenance from a failing test, CI signal, regression, or explicit audit request |
 
@@ -105,6 +106,18 @@ For a Russian-language handoff to another person or their coding agent, use
 [`docs/PROJECT_START_HANDOFF.ru.md`](docs/PROJECT_START_HANDOFF.ru.md). It
 explains what to download, which architecture material to read, and how to
 preview installation changes before applying them.
+
+## Software Factory
+
+Software Factory is an optional Codex skill layered on Task Delivery. It chooses
+ordinary, sequential or parallel work from dependencies, passes per-job context
+snapshots and integrates exact commits into a retained candidate for checks and
+review. It adds no graph, default agent count or dashboard. The helper supports
+two disjoint writing jobs per workspace; it never pushes or merges source/main.
+See [usage and validated boundaries](docs/SOFTWARE_FACTORY.ru.md). Installation
+uses the normal installer; publishing this source does not update existing homes.
+This new workflow was tested with native Codex agents; Claude execution has not
+been validated.
 
 ## Shared Codex routing
 
@@ -290,7 +303,7 @@ The installer copies files; it does not create cross-filesystem symlinks.
 
 | Installed surface | What changes |
 | --- | --- |
-| Skills | Eleven directories under each target Codex home: `agent-graph-builder`, `continuous-improvement`, `development-recovery`, `project-start`, `research`, `task-delivery`, `verification-loop`, `ai-regression-testing`, `production-audit`, `market-research`, and `agent-introspection-debugging` |
+| Skills | Maintained skill directories listed in `SKILLS` in [scripts/install.py](scripts/install.py), including `software-factory`; complete scripts and references are copied with each skill |
 | Shared runtime | `agent-graph-runtime/` under each target Codex home for deterministic artifact inventory, verified compaction, and explicit TTL pruning |
 | Custom agents | Thirteen bounded role definitions for conditional exploration, implementation, planning review, result review, project-doc verification, improvement verification, and deep research |
 | `config.toml` | One managed block that registers those custom roles without replacing unrelated configuration |
