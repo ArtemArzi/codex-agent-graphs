@@ -109,6 +109,16 @@ credentials, customer payloads, unrelated history and active TD/PS state files.
 Named paths do not grant new permissions. The helper snapshots supplied text;
 it does not sanitize secrets, verify its truth or enforce agent permissions.
 
+Use the documentation map and relevant symbols/ranges to select source material.
+Keep the shared interface, exact revision, ownership, environment and failure
+cases explicit; do not duplicate entire manuals in every packet. A source path
+is sufficient only when the leaf can read that revision there. Full-read
+requirements from governing instructions still apply: name them once, preserve
+them and flag irrelevant mandatory material in the owning task rather than
+silently removing it or treating it as a new business requirement. If tool output
+is truncated, read the missing required ranges instead of repeating the same
+oversized concatenated command. Compactness is not permission to omit a contract.
+
 An agent cannot assume it sees root's conversation or a sibling's memory.
 Require the leaf to read its brief and actual sources, report contradictions,
 and avoid guessing missing shared contracts. Never use mutable sibling files

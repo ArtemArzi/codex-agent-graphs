@@ -32,6 +32,10 @@ base. It checks changed-path ownership, merges exact job commits into a new
 integration branch/worktree, runs the explicit argv there and retains result/log.
 The combined command must verify its actual import/build origin and isolate
 mutable resources. Existing read-only dependencies may be shared deliberately.
+Before a costly verify, probe that command and its required environment on a
+small existing case as described in [readiness-and-checks.md](readiness-and-checks.md).
+Use the project's canonical runner; Factory's captured exit/log do not prove
+that it discovered tests or that all required acceptance checks ran.
 
 Status reports observed SHA/branch/dirty state and whether saved verification is
 fresh. Freshness is not approval, permissions enforcement or runtime isolation.

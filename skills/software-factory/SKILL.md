@@ -33,6 +33,12 @@ task record. An explicit request to test parallelism permits extra overhead,
 not shared-state races or missing prerequisites. Reassess when new dependencies
 appear; fewer active agents or a sequential fallback is a valid result.
 
+Before a parallel writing wave or a costly combined check, use
+[readiness-and-checks.md](references/readiness-and-checks.md) for the affected
+path: shared prerequisites, delivery/update/recovery inventory when relevant,
+and a small probe of the actual runner and environment. Reuse existing evidence;
+ordinary small work does not acquire a release checklist or another controller.
+
 Root owns the common task, contract and integration. Preserve Task Delivery's
 review/risk routing; Software Factory does not lower its acceptance threshold or force
 a separate controller for each leaf. Use quick when appropriate; tracked/verified
@@ -54,6 +60,9 @@ the helper embeds a snapshot in the job brief with a source-content hash.
 Old calls without this option remain supported, but their minimal brief is not
 a complete task packet. The hash records the supplied text, not correctness or
 approval; root checks the actual packet and sources before dispatch.
+Keep required instructions intact while selecting only relevant source excerpts
+and verification details; the context reference explains how to avoid repeated
+bulk reads without dropping inherited requirements.
 
 Prepare creates a branch/worktree and brief; it does not launch an agent. Send
 the exact absolute CWD and brief, require the leaf to read them and the relevant
@@ -74,6 +83,10 @@ job and integration SHAs and dirty state immediately before any authorized
 manual integration. The helper never pushes or applies to source/main. Locks
 coordinate helper calls only; no claim of protection against external Git edits.
 After integration, the old baseline-bound verification is stale by design.
+Report targeted checks, full checks and independent acceptance separately,
+including failures or interrupted runs. Where timing is useful, distinguish
+preparation, overlapping work, integration, verification and repair; overlap
+alone does not establish a speed or cost saving.
 Do not start dependent work from a sibling's uncommitted edits. If a leaf needs
 more scope or a contract decision, stop that slice and let root resolve it;
 unaffected independent work may continue. Preserve failures and completed work.
