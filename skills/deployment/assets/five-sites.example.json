@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "project_id": "five-sites",
+  "owners": {
+    "deployment": "docs/runbooks/release-entry.md",
+    "quality": "docs/DEVELOPMENT.md",
+    "engineering": "docs/DEVELOPMENT.md"
+  },
+  "native": {
+    "status": "docs/content-agent-current-state.md",
+    "release": "docs/runbooks/release-entry.md",
+    "rollback": "docs/runbooks/release-entry.md"
+  },
+  "default_profile": "code-release",
+  "commands": {
+    "preflight": {
+      "argv": [
+        "npm",
+        "run",
+        "release:preflight"
+      ],
+      "cwd": "."
+    },
+    "local-verify": {
+      "argv": [
+        "npm",
+        "run",
+        "release:verify"
+      ],
+      "cwd": "."
+    }
+  },
+  "checks": {
+    "preflight": {
+      "kind": "native-preflight",
+      "phase": "source",
+      "environment": "node24-local",
+      "subject": "source",
+      "method": "command",
+      "command": "preflight",
+      "fresh": true
+    },
+    "local-verify": {
+      "kind": "native-suite-with-browser",
+      "phase": "source",
+      "environment": "node24-local",
+      "subject": "source",
+      "method": "command",
+      "command": "local-verify",
+      "depends_on": [
+        "preflight"
+      ]
+    },
+    "native-production-proof": {
+      "kind": "native-production-csp-artifact",
+      "phase": "artifact",
+      "environment": "native-builder",
+      "subject": "artifact",
+      "method": "manual",
+      "acceptance_owner": "native-release-operator",
+      "criterion": "docs/runbooks/release-entry.md",
+      "depends_on": [
+        "local-verify"
+      ]
+    },
+    "native-live-proof": {
+      "kind": "native-independent-live-readback",
+      "phase": "postdeploy",
+      "environment": "production",
+      "subject": "artifact",
+      "method": "manual",
+      "acceptance_owner": "native-independent-live-acceptor",
+      "criterion": "docs/runbooks/release-entry.md",
+      "depends_on": [
+        "native-production-proof"
+      ]
+    }
+  },
+  "profiles": {
+    "code-release": [
+      "native-live-proof"
+    ]
+  }
+}

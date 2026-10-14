@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deployment"
+  short_description: "Prepare and release projects through native pipelines"
+  default_prompt: "Use $deployment to prepare this project for deployment or release its exact verified candidate through the project-owned pipeline."

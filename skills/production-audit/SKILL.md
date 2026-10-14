@@ -192,5 +192,8 @@ this skill does not require a new graph, checklist database or duplicate spec.
 
 Use `verification-loop` for faithful command evidence, `security-review` for
 focused implementation analysis, `deployment-patterns` for a release procedure,
-and `e2e-testing` for applicable user-path checks. Select only capabilities needed
+available `deployment` for project-native prepare/release/resume with the same
+quality/evidence owners, and `e2e-testing` for applicable user-path checks.
+An audit does not authorize its external actions or create a second release journal.
+Select only capabilities needed
 by the actual scope; this list is not a mandatory sequence.

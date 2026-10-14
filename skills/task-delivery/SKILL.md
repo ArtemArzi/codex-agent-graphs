@@ -16,6 +16,13 @@ Apply the inherited “Collaboration and useful questions” policy. Before a su
 
 ## Продолжение задачи и проектная память
 
+Для подготовки/выпуска используй доступный `deployment` по
+[testing-and-review.md](references/testing-and-review.md): передай native lane,
+exact candidate, project check IDs/subjects/environments/prerequisites, original
+evidence и deferred gaps через существующий plan/summary/handoff. Типы тестов,
+включая E2E, определяет проект; runtime/schema старого run не меняются. Не
+повторяй неизменные проверки лишь из-за смены skill и не ослабляй native release gates.
+
 В применимый момент выбирай нативные companions по
 [карте возможностей](references/capability-routing.md#условные-навыки):
 `grilling` для существенного открытого решения, `writing-for-agents` для

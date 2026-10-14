@@ -1,0 +1,71 @@
+schema_version: 1
+version: "1.0.1"
+consumer: "Codex agent"
+execution_owner: "Project-native scripts and CI; no generic YAML executor"
+state_owner: "Existing native release journal/status; no second controller"
+
+invariants:
+  - "Read project contracts and preserve other operators' dirty work."
+  - "Test kinds are project-defined; phases, subjects and environments are separate."
+  - "Keep required checks/prerequisite closure; native verifier decides reuse."
+  - "Choose local/CI execution per check; do not duplicate accepted full suites by location alone."
+  - "Source, recipe, artifact, operator, target and operation identities are distinct."
+  - "External effects require authority; prepare includes ordinary local work."
+  - "Mutation timeout means UNKNOWN until native reconciliation."
+  - "Required skipped/missing evidence never becomes PASS."
+
+prepare:
+  - id: inspect
+    inputs: ["request", "instructions/docs map", "Git/native baseline", "existing handoff"]
+    work: "Inspect actual architecture, quality, commands, infrastructure and recovery owners."
+    done: "Known decisions, existing path and material unknowns are distinguished."
+  - id: choose_profile
+    work: "Choose actual deploy unit/lane and executor; research current primary docs for new material choices."
+    done: "Profile, dependencies, data boundaries and authority needs are justified."
+  - id: place_checks
+    work: "Use check-placement.md: choose authoritative local/CI runners and shared native entrypoints; define evidence handoff, remaining cloud checks and measured cost."
+    done: "Required coverage is preserved; duplicated work and justified independent checks are distinguished."
+  - id: prepare_path
+    work: "Update owning runbook/mapping and prepare reversible local commands/CI through Task Delivery."
+    done: "Concrete commands, check phases/environments/prerequisites, artifact and recovery contracts exist."
+  - id: rehearse
+    work: "Validate mapping and run applicable pipeline/fault checks in disposable authorized environments."
+    done: "Local behavior and applicable failure/recovery paths have evidence; target access/production gaps stay explicit."
+  - id: report
+    done: "Usable prepared path or exact blockers; no production-success claim."
+
+release:
+  - id: establish_candidate
+    work: "Confirm native lane, exact source/operator/target and previous release; preserve dirty work."
+    done: "Native candidate and project-required checks are fixed."
+  - id: preflight_and_checks
+    work: "Collect cheap blockers, plan dependency closure and run checks at their actual milestones."
+    condition: "Reuse through original native verifier at the chosen location; rerun rejected or changed evidence, await missing bindings and preserve independent required checks."
+    done: "Required source evidence and prerequisites are complete; later checks remain pending."
+  - id: artifact
+    work: "Create/reuse exact bound production artifact, then run artifact and environment-dependent checks."
+    done: "Required pre-activation evidence is complete; publishing order follows native contract."
+  - id: native_activation
+    condition: "Authority, admission, fresh target/backup/compatibility and lock/CAS pass."
+    work: "Invoke native publication/activation and preserve its operation ID."
+    on_uncertain: "resume.inspect before another mutation"
+  - id: verify
+    work: "Reconcile native source/state; verify identity, readiness, public paths and the project's bounded observation criteria."
+    on_failure: "Use operations-and-recovery.md and native compatible recovery."
+    done: "Required fresh postdeploy evidence confirms actual target state."
+  - id: report
+    done: "Exact verified/rolled-back/blocked/unknown outcome; provider/human acceptance separate."
+
+resume:
+  - id: inspect
+    work: "Read native journal, intended operation, authority and current target/lock ownership."
+    done: "Actual outcome established or explicitly UNKNOWN."
+  - id: reconcile
+    branches:
+      candidate_active: "Verify without repeating activation."
+      previous_active: "Continue only an idempotent permitted pending operation."
+      other_owner_or_generation: "CAS conflict; preserve other work and replan."
+      uncertain_data_or_migration: "Native repair-forward/recovery; no guessed rollback."
+      unavailable_native_status: "Stop dependent mutations; report missing evidence."
+  - id: continue
+    work: "Return to appropriate native milestone; retain budgets and valid evidence."

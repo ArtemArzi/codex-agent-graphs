@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "project_id": "jaguar-crm",
+  "owners": {
+    "deployment": "docs/DEPLOYMENT.md",
+    "quality": "docs/QUALITY.md",
+    "engineering": "docs/ENGINEERING.md"
+  },
+  "native": {
+    "status": "docs/DEPLOYMENT.md",
+    "release": "docs/RELEASE-VALIDATION.md",
+    "rollback": "docs/DEPLOYMENT.md#rollback"
+  },
+  "default_profile": "release",
+  "commands": {
+    "local-full": {
+      "argv": [
+        "npm",
+        "run",
+        "release:check"
+      ],
+      "cwd": "."
+    }
+  },
+  "checks": {
+    "local-full": {
+      "kind": "native-17-stage-postgresql-and-e2e",
+      "phase": "source",
+      "environment": "pinned-disposable-release",
+      "subject": "source",
+      "method": "command",
+      "command": "local-full"
+    },
+    "native-image-proof": {
+      "kind": "native-attestation-image-smoke-and-push",
+      "phase": "artifact",
+      "environment": "github-single-platform",
+      "subject": "artifact",
+      "method": "manual",
+      "acceptance_owner": "native-release-workflow",
+      "criterion": "docs/RELEASE-VALIDATION.md",
+      "depends_on": [
+        "local-full"
+      ]
+    },
+    "native-live-proof": {
+      "kind": "native-web-worker-pwa-readback",
+      "phase": "postdeploy",
+      "environment": "production",
+      "subject": "artifact",
+      "method": "manual",
+      "acceptance_owner": "authorized-native-release-operator",
+      "criterion": "docs/DEPLOYMENT.md#current-crm-docker-compose-deploy-path",
+      "depends_on": [
+        "native-image-proof"
+      ]
+    }
+  },
+  "profiles": {
+    "release": [
+      "native-live-proof"
+    ]
+  }
+}

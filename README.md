@@ -67,6 +67,7 @@ verified    → tracked execution plus independent exact-candidate review
 | `$research` | Cited, decision-ready research that starts fast and deepens only when the evidence demands it | Technical investigation, comparisons, current facts, and high-confidence research reports |
 | `$software-factory` | Optional ordinary, sequential or isolated parallel Codex delivery through Task Delivery | Independent worktree jobs with explicit context packets and combined checks; no dashboard or extra controller |
 | `$task-delivery` | One scoped software task from Markdown plan through implementation, tests, review, and handoff | Features, fixes, refactors, plan-only work, or implementation from an accepted plan |
+| `$deployment` | Prepare project-native CI/CD or release/resume an exact candidate through a YAML workflow | Adaptive checks including E2E, existing runbooks/evidence, native rollout/readback/recovery; no new graph |
 | `$continuous-improvement` | One evidence-backed repository improvement or an honest no-op/issue-ready result | Bounded autonomous maintenance from a failing test, CI signal, regression, or explicit audit request |
 
 Supporting capabilities keep those workflows healthy:

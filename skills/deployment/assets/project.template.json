@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "project_id": "example-static",
+  "owners": {
+    "deployment": "docs/DEPLOYMENT.md",
+    "quality": "docs/QUALITY.md",
+    "engineering": "docs/ENGINEERING.md"
+  },
+  "native": {
+    "status": "docs/DEPLOYMENT.md#native-status",
+    "release": "docs/DEPLOYMENT.md#release",
+    "rollback": "docs/DEPLOYMENT.md#recovery"
+  },
+  "default_profile": "release",
+  "commands": {
+    "setup": {
+      "argv": [
+        "npm",
+        "ci"
+      ],
+      "cwd": "."
+    },
+    "unit": {
+      "argv": [
+        "npm",
+        "test"
+      ],
+      "cwd": "."
+    },
+    "build": {
+      "argv": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "."
+    },
+    "browser": {
+      "argv": [
+        "npm",
+        "run",
+        "test:e2e"
+      ],
+      "cwd": "."
+    },
+    "performance": {
+      "argv": [
+        "npm",
+        "run",
+        "test:performance"
+      ],
+      "cwd": "."
+    }
+  },
+  "checks": {
+    "dependencies": {
+      "kind": "fixture-readiness",
+      "phase": "source",
+      "environment": "local",
+      "subject": "source",
+      "method": "command",
+      "command": "setup"
+    },
+    "unit": {
+      "kind": "unit",
+      "phase": "source",
+      "environment": "local",
+      "subject": "source",
+      "method": "command",
+      "command": "unit",
+      "depends_on": [
+        "dependencies"
+      ]
+    },
+    "build": {
+      "kind": "production-build",
+      "phase": "artifact",
+      "environment": "local",
+      "subject": "source",
+      "method": "command",
+      "command": "build",
+      "depends_on": [
+        "unit"
+      ]
+    },
+    "browser": {
+      "kind": "e2e",
+      "phase": "artifact",
+      "environment": "local-browser",
+      "subject": "artifact",
+      "method": "command",
+      "command": "browser",
+      "depends_on": [
+        "build"
+      ]
+    },
+    "owner-review": {
+      "kind": "owner-acceptance",
+      "phase": "artifact",
+      "environment": "local-browser",
+      "subject": "artifact",
+      "method": "manual",
+      "acceptance_owner": "project-declared-owner",
+      "criterion": "docs/QUALITY.md#acceptance",
+      "depends_on": [
+        "browser"
+      ]
+    },
+    "public-readback": {
+      "kind": "identity-and-public-path",
+      "phase": "postdeploy",
+      "environment": "production",
+      "subject": "artifact",
+      "method": "manual",
+      "acceptance_owner": "native-release-operator",
+      "criterion": "docs/DEPLOYMENT.md#readback",
+      "depends_on": [
+        "browser"
+      ]
+    },
+    "periodic-performance": {
+      "kind": "project-performance",
+      "phase": "scheduled",
+      "environment": "isolated-load",
+      "subject": "source",
+      "method": "command",
+      "command": "performance"
+    }
+  },
+  "profiles": {
+    "release": [
+      "unit",
+      "browser",
+      "public-readback"
+    ],
+    "with-owner-acceptance": [
+      "unit",
+      "browser",
+      "owner-review",
+      "public-readback"
+    ],
+    "periodic": [
+      "periodic-performance"
+    ]
+  }
+}

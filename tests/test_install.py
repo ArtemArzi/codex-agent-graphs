@@ -72,6 +72,25 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("prepare", result.stdout)
         self.assertEqual(protected, {p: p.read_bytes() for p in protected})
 
+    def test_deployment_tree_installed_with_runnable_read_only_helper(self) -> None:
+        protected = {p: p.read_bytes() for p in (self.home / "config.toml", self.home / "AGENTS.md")}
+        installer.install_skills_batch([("fixture", self.home)])
+        source = installer.SKILLS_ROOT / "deployment"
+        target = self.home / "skills/deployment"
+        self.assertEqual(installer.manifest(source), installer.manifest(target))
+        self.assertTrue((target / "workflow.yaml").is_file())
+        self.assertFalse((target / "graph.json").exists())
+        result = subprocess.run(
+            [sys.executable, "-B", str(target / "scripts/deployment.py"), "validate",
+             "--contract", str(target / "assets/project.template.json")],
+            cwd=self.temp.name, text=True, capture_output=True, timeout=10,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("contract_valid", result.stdout)
+        self.assertEqual(protected, {p: p.read_bytes() for p in protected})
+        again = installer.install_skills_batch([("fixture", self.home)])
+        self.assertTrue(all(x["status"] == "in-sync" for x in again[0]["changes"]))
+
     def test_skills_only_unsafe_second_home_prevents_first_write(self) -> None:
         first = Path(self.temp.name) / "not-created"
         second = Path(self.temp.name) / "unsafe-home"

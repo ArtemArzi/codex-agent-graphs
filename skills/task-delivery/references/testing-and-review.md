@@ -72,6 +72,25 @@ Project Start. Это не запускает полный bootstrap ради л
 локальные тесты не доказывают деплой, восстановление, доставку или человеческую
 приёмку. Наличие текста инструкции не доказывает фактическое чтение агентом.
 
+## Передача проверок в Deployment
+
+Для release-related задачи передай доступному `deployment` native runbook/lane,
+exact source/operator inputs, check IDs и kind, subject, runner, milestone,
+named environment/setup prerequisites, actual outcomes/original receipts,
+changed policy/toolchain/config/data, deferred checks с trigger/reason/consequence.
+Используй существующие plan/summary/handoff sections; не добавляй обязательные
+поля в released task JSON. Tracked workflow читает поддержанный summary/handoff,
+а не произвольный изменённый шаблон.
+
+E2E — часть общего пути проверки: source-based local-stack E2E может идти до
+сборки, artifact/staged E2E после подготовки нужного приложения/стенда, свежий
+postdeploy smoke после переключения. Manual acceptance имеет criterion/owner;
+все категории не запускаются автоматически. Native verifier подтверждает reuse
+оригинального evidence; supplied PASS и общий cache не заменяют доверие.
+Deployment не открывает заново весь Task Delivery или Project Start и сохраняет
+project gates. Постоянные изменения команд/требований передай через existing
+documentation-impact maintenance, сохраняя старые graph identity/schema.
+
 ## Оракул до реализации
 
 Для каждого критерия приёмки заранее выбери наблюдение, которое отличает правильный результат от неправильного. Предпочитай публичный шов:
