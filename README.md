@@ -68,6 +68,7 @@ verified    → tracked execution plus independent exact-candidate review
 | `$software-factory` | Optional ordinary, sequential or isolated parallel Codex delivery through Task Delivery | Independent worktree jobs with explicit context packets and combined checks; no dashboard or extra controller |
 | `$task-delivery` | One scoped software task from Markdown plan through implementation, tests, review, and handoff | Features, fixes, refactors, plan-only work, or implementation from an accepted plan |
 | `$deployment` | Prepare project-native CI/CD or release/resume an exact candidate through a YAML workflow | Adaptive checks including E2E, existing runbooks/evidence, native rollout/readback/recovery; no new graph |
+| `$product-care` | Review a running product, diagnose a concrete signal, or check application and outcomes after a change | Maintenance between releases, support and operational evidence, useful next actions and follow-up through existing task/release owners |
 | `$continuous-improvement` | One evidence-backed repository improvement or an honest no-op/issue-ready result | Bounded autonomous maintenance from a failing test, CI signal, regression, or explicit audit request |
 
 Supporting capabilities keep those workflows healthy:
@@ -198,7 +199,7 @@ python3 scripts/install.py install --skills-only --all
 python3 scripts/install.py verify --skills-only --all
 ```
 
-This syncs 28 maintained skills and shared runtime; the browser companion updates
+This syncs 31 maintained skills and shared runtime; the browser companion updates
 only where already present. It backs up replacements, verifies manifests and
 rolls back owned writes on failure. Full/routing installation stays strict.
 

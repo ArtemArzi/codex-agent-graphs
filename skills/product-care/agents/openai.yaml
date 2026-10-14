@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Care"
+  short_description: "Осмотр продукта и проверка пользы между релизами"
+  default_prompt: "Используй $product-care: осмотри продукт, выбери обоснованное действие и проверь применение и эффект изменений."

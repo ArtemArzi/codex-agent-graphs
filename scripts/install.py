@@ -58,6 +58,7 @@ SKILLS = (
     "task-delivery",
     "software-factory",
     "deployment",
+    "product-care",
 )
 # Preserve host-specific availability; do not introduce this legacy browser
 # workflow into a home that did not already select it.
