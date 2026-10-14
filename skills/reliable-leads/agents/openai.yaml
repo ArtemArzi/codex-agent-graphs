@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reliable Leads"
+  short_description: "Надёжный приём заявок, повторы и восстановление"
+  default_prompt: "Используй $reliable-leads для проверки приёма заявок, доставки и восстановления при ожидаемых сбоях."

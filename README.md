@@ -69,6 +69,10 @@ verified    → tracked execution plus independent exact-candidate review
 | `$task-delivery` | One scoped software task from Markdown plan through implementation, tests, review, and handoff | Features, fixes, refactors, plan-only work, or implementation from an accepted plan |
 | `$deployment` | Prepare project-native CI/CD or release/resume an exact candidate through a YAML workflow | Adaptive checks including E2E, existing runbooks/evidence, native rollout/readback/recovery; no new graph |
 | `$product-care` | Review a running product, diagnose a concrete signal, or check application and outcomes after a change | Maintenance between releases, support and operational evidence, useful next actions and follow-up through existing task/release owners |
+| `$website-standards` | Adaptive website technical readiness and scoped verification | Search, measurement, forms and visitor paths through existing project owners; no extra deployment/controller |
+| `$web-measurement` | Verify selected GSC/GA4/Webmaster/Metrika identities and data | Account/event/report evidence, consent, no duplicate pageviews or personal-data leaks |
+| `$reliable-leads` | Establish accepted-intake, delivery and recovery boundaries | Existing provider/CRM first, idempotent replay, ambiguous outcomes and bounded failure checks |
+| `$seo` | Technical Google/Yandex profiles and requested editorial SEO | URL/robots/sitemap/rendering/migration checks, optional intent and metadata work |
 | `$continuous-improvement` | One evidence-backed repository improvement or an honest no-op/issue-ready result | Bounded autonomous maintenance from a failing test, CI signal, regression, or explicit audit request |
 
 Supporting capabilities keep those workflows healthy:
@@ -183,6 +187,24 @@ to avoid an active app writing the profile; the native installer also detects
 concurrent config edits. The previous `codex-profile-sync` entry point forwards
 to this tracked helper on the configured host. No background sync is installed.
 
+## Website standards pack
+
+Use `$website-standards` when building, changing or checking a public website.
+The pack combines [Website Standards](skills/website-standards/SKILL.md),
+[SEO](skills/seo/SKILL.md), [Web Measurement](skills/web-measurement/SKILL.md)
+and [Reliable Leads](skills/reliable-leads/SKILL.md). It carries established
+technical practices into the existing task: choose Google, Yandex or both,
+verify selected measurement services, confirm durable intake before success,
+and check the visitor path and publication. Analytics and form contours remain
+project choices; visual design and editorial work have their own scope.
+
+The normal skills-only installation below includes all four in CLI and Desktop.
+Automatic selection is enabled; explicit `$website-standards` selects the shared
+entrypoint. There is no extra plugin, controller or deployment process. Native
+quality/Task Delivery/Deployment owners retain execution and evidence. These
+are reusable standards, not a claim that installing skills makes any live site
+reliable or indexed without applying and verifying them.
+
 ## Stability update — 6 October 2026
 
 Task Delivery 3.9.2 binds effective scope across admission and completion;
@@ -199,7 +221,7 @@ python3 scripts/install.py install --skills-only --all
 python3 scripts/install.py verify --skills-only --all
 ```
 
-This syncs 31 maintained skills and shared runtime; the browser companion updates
+This syncs 35 maintained skills and shared runtime; the browser companion updates
 only where already present. It backs up replacements, verifies manifests and
 rolls back owned writes on failure. Full/routing installation stays strict.
 

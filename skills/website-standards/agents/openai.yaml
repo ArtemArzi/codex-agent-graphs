@@ -1,0 +1,4 @@
+interface:
+  display_name: "Website Standards"
+  short_description: "Техническая готовность сайта и проверка публикации"
+  default_prompt: "Используй $website-standards при создании, изменении или проверке сайта с выбранными поисковыми системами и контуром заявок."

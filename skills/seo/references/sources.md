@@ -1,0 +1,26 @@
+# Source and scope notes
+
+Reviewed 2026-10-14; official guidance changes. Independently authored managed
+extension of the existing Desktop seo capability. Its original local file was
+marked origin ECC, but exact upstream file/licence provenance was not established;
+no original body or third-party code is copied here. Editorial capability remains
+available through an independently written reference. Runtime/installed copies
+are separate from this source package.
+
+- Google [technical requirements](https://developers.google.com/search/docs/essentials/technical),
+  [canonical](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls),
+  [sitemaps](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap),
+  [JavaScript/soft404](https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics),
+  [localized versions](https://developers.google.com/search/docs/specialty/international/localized-versions),
+  [URL moves](https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes),
+  [schema policies](https://developers.google.com/search/docs/appearance/structured-data/sd-policies),
+  [CWV](https://developers.google.com/search/docs/appearance/core-web-vitals).
+- Yandex [robots](https://yandex.ru/support/webmaster/ru/controlling-robot/robots-txt),
+  [canonical](https://yandex.ru/support/webmaster/ru/robot-workings/canonical),
+  [sitemap](https://yandex.ru/support/webmaster/ru/controlling-robot/sitemap),
+  [rendering](https://yandex.ru/support/webmaster/ru/yandex-indexing/rendering),
+  [redesign contradiction](https://yandex.ru/support/webmaster/ru/recommendations/changing-site-structure),
+  [region](https://yandex.ru/support/webmaster/ru/site-geography/site-region).
+
+Use current primary docs for a specific feature before configuration. These
+sources establish guidance, not current site indexing, traffic or business effect.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "SEO"
+  short_description: "Техническое и редакционное SEO Google и Яндекса"
+  default_prompt: "Используй $seo в запрошенной технической или редакционной области для выбранных поисковых систем."

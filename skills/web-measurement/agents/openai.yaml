@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web Measurement"
+  short_description: "Проверка аналитики и поисковых панелей сайта"
+  default_prompt: "Используй $web-measurement для проверки выбранных сервисов, событий и фактических данных сайта."
