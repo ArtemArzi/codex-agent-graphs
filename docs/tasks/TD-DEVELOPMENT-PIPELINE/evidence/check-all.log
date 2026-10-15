@@ -1,0 +1,105 @@
+{
+  "status": "ok",
+  "skill": "continuous-improvement",
+  "graph_version": "1.2.0",
+  "work_policy": "current",
+  "execution_policy": "current",
+  "routes": [
+    "audit",
+    "full"
+  ],
+  "controller": "/tmp/pipeline-verified-dhkj1vch/skills/continuous-improvement/scripts/continuous_improvement_graph.py",
+  "tests": [
+    "/tmp/pipeline-verified-dhkj1vch/skills/continuous-improvement/scripts/test_continuous_improvement_graph.py"
+  ]
+}
+{
+  "status": "ok",
+  "skill": "project-start",
+  "graph_version": "3.5.2",
+  "work_policy": "current",
+  "execution_policy": "current",
+  "routes": [
+    "bootstrap",
+    "maintenance"
+  ],
+  "controller": "/tmp/pipeline-verified-dhkj1vch/skills/project-start/scripts/project_graph.py",
+  "tests": [
+    "/tmp/pipeline-verified-dhkj1vch/skills/project-start/scripts/test_project_graph.py"
+  ]
+}
+{
+  "status": "ok",
+  "skill": "research",
+  "graph_version": "2.3.0",
+  "work_policy": "current",
+  "execution_policy": "current",
+  "routes": [
+    "default"
+  ],
+  "controller": "/tmp/pipeline-verified-dhkj1vch/skills/research/scripts/research_graph.py",
+  "tests": [
+    "/tmp/pipeline-verified-dhkj1vch/skills/research/scripts/test_research_graph.py"
+  ]
+}
+{
+  "status": "ok",
+  "skill": "task-delivery",
+  "graph_version": "3.9.2",
+  "work_policy": "current",
+  "execution_policy": "current",
+  "routes": [
+    "full",
+    "implement",
+    "plan"
+  ],
+  "controller": "/tmp/pipeline-verified-dhkj1vch/skills/task-delivery/scripts/task_graph.py",
+  "tests": [
+    "/tmp/pipeline-verified-dhkj1vch/skills/task-delivery/scripts/test_task_graph.py"
+  ]
+}
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+Skill is valid!
+{"prepared": "/tmp/tmpl3omuh3k/prepared.json", "targets": ["skills/project-start", "skills/task-delivery", "agents/project_docs_verifier.toml", "agents/task_plan_reviewer.toml", "agents/task_result_reviewer.toml", "agents/task_worker.toml", "agents/worker.toml"]}
+{"prepared": "/tmp/tmpex09jdgz/prepared.json", "targets": ["skills/project-start", "skills/task-delivery", "agents/project_docs_verifier.toml", "agents/task_plan_reviewer.toml", "agents/task_result_reviewer.toml", "agents/task_worker.toml", "agents/worker.toml"]}
+{"prepared": "/tmp/tmp_l3r53gn/prepared.json", "targets": ["skills/project-start", "skills/task-delivery", "agents/project_docs_verifier.toml", "agents/task_plan_reviewer.toml", "agents/task_result_reviewer.toml", "agents/task_worker.toml", "agents/worker.toml"]}
+{"status": "PASS", "backup": "/tmp/tmp_l3r53gn/codex/backups/agent-graphs/20261015-231842-504321-50", "config": "unchanged"}
+{"status": "PASS", "targets": ["skills/project-start", "skills/task-delivery", "agents/project_docs_verifier.toml", "agents/task_plan_reviewer.toml", "agents/task_result_reviewer.toml", "agents/task_worker.toml", "agents/worker.toml"], "config": "unchanged"}
+project-start adversarial self-test: PASS
+claude_agents_sync --check: OK (14 агентов в синхроне с каноном)
+All workflow checks passed.

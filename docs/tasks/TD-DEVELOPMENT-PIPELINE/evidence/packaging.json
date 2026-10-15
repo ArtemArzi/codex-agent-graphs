@@ -1,0 +1,10 @@
+{
+  "disposable_install_status": "ok",
+  "new_reference_bytes_match": {
+    "skills/project-start/references/architecture-from-usage.md": true,
+    "skills/task-delivery/references/code-simplicity.md": true
+  },
+  "protected_settings_unchanged": true,
+  "repeat_all_in_sync": true,
+  "global_install_performed": false
+}

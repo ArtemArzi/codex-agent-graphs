@@ -1,0 +1,11 @@
+test_collapses_repeated_spaces (test_slug.SlugTest.test_collapses_repeated_spaces) ... ok
+test_collapses_tabs_and_mixed_whitespace (test_slug.SlugTest.test_collapses_tabs_and_mixed_whitespace) ... ok
+test_empty_and_all_whitespace (test_slug.SlugTest.test_empty_and_all_whitespace) ... ok
+test_preserves_non_whitespace_characters (test_slug.SlugTest.test_preserves_non_whitespace_characters) ... ok
+test_simple_title (test_slug.SlugTest.test_simple_title) ... ok
+test_strips_boundaries_and_lowercases_single_word (test_slug.SlugTest.test_strips_boundaries_and_lowercases_single_word) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.000s
+
+OK

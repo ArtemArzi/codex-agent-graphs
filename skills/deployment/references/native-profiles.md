@@ -43,3 +43,36 @@ solutions before custom machinery. Separate initial provisioning/DNS/TLS from
 ordinary releases. GitHub/BuildKit, Kamal or managed statics are project options,
 not global requirements. Record version/reason/migration/maintenance implications
 in the owning project document.
+
+## Container builds and real test dependencies
+
+Read this section when the changed path uses Docker/Compose or needs a real
+database/queue for integration proof. Prefer the existing native Bench/Compose
+or test setup. Use available docker-patterns and current official docs for the
+project's versions; Testcontainers is an option only when isolation pays for a
+new dependency. No universal Docker migration or runner installation follows.
+
+Resolve readiness by the required service condition, not an arbitrary sleep.
+Isolate test data, mapped ports, caches/build outputs and resource ownership;
+register cleanup for resources this run creates, including failure paths. Do
+not run global prune or remove another operator's volumes. A missing runtime
+leaves mandatory integration proof pending; skipped tests cannot supply it.
+
+For a changed Dockerfile/Compose setup, select relevant assertions from the
+project: build context, cache and build-secret handling, runtime user, supported
+target, size/resource limits if required, and smoke of the resulting artifact.
+Use an owned unique local tag where appropriate. Prefer a quiet config validation
+which does not print resolved environment values. Pull/build/start can have
+side effects and need the applicable authority and available runtime.
+
+A helper that builds then prints image size/user only reports observations; its
+exit zero does not enforce non-root, a size limit, absence of secrets or working
+application behavior. Bind assertions to project requirements and actual checks.
+Preserve build-once/promotion and fresh target proof under native policy.
+
+Design ideas: [Docker build guidance](https://github.com/docker/skills/blob/f79172733725e2fd236343ee7b963c446ed85d09/skills/docker-build-strategies/SKILL.md),
+[Compose guidance](https://github.com/docker/skills/blob/f79172733725e2fd236343ee7b963c446ed85d09/skills/docker-compose-patterns/SKILL.md),
+and [Testcontainers examples](https://github.com/testcontainers/claude-skills/tree/5263fe47160c3ef187b93de4b21d2d7380bce12e/plugins/testcontainers/skills).
+These are sources for an original synthesis, not imported scripts or a substitute
+for current version-specific docs. The inspected skills snapshot has Go/.NET;
+choose a language-compatible SDK/reference for other stacks.

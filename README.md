@@ -113,6 +113,22 @@ For a Russian-language handoff to another person or their coding agent, use
 explains what to download, which architecture material to read, and how to
 preview installation changes before applying them.
 
+## Product development cycle
+
+Project Start adopts a new or inherited project and records requirements,
+architecture and verifiable slices. Task Delivery selects tests and, when useful,
+ordinary/sequential/parallel Software Factory delivery. The author reviews the
+changed code for simplicity before final checks; independent review follows the
+active risk policy. Deployment receives one exact accepted candidate, verifies
+release state and hands a bounded outcome question to Product Care when authorized.
+
+Two conditional bundled references cover
+[architecture from usage](skills/project-start/references/architecture-from-usage.md)
+and [changed-code simplicity](skills/task-delivery/references/code-simplicity.md).
+Existing TDD triggers, native check/release owners and graph schemas are preserved.
+See the [complete cycle and responsibility map (Russian)](docs/DEVELOPMENT_PIPELINE.ru.md).
+Source changes do not activate installed skills or prove product outcomes.
+
 ## Software Factory
 
 Software Factory is an optional Codex skill layered on Task Delivery. It chooses

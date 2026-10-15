@@ -63,6 +63,10 @@ For an existing deployment read only the relevant [profile notes](references/nat
 Five Sites/Jaguar mappings are read-only rehearsal examples, not replacement
 pipelines or full readiness proof.
 
+When changing a container build or real test dependency, read
+[container and integration guidance](references/native-profiles.md#container-builds-and-real-test-dependencies)
+for readiness, ownership and actual assertions; preserve native checks and scope.
+
 ## Execution, failure and completion
 
 Read [operations-and-recovery.md](references/operations-and-recovery.md) before
@@ -88,6 +92,14 @@ Production Audit. Keep one quality owner and native journal. A skill switch does
 not restart intake, invalidate unchanged evidence or add a review cycle. Inherit
 host review/routing policy; this skill mandates no models/agents. Required
 independent acceptance remains required where applicable.
+
+Task Delivery may arrive through Software Factory: take the root's integrated,
+reviewed candidate and combined evidence, not separate leaf PASS labels. Prepare
+can run before implementation finishes when the release path needs work; it does
+not approve that future candidate. After technical release verification, use the
+bounded Product Care continuation in [handoff.md](references/handoff.md) when
+application/effect belongs to the requested outcome. Release proof and product
+effect remain separate; the handoff creates no automatic reads or schedule.
 
 Tell the user plainly what is ready/released, where, what was actually checked,
 the current outcome and any necessary action. Link technical subjects/receipts.

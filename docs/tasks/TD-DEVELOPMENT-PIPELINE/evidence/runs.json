@@ -1,0 +1,52 @@
+[
+  {
+    "id": "baseline",
+    "command": "python3 -m unittest discover -s tests -v",
+    "cwd": "/mnt/c/Users/artem/Documents/Codex/2026-10-15/https-github-com-michael-denyer-pstack/work/forward/behavior",
+    "purpose": "baseline",
+    "time": "2026-10-15T18:19:00.987025+00:00",
+    "exit": 0,
+    "expected_exit": 0,
+    "matches_expected": true
+  },
+  {
+    "id": "red",
+    "command": "python3 -m unittest discover -s tests -v",
+    "cwd": "/mnt/c/Users/artem/Documents/Codex/2026-10-15/https-github-com-michael-denyer-pstack/work/forward/behavior",
+    "purpose": "negative",
+    "time": "2026-10-15T18:19:39.514304+00:00",
+    "exit": 1,
+    "expected_exit": 1,
+    "matches_expected": true
+  },
+  {
+    "id": "green",
+    "command": "python3 -m unittest discover -s tests -v",
+    "cwd": "/mnt/c/Users/artem/Documents/Codex/2026-10-15/https-github-com-michael-denyer-pstack/work/forward/behavior",
+    "purpose": "positive",
+    "time": "2026-10-15T18:19:48.155224+00:00",
+    "exit": 0,
+    "expected_exit": 0,
+    "matches_expected": true
+  },
+  {
+    "id": "final",
+    "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v",
+    "cwd": "/mnt/c/Users/artem/Documents/Codex/2026-10-15/https-github-com-michael-denyer-pstack/work/forward/behavior",
+    "purpose": "positive",
+    "time": "2026-10-15T18:21:08.907585+00:00",
+    "exit": 0,
+    "expected_exit": 0,
+    "matches_expected": true
+  },
+  {
+    "id": "diff-check",
+    "command": "git diff --check",
+    "cwd": "/mnt/c/Users/artem/Documents/Codex/2026-10-15/https-github-com-michael-denyer-pstack/work/forward/behavior",
+    "purpose": "positive",
+    "time": "2026-10-15T18:21:08.982286+00:00",
+    "exit": 0,
+    "expected_exit": 0,
+    "matches_expected": true
+  }
+]

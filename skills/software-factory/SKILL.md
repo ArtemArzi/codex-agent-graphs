@@ -9,6 +9,13 @@ Preserve installed Task Delivery, Project Start, model routing and user
 authorization. This workflow uses native Codex agents and needs no dashboard.
 Use the available Task Delivery skill; if unavailable, report the missing
 dependency without installing or claiming that its workflow ran.
+
+Enter from Task Delivery after decomposition, or on an explicit Factory request.
+Use Project Start's accepted slice dependencies and architecture sections as
+inputs, not a second specification. Before the chosen route is implemented,
+read the [cycle handoff](references/routing-and-context.md#development-cycle-handoff).
+The output is one root-owned integrated candidate with combined checks and
+current review for Task Delivery/Deployment, not a separate release per job.
 For worktree operations, read [helper-usage.md](references/helper-usage.md).
 The transferable helper is `scripts/factory.py`, resolved against THIS skill
 directory, not the target project CWD. It requires Python 3.10+ and Git.

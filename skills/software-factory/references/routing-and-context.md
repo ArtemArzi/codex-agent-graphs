@@ -38,6 +38,22 @@ Read-only work must have its own useful question; no duplicate explorers and
 no speculative review of code that does not yet exist. A review applies only
 to the inspected commit and must be revalidated for affected later changes.
 
+## Development cycle handoff
+
+Project Start supplies accepted interfaces, data ownership and prerequisites;
+Task Delivery owns the chosen task and plan. Decide ordinary/sequential/parallel
+only for useful current parts. Resolve an unsettled shared contract first; if
+the same data/port/cache cannot be isolated, serialize that affected work even
+when file ownership is disjoint. Keep the route and reason in the current plan.
+
+Root gives each writer the exact applicable architecture sections, ready base,
+owned files and checks. After the join, root checks the actual delta and combined
+behavior, reconciles accepted deviations through Project Start and completes
+the required review. Deployment receives one exact integrated candidate and
+original valid evidence through the TD handoff; leaf PASS labels are insufficient.
+Deployment/Product Care retain release and observation authority respectively.
+No job automatically deploys, schedules observation or declares product effect.
+
 ## Pack context before dispatch
 
 The reference factory passes job/worktree/branch paths, then the builder reads

@@ -59,6 +59,14 @@ record the follow-up in its existing owner without falsifying either status.
 If no record exists, a concise note in chat or an authorized task artifact is
 sufficient; no universal lifecycle JSON or tracking database is required.
 
+An incoming Deployment follow-up names the expected user outcome, observed
+release/target, affected episode, permitted evidence source and next meaningful
+trigger/window. Verify availability and authority before reading that source.
+Unknown owner/window stays unknown; do not invent an assignment or universal
+soak duration. A prepared note is not a scheduled or executed check. If a new
+software task is selected within existing authority, TD can choose Factory from
+dependencies; Product Care neither starts writers nor bypasses its review.
+
 Inherit the active host's risk/review/model policy. Add no automatic agent waves
 or whole acceptance pair per mode. If an old controller cannot represent the
 required review, preserve its state and follow the owning degradation procedure;

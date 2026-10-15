@@ -88,6 +88,13 @@ what is decided or done, and what remains unknown. Link evidence and any existin
 task. State the next check's owner and observable trigger/window when needed.
 Use existing project status vocabulary; do not invent a mandatory new schema.
 
+For a Deployment continuation, read the exact release/target and expected user
+episode from the existing handoff before observation. A pending source/window
+does not mean collection or scheduling occurred. Reuse technical acceptance;
+route an authorized selected software change back to Task Delivery (optionally
+through Software Factory for real independent work) and documentation deltas to
+Project Start. Keep one task owner rather than a parallel product pipeline.
+
 A completed technical task can coexist with unknown application/effect. Preserve
 its valid technical acceptance while recording the separate follow-up gap.
 Re-use valid evidence under its owner; a mode change adds no full test/review run.
