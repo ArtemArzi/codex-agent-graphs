@@ -109,6 +109,25 @@ For a Russian-language handoff to another person or their coding agent, use
 explains what to download, which architecture material to read, and how to
 preview installation changes before applying them.
 
+## Business-process improvement and automation
+
+[Business Automation](products/business-automation/README.md) is a versioned
+product collection with one entrypoint, `$business-work`, and 11 uniquely owned
+business skills, including the adapted NMT library, hypothesis checking and
+last30days. It covers context intake, current/future process design, employee
+adoption and outcome review for offline, online and hybrid work. Existing
+research, questionnaire, development and release skills are reused by name;
+project-owned CWS remains optional.
+
+Canonical sources live once in `skills/<name>`. To plan, install and verify only
+this pack without changing model/profile/account settings, use
+`python3 scripts/install.py <action> --skills-only --pack business-automation --all`.
+The focused installer retains the existing shared native discovery root,
+refuses duplicate names and supports an explicit `--business-root`.
+Upstream pins, adaptation ownership and individual third-party licences are
+recorded in the product folder. Updates go through reviewed repository sources
+before exact installation; publication is not evidence of real-world effect.
+
 ## Software Factory
 
 Software Factory is an optional Codex skill layered on Task Delivery. It chooses

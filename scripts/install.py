@@ -16,7 +16,7 @@ import sys
 import tempfile
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -364,7 +364,8 @@ def backup_root(codex_home: Path) -> Path:
 
 
 def replace_directory(source: Path, target: Path, backup: Path, *,
-                      expected_preimage: Any = UNCHECKED_PREIMAGE) -> str:
+                      expected_preimage: Any = UNCHECKED_PREIMAGE,
+                      validate_staged: Callable[[], None] | None = None) -> str:
     status = path_status(source, target)
     if status == "in-sync":
         return status
@@ -377,10 +378,14 @@ def replace_directory(source: Path, target: Path, backup: Path, *,
         shutil.copytree(source, staged)
         if manifest(source) != manifest(staged):
             raise InstallError(f"Staged copy failed verification: {source}")
+        if validate_staged is not None:
+            validate_staged()
         if expected_preimage is not UNCHECKED_PREIMAGE and directory_preimage(target) != expected_preimage:
             raise InstallError(f"Concurrent skill edit before replacement: {target}")
         if target.exists() or target.is_symlink():
             backup.parent.mkdir(parents=True, exist_ok=True)
+            if validate_staged is not None:
+                validate_staged()
             os.replace(target, backup)
             prior_moved = True
         os.replace(staged, target)
@@ -463,23 +468,42 @@ def skills_install_lock(home: Path):
 def install_skills_batch(homes: list[tuple[str, Path]]) -> list[dict[str, Any]]:
     """Preflight both homes, serialize writers and roll back only owned bytes."""
     plans = [(label, home, skills_preflight(home)) for label, home in homes]
+    return apply_skills_plans(plans)
+
+
+def apply_skills_plans(
+    plans: list[tuple[str, Path, list[dict[str, Any]]]], *,
+    validate: Callable[[list[dict[str, Any]]], None] | None = None,
+    lock_roots: list[Path] | None = None,
+    make_backup: Callable[[Path], Path] | None = None,
+    rollback_allowed: Callable[[], bool] | None = None,
+) -> list[dict[str, Any]]:
+    """Apply prepared directory plans with the same CAS rollback as legacy skills."""
     touched: list[dict[str, Any]] = []
     environments: list[dict[str, Any]] = []
     with contextlib.ExitStack() as locks:
-        for _, home, _ in sorted(plans, key=lambda item: str(item[1])):
+        roots = lock_roots if lock_roots is not None else [home for _, home, _ in plans]
+        for home in sorted(set(roots), key=str):
             locks.enter_context(skills_install_lock(home))
         try:
+            if validate is not None:
+                validate(touched)
             for label, home, items in plans:
-                backup = backup_root(home)
+                backup = (make_backup or backup_root)(home)
                 changes = []
                 for item in items:
                     source, target = item["source"], home / item["relative"]
+                    if validate is not None:
+                        validate(touched)
                     if manifest(source) != item["desired"]:
                         raise InstallError(f"Concurrent install source edit: {source}")
                     if directory_preimage(target) != item["before"]:
                         raise InstallError(f"Concurrent skill edit: {target}")
+                    replacement_options = {"expected_preimage": item["before"]}
+                    if validate is not None:
+                        replacement_options["validate_staged"] = lambda: validate(touched)
                     status = replace_directory(source, target, backup / item["relative"],
-                                               expected_preimage=item["before"])
+                                               **replacement_options)
                     if status == "installed":
                         touched.append({"target": target, "backup": backup / item["relative"],
                                         "before": item["before"], "desired": item["desired"]})
@@ -490,6 +514,8 @@ def install_skills_batch(homes: list[tuple[str, Path]]) -> list[dict[str, Any]]:
                 environments.append({"status": "ok", "environment": label, "scope": "skills-only",
                                      "codex_home": str(home), "changes": changes,
                                      "backup": str(backup) if backup.exists() else None})
+            if validate is not None:
+                validate(touched)
             for _, home, items in plans:
                 for item in items:
                     if manifest(item["source"]) != item["desired"] or directory_preimage(home / item["relative"]) != item["desired"]:
@@ -500,6 +526,9 @@ def install_skills_batch(homes: list[tuple[str, Path]]) -> list[dict[str, Any]]:
             for item in reversed(touched):
                 target, backup = item["target"], item["backup"]
                 try:
+                    if rollback_allowed is not None and not rollback_allowed():
+                        conflicts.append(str(target))
+                        continue
                     if directory_preimage(target) != item["desired"]:
                         conflicts.append(str(target))
                         continue
@@ -1041,7 +1070,7 @@ def detect_desktop_home() -> Path | None:
     return None
 
 
-def selected_homes(args: argparse.Namespace) -> list[tuple[str, Path]]:
+def selected_homes(args: argparse.Namespace, *, preserve_aliases: bool = False) -> list[tuple[str, Path]]:
     use_all = args.all or (not args.wsl and not args.desktop)
     homes: list[tuple[str, Path]] = []
     if use_all or args.wsl:
@@ -1051,6 +1080,8 @@ def selected_homes(args: argparse.Namespace) -> list[tuple[str, Path]]:
         if desktop is None:
             raise InstallError("Could not auto-detect Desktop CODEX_HOME; pass --desktop-home")
         homes.append(("desktop", desktop))
+    if preserve_aliases:
+        return [(label, Path(os.path.abspath(home))) for label, home in homes]
     unique: list[tuple[str, Path]] = []
     seen: set[Path] = set()
     for label, home in homes:
@@ -1068,6 +1099,8 @@ def parser() -> argparse.ArgumentParser:
     scopes = command.add_mutually_exclusive_group()
     scopes.add_argument("--routing-only", action="store_true", help="Update model routing without skills or root model changes")
     scopes.add_argument("--skills-only", action="store_true", help="Update maintained skills/runtime only; preserve profiles, models, config, roles, policies and credentials")
+    command.add_argument("--pack", choices=("business-automation",), help="Select the modern business skill pack (requires --skills-only)")
+    command.add_argument("--business-root", type=Path, help="Shared modern skill root for --pack business-automation")
     command.add_argument("--wsl", action="store_true", help="Target WSL only")
     command.add_argument("--desktop", action="store_true", help="Target Desktop only")
     command.add_argument("--wsl-home", default=str(Path.home() / ".codex"))
@@ -1079,8 +1112,22 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     environments: list[dict[str, Any]] = []
     try:
-        homes = selected_homes(args)
-        if args.action == "install":
+        if args.pack and not args.skills_only:
+            raise InstallError("--pack requires --skills-only")
+        if args.business_root is not None and not args.pack:
+            raise InstallError("--business-root requires --pack business-automation")
+        homes = selected_homes(args, preserve_aliases=bool(args.pack))
+        if args.pack:
+            spec = importlib.util.spec_from_file_location("codex_business_pack", REPO_ROOT / "scripts/business_pack.py")
+            assert spec and spec.loader
+            business = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(business)
+            # Look up primitives dynamically, including test/failure-injection patches.
+            class Primitives:
+                def __getattr__(self, name):
+                    return globals()[name]
+            environments = [business.run(args.action, homes, args.business_root, api=Primitives())]
+        if not args.pack and args.action == "install":
             for _, home in homes:
                 if args.skills_only:
                     skills_preflight(home)
@@ -1088,9 +1135,9 @@ def main(argv: list[str] | None = None) -> int:
                     routing_only_candidates(home)
                 else:
                     preflight_environment(home)
-        if args.skills_only and args.action == "install":
+        if not args.pack and args.skills_only and args.action == "install":
             environments = install_skills_batch(homes)
-        for label, home in ([] if args.skills_only and args.action == "install" else homes):
+        for label, home in ([] if args.pack or (args.skills_only and args.action == "install") else homes):
             if args.skills_only:
                 payload = plan_skills_environment(home) if args.action == "plan" else verify_skills_environment(home)
             elif args.routing_only:
