@@ -1,501 +1,163 @@
 # Codex Agent Graphs
 
-[English](README.md) | [Русский](README.ru.md)
+**Reusable AI workflows for building software, improving business processes, implementing CRM and delivering agents.**
 
-> Turn recurring Codex work into resumable, bounded, evidence-backed workflows — without replacing Codex with another orchestrator.
+[English](README.md) · [Русский](README.ru.md) · [Installation](docs/INSTALLATION.md) · [Documentation](docs/README.md) · [Changelog](docs/CHANGELOG.md)
 
-**Start a project. Research a hard question. Deliver a software task. Improve a
-repository.** Codex Agent Graphs packages those workflows as native Codex
-skills. Small standard-library Python controllers are admitted only when work
-needs durable state, evidence binding, resumability, or independent
-verification.
+[![Business](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FArtemArzi%2Fcodex-agent-graphs%2Fmain%2Fproducts%2Fbusiness-automation%2Fpack.json&query=%24.version&label=Business&color=2563eb)](products/business-automation/README.md)
+[![CRM](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FArtemArzi%2Fcodex-agent-graphs%2Fmain%2Fproducts%2Fcrm-business-pack%2Fpack.json&query=%24.version&label=CRM&color=0891b2)](products/crm-business-pack/README.md)
+[![Agents](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FArtemArzi%2Fcodex-agent-graphs%2Fmain%2Fproducts%2Fagent-lifecycle%2Fpack.json&query=%24.version&label=Agents&color=7c3aed)](products/agent-lifecycle/README.md)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776ab)](docs/INSTALLATION.md)
+[![Latest commit](https://img.shields.io/github/last-commit/ArtemArzi/codex-agent-graphs/main)](https://github.com/ArtemArzi/codex-agent-graphs/commits/main/)
 
-- **Native to Codex:** skills, custom agents, `AGENTS.md`, MCP, and the root agent you already use.
-- **Model-first:** Codex owns judgment, planning, research, implementation, and synthesis.
-- **Deterministic where it matters:** scripts own paths, transitions, retry limits, receipts, hashes, and completion checks.
-- **Adaptive, not agent-hungry:** the fast path stays single-agent; specialist agents appear only when scope or risk justifies them.
-- **Pay only for the guarantee you need:** ordinary work can stay skill-only;
-  tracked and verified execution are optional reliability tiers.
-- **Portable:** one installer keeps WSL CLI and Codex Desktop copies in sync.
+Bring a real task, choose the matching entrypoint, and let the agent work from
+context through implementation and verification. The same repository connects
+business goals, software delivery, CRM configuration and the agent lifecycle.
+Start at the stage you need and preserve decisions already made in the project.
 
-This is an independent community project, not an official OpenAI repository.
+Built for **Codex CLI and Codex Desktop**, with a separate **Claude Code plugin**
+distribution. An independent community project.
 
-## What is included today
+## Choose your starting point
 
-- **Adaptive execution tiers:** use a direct model-first loop for ordinary work,
-  add durable tracking for long or delegated tasks, and admit independent
-  verification only when the risk justifies it.
-- **Context-safe Task Delivery:** persistent Markdown plans, bounded slice
-  packets, worker receipts, root-owned diff and test verification, and compact
-  checkpoints for work that crosses context windows.
-- **Project foundation and maintenance:** canonical project maps, stack-specific
-  engineering guidance, root and nested `AGENTS.md`, and focused documentation
-  synchronization after implementation.
-- **Autonomous bounded improvement:** inspect one evidence-backed candidate,
-  return an honest no-op or issue-ready result, or hand accepted implementation
-  to Task Delivery.
-- **Shared artifact lifecycle:** preserve canonical outputs, compact terminal
-  run state into verified archives and receipts, and prune only through an
-  explicit dry-run-first retention policy.
-
-## Why this exists
-
-Powerful prompts are easy to write and hard to operate repeatedly. Long-running work tends to lose its boundaries: plans drift, evidence gets separated from claims, retries become loops, and “done” becomes a feeling.
-
-Codex Agent Graphs adds a deliberately small control layer:
-
-```text
-work  ───────────────→  complete
-  └── when risk requires it → verify ──┘
-```
-
-The graph does not tell the model how to think. It makes lifecycle, scope,
-evidence, and completion explicit enough to resume and audit when those
-guarantees are actually needed.
-
-```text
-skill-only  → one root loop, no durable controller run
-tracked     → controller, scope/baseline, resumability and handoff
-verified    → tracked execution plus independent exact-candidate review
-```
-
-## Choose your workflow
-
-| Invoke | What it delivers | Best for |
+| Your task | Start with | What you get |
 | --- | --- | --- |
-| `$project-start` | A canonical project foundation or a focused documentation-maintenance pass | New repositories, inherited codebases, and keeping `AGENTS.md` plus project docs aligned with reality |
-| `$research` | Cited, decision-ready research that starts fast and deepens only when the evidence demands it | Technical investigation, comparisons, current facts, and high-confidence research reports |
-| `$software-factory` | Optional ordinary, sequential or isolated parallel Codex delivery through Task Delivery | Independent worktree jobs with explicit context packets and combined checks; no dashboard or extra controller |
-| `$task-delivery` | One scoped software task from Markdown plan through implementation, tests, review, and handoff | Features, fixes, refactors, plan-only work, or implementation from an accepted plan |
-| `$deployment` | Prepare project-native CI/CD or release/resume an exact candidate through a YAML workflow | Adaptive checks including E2E, existing runbooks/evidence, native rollout/readback/recovery; no new graph |
-| `$product-care` | Review a running product, diagnose a concrete signal, or check application and outcomes after a change | Maintenance between releases, support and operational evidence, useful next actions and follow-up through existing task/release owners |
-| `$continuous-improvement` | One evidence-backed repository improvement or an honest no-op/issue-ready result | Bounded autonomous maintenance from a failing test, CI signal, regression, or explicit audit request |
+| Prepare a new or inherited codebase | [`$project-start`](skills/project-start/SKILL.md) | Project context, architecture, engineering guidance and a usable plan |
+| Build, fix or release software | [`$task-delivery`](skills/task-delivery/SKILL.md) | A scoped change, appropriate tests, review and handoff; [`$deployment`](skills/deployment/SKILL.md) owns release |
+| Understand and improve a business process | [`$business-work`](products/business-automation/README.md) | Current work, a chosen improvement, a future process and checks for adoption |
+| Configure Bitrix24 or amoCRM | [`$crm-implementation`](products/crm-business-pack/README.md) | A process translated into CRM configuration, integrations and launch checks |
+| Design, verify or hand over an AI agent | [`$agent-project-design`](products/agent-lifecycle/README.md) | Agent behavior, tools, memory where needed, outcome E2E and pilot/handover |
+| Investigate a question | [`$research`](skills/research/SKILL.md) | A sourced answer with evidence and uncertainty |
+| Maintain a running product | [`$product-care`](skills/product-care/SKILL.md) | An observed problem, a useful next action or a reason to leave things as they are |
 
-Supporting capabilities keep those workflows healthy:
+## One repository, complementary packs
 
-| Capability | Role |
-| --- | --- |
-| `$agent-graph-builder` | Creates or standardizes graph-backed skills against the shared contract; it is a meta-skill, not another runtime workflow |
-| `$development-recovery` | Recovers when specification, plan, code, tests, or observed behavior diverge; it is a conditional non-graph skill |
-| `$agent-introspection-debugging` | Diagnoses repeated agent/tool failures with bounded checks and the shared diagnostic guide |
-| `$market-research` | Supports market decisions with sources, niche evidence and a bounded demand-validation experiment |
-| `$production-audit` | Assesses a scoped release using applicable requirements, observed evidence and explicit missing checks |
-| `$verification-loop` | Runs proportionate checks and preserves real command outcomes and evidence limits |
-| `$ai-regression-testing` | Protects changed and critical behavior with meaningful regression checks, including before the first incident |
-| Large-codebase discovery | A managed global policy that bounds repository exploration and joins the evidence before planning; it deliberately adds no new skill or graph |
+| Area | Contents | Installation |
+| --- | --- | --- |
+| **Engineering workflows** | Project Start, Research, Task Delivery, Software Factory, Deployment, Product Care and supporting skills | Default installer; `--skills-only` preserves host settings |
+| **[Business Automation](products/business-automation/README.md)** | 11 skills: business workflow, hypothesis checks, NMT methods and recent external signals | `--skills-only --pack business-automation` |
+| **[CRM Business Pack](products/crm-business-pack/README.md)** | One skill with Bitrix24/amoCRM references for design, integrations, launch and support | Published sources; not registered in the installer yet |
+| **[Agent Lifecycle](products/agent-lifecycle/README.md)** | 4 skills: project design, memory lifecycle, outcome E2E and commercial delivery | `--skills-only --pack agent-lifecycle` |
 
-Native companions select useful discipline at the relevant moment:
-`writing-for-agents` for instructions, `retro` for repeated observed environment
-failures, `to-questionnaire` for an external owner's answers, `pr` for PR bodies,
-and the existing `grilling`, `domain-modeling` and `codebase-design` disciplines.
-They are separate automatically discoverable skills integrated into Project
-Start and Task Delivery. See [sources, adaptation and invocation boundaries](docs/MATT_POCOCK_COMPANIONS_2026-10-02.md).
+Skill sources live once in `skills/`. Product folders contain manifests,
+provenance and validation. Packs reuse existing capabilities when available;
+installing one pack does **not** install every companion or every other pack.
 
-Project Start retains its bundled [architecture playbook](skills/project-start/references/architecture-playbook.md),
-including examples and the rule to consult project guidance first. Task Delivery
-carries the selected architectural constraints into plans, implementation and review.
-The shared [collaboration policy](policies/orchestration.md#collaboration-and-useful-questions)
-adds useful early questions, explicit no-question handling and plain-language
-explanations. Project quality requirements remain in their owning documents;
-checks are selected by risk rather than a universal coverage quota.
+## How the work connects
 
-The two testing companions are local adaptations of installed ECC skills;
-their original MIT notices are retained in each skill's `LICENSE`.
-See [the synchronization note](docs/SKILLS_SYNC_2026-09-29.md) for the reconciled
-changes and verification limits.
-
-For a Russian-language handoff to another person or their coding agent, use
-[`docs/PROJECT_START_HANDOFF.ru.md`](docs/PROJECT_START_HANDOFF.ru.md). It
-explains what to download, which architecture material to read, and how to
-preview installation changes before applying them.
-
-## Business-process improvement and automation
-
-[Business Automation](products/business-automation/README.md) is a versioned
-product collection with one entrypoint, `$business-work`, and 11 uniquely owned
-business skills, including the adapted NMT library, hypothesis checking and
-last30days. It covers context intake, current/future process design, employee
-adoption and outcome review for offline, online and hybrid work. Existing
-research, questionnaire, development and release skills are reused by name;
-project-owned CWS remains optional.
-
-Canonical sources live once in `skills/<name>`. To plan, install and verify only
-this pack without changing model/profile/account settings, use
-`python3 scripts/install.py <action> --skills-only --pack business-automation --all`.
-The focused installer retains the existing shared native discovery root,
-refuses duplicate names and supports an explicit `--business-root`.
-Upstream pins, adaptation ownership and individual third-party licences are
-recorded in the product folder. Updates go through reviewed repository sources
-before exact installation; publication is not evidence of real-world effect.
-
-## Building and delivering agents
-
-[Agent Lifecycle Pack](products/agent-lifecycle/README.md) adds four skills with
-`$agent-project-design` as the entrypoint: agent contracts and architecture,
-memory lifecycle, outcome E2E, and commercial delivery. Existing engineering,
-business and eval skills are reused by name, without duplicate payloads or a
-mandatory runtime. Checks distinguish scripted tests, live model/provider E2E,
-client acceptance and business effect.
-
-Use `python3 scripts/install.py <action> --skills-only --pack agent-lifecycle --all`
-for `plan`, `install` or `verify`. The shared discovery root is retained; duplicate
-names and unknown local drift stop installation. `--skill-root PATH` selects an
-explicit shared root. Open a new Codex session to discover installed skills.
-
-## Software Factory
-
-Software Factory is an optional Codex skill layered on Task Delivery. It chooses
-ordinary, sequential or parallel work from dependencies, passes per-job context
-snapshots and integrates exact commits into a retained candidate for checks and
-review. It adds no graph, default agent count or dashboard. The helper supports
-two disjoint writing jobs per workspace; it never pushes or merges source/main.
-See [usage and validated boundaries](docs/SOFTWARE_FACTORY.ru.md). Installation
-uses the normal installer; publishing this source does not update existing homes.
-This new workflow was tested with native Codex agents; Claude execution has not
-been validated.
-
-## Shared Codex routing
-
-[policies/model-routing.toml](policies/model-routing.toml) is the single source
-for the main model, auxiliary models, independent acceptance models, role
-classification and compatible profile names. The installer generates all 20
-Codex role files, global AGENTS guidance and the native multi-agent usage hint.
-The root defaults to `gpt-6.1-sol/max`; a valid manual effort selected for an
-existing Sol 6.1 root stays local to that home through installation and sync.
-Ordinary auxiliaries and block reviews use Sol 6.1/Medium; implementation workers,
-research synthesis and focused risk review use High. Required whole-plan/result
-acceptance uses Sol 6.1/High. Only `deep_reviewer` uses Astra/Medium, for rare
-exceptionally complex outcomes, unresolved material uncertainty or explicit deep
-review requests. It replaces the selected final Sol acceptor when warranted.
-
-The full migration retires the former global `reviewer` file into a backup and
-incorporates the existing vacancy specialist. Unknown retirement-file drift
-stops preflight; workflow acceptor identities and graph schemas stay compatible.
-For a model-routing-only migration, edit the manifest, then run
-`python3 scripts/install.py plan --routing-only --all`. Run
-`python3 scripts/install.py install --routing-only --wsl` and then
-`python3 scripts/install.py install --routing-only --desktop`, checking each
-with `verify --routing-only` and the same home selector. This mode updates
-managed role files, the routing policy block, default subagent settings, and
-the usage hint. It preserves each home's selected root model and reasoning
-effort, plus skills, runtime, and unrelated configuration; it refuses
-unrelated drift in routing surfaces and backs up changed files. Use the full
-`install --all` and `verify --all` only when synchronizing all workflows and
-root defaults is intended.
-
-Existing baseline/experiment profile names become aliases that inherit the
-shared defaults; original files are backed up under each Codex home. Unrelated
-settings remain intact, and unknown routing overrides fail preflight. Backups
-may contain private configuration and must stay in the local Codex home.
-
-The host policy uses one Sol `block_reviewer` result review for simple engineering
-and Sol for ordinary non-engineering reviews, including complete bounded artifacts.
-Only complex engineering or concrete materially high-risk consequences require
-fresh Sol High whole-plan acceptance and a different whole-result acceptor. Length,
-profile labels and topic keywords alone do not select Astra. Bounded block reviews
-remain Sol even within complex work; stage/skill switches and routine corrections
-reuse valid acceptance and the existing reviewer. Trivial chat/wording stays root-only.
-This threshold overrides workflow defaults. The plan review is an agent instruction;
-no new deterministic controller gate or graph identity is introduced. Start a
-new session to load new role instructions; running sessions are not restarted.
-Claude provider choices remain explicit and independent in the same manifest.
-
-Portable WSL/Desktop synchronization is tracked here:
-
-```bash
-python3 scripts/sync_desktop.py --check
-python3 scripts/sync_desktop.py --apply
-python3 scripts/sync_desktop.py --verify
+```mermaid
+flowchart TD
+    B["Business: understand the work and choose an improvement"] --> C["CRM: configure the agreed process"]
+    B --> A["Agents: define behavior, tools and outcome checks"]
+    B --> P["Project Start: establish the project foundation"]
+    C -->|Custom code needed| T["Task Delivery: implement and verify"]
+    A --> T
+    P --> T
+    T --> D["Deployment: release and check the target"]
+    C --> R["Product Care: observe real use and outcomes"]
+    D --> R
+    R -->|Evidence for the next change| B
 ```
 
-The helper handles separated TOML agent tables, preserves each home's selected
-root effort and Windows-specific plugins/MCP/trust/history, backs up changes and
-restores its owned files after deployment failures. It permits different valid
-root efforts across homes. Close Desktop before applying a full portable snapshot
-to avoid an active app writing the profile; the native installer also detects
-concurrent config edits. The previous `codex-profile-sync` entry point forwards
-to this tracked helper on the configured host. No background sync is installed.
+These are conditional routes. A CRM setting can stay inside the CRM workflow;
+a small code fix can start directly in Task Delivery. **Software Factory** adds
+isolated sequential or parallel work when the dependencies justify it.
+**Research** supports any stage that needs evidence.
 
-## Stability update — 6 October 2026
-
-Task Delivery 3.9.2 binds effective scope across admission and completion;
-Project Start 3.5.2 supports preserved-state control degradation. Both provide
-explicit unfinished-v3 restart with preserved evidence, inherited constraints,
-fresh acceptance and replayable ownership transfer. Old identities
-and digest algorithms remain supported. See the [audit and coverage](docs/research/skills-stability-2026-10-06/REPORT.ru.md).
-
-For skill updates that must preserve model/provider/global configuration:
-
-```bash
-python3 scripts/install.py plan --skills-only --all
-python3 scripts/install.py install --skills-only --all
-python3 scripts/install.py verify --skills-only --all
-```
-
-This syncs 31 maintained skills and shared runtime; the browser companion updates
-only where already present. It backs up replacements, verifies manifests and
-rolls back owned writes on failure. Full/routing installation stays strict.
+For example, a service company loses inbound enquiries. Business Work identifies
+where the handoff breaks; the CRM pack designs the relevant fields and rules.
+If a custom connector is needed, Task Delivery implements it and Deployment
+releases it. An agent is added only if the process needs model decisions.
+Product Care then checks whether people use the change and what actually improved.
 
 ## Quick start
 
-### Requirements
-
-- Codex CLI or Codex Desktop
-- Python 3.11 or newer
-- Git
-
-Clone the repository and preview every change before installation:
+Requirements: **Git, Python 3.11+, and Codex CLI or Codex Desktop**.
 
 ```bash
 git clone https://github.com/ArtemArzi/codex-agent-graphs.git
 cd codex-agent-graphs
-python3 scripts/install.py plan --wsl
+
+# Preview the engineering skills update for one CLI/WSL home.
+python3 scripts/install.py plan --skills-only --wsl
+python3 scripts/install.py install --skills-only --wsl
+python3 scripts/install.py verify --skills-only --wsl
 ```
 
-Install into the local WSL/CLI Codex home and verify exact file hashes:
+This installs the engineering skills and shared runtime while preserving models,
+profiles, roles, policies and credentials. On a fresh host, read the
+[full setup instructions](docs/INSTALLATION.md) if you also need the supplied
+agent roles and global policies.
+
+Business and agent packs are selected separately. For example, preview the
+business pack for your CLI home:
 
 ```bash
-python3 scripts/install.py install --wsl
-python3 scripts/install.py verify --wsl
+python3 scripts/install.py plan --skills-only --pack business-automation --wsl
 ```
 
-### Claude Code (plugin install)
+Review the selected root, then use the same arguments with `install` and
+`verify`. Use `--pack agent-lifecycle` for the agent pack. For both configured
+WSL/Desktop environments use `--all`; shared-pack roots must be unambiguous.
+[Target paths, shared roots, updates and Claude Code](docs/INSTALLATION.md).
 
-The same repository is a native Claude Code plugin — one shared source tree,
-nothing generated at install time, nothing written outside the plugin cache:
-
-```bash
-claude plugin marketplace add ArtemArzi/codex-agent-graphs
-# then inside a session:
-#   /plugin install cag@codex-agent-graphs
-#   /reload-plugins
-# smoke test: /cag:research on a scratch repository
-```
-
-Skills arrive as `/cag:project-start`, `/cag:task-delivery`, `/cag:research`,
-`/cag:continuous-improvement`, `/cag:development-recovery`,
-`/cag:agent-graph-builder`, `/cag:dev-policies`. Agent roles arrive as
-`cag:`-namespaced subagents generated from the canonical `agents/*.toml`
-(`scripts/claude_agents_sync.py`; `check_all.py` fails if the projection ever
-drifts). Uninstall with `/plugin uninstall cag` plus
-`claude plugin marketplace remove codex-agent-graphs` — no other trace remains.
-
-**Honest parity notes.**
-
-- Codex enforces reviewer read-only mode at the OS sandbox level. Claude Code
-  reviewers get `disallowedTools: Write, Edit, NotebookEdit` and an explicit
-  tool allowlist — a reviewer keeping Bash can technically still write.
-  Hash-linked receipts in the run state remain the post-hoc control; treat the
-  verified tier accordingly.
-- `web_search = disabled` maps to omitting WebSearch/WebFetch — a tool-level
-  block, not a network-level one.
-- **Lockstep rule:** the two hosts update through independent channels
-  (`install.py` vs the plugin marketplace). After changing skills or graphs,
-  refresh both installs before resuming a shared run; version skew fails loudly
-  (`state.json` pins the graph version and hash) and corrupts nothing.
-- **One harness per run directory at a time.** Shared state uses a lock file
-  with liveness detection; a concurrent second harness fails loudly.
-
-If you use Codex in WSL and Codex Desktop on Windows, install and verify both copies together:
-
-```bash
-python3 scripts/install.py plan --all
-python3 scripts/install.py install --all
-python3 scripts/install.py verify --all
-```
-
-The Desktop home is auto-detected when possible. Override either target explicitly when needed:
-
-```bash
-python3 scripts/install.py install \
-  --wsl --wsl-home /path/to/wsl/.codex
-
-python3 scripts/install.py install \
-  --desktop --desktop-home /mnt/c/Users/you/.codex
-```
-
-Open a new CLI session or Desktop task after installation so Codex loads the new skills, policies, and agent configuration.
-
-### Try the workflows
+Open a new session after installation. Then try a concrete request:
 
 ```text
-$project-start prepare this existing repository for reliable agent development
+$project-start Prepare this existing repository. Preserve its architecture and document material gaps.
 
-$research compare the current approaches to local-first agent memory and give me a cited recommendation
+$business-work Map how this company handles enquiries and propose one measurable improvement. Analysis only.
 
-$task-delivery add rate limiting to this API and prove the behavior with tests
-
-$continuous-improvement inspect this repository and fix one proven low-risk issue
-
-$agent-graph-builder turn our release checklist into a resumable graph-backed skill
+$agent-project-design Design a support agent for our current process, including authority boundaries and outcome checks.
 ```
 
-Skills can also trigger implicitly when the request matches their description, but explicit invocation is the clearest way to select a workflow.
+For CRM, start by asking the agent to read
+`skills/crm-implementation/SKILL.md` from your clone.
+[CRM usage and installation status](products/crm-business-pack/README.md).
 
-## What gets installed
+## What makes the workflows useful
 
-The installer copies files; it does not create cross-filesystem symlinks.
+- **Project context carries forward.** Plans, decisions and handoffs stay with the project; existing work is preserved.
+- **Verification follows the task.** Appropriate tests, live checks and independent review support the relevant requirement.
+- **Coordination scales with the work.** Ordinary tasks stay with the root agent; bounded helpers and durable controllers are used when justified.
+- **Delivery and results stay distinguishable.** Local checks, live release, provider effects, human acceptance and business outcomes have separate evidence.
 
-| Installed surface | What changes |
-| --- | --- |
-| Skills | Maintained skill directories listed in `SKILLS` in [scripts/install.py](scripts/install.py), including `software-factory`; complete scripts and references are copied with each skill |
-| Shared runtime | `agent-graph-runtime/` under each target Codex home for deterministic artifact inventory, verified compaction, and explicit TTL pruning |
-| Custom agents | Thirteen bounded role definitions for conditional exploration, implementation, planning review, result review, project-doc verification, improvement verification, and deep research |
-| `config.toml` | One managed block that registers those custom roles without replacing unrelated configuration |
-| Global `AGENTS.md` | Managed orchestration, development-recovery and large-codebase-discovery policy blocks; unrelated instructions are preserved. Only the audited legacy orchestration prefix is adopted automatically; unknown local changes require inspection |
+The four graph-backed workflows are Project Start, Research, Task Delivery and
+Continuous Improvement. Other skills and product packs can work through native
+project processes. [Workflow architecture and operating details](docs/WORKFLOWS.md).
 
-Before replacement, existing managed files are backed up under `backups/agent-graphs/`. Installation uses staged copies and finishes with manifest and SHA-256 verification. Drift is reported rather than silently overwritten.
+## Versions, checks and updates
 
-## How the pieces work together
-
-```mermaid
-flowchart LR
-    U["You invoke a workflow"] --> R["Codex root agent"]
-    R --> S["Installed skills and MCP/apps"]
-    R --> A["Optional bounded subagents"]
-    R --> C["Local Python controller"]
-    C --> E["State, receipts, hashes, and completion gate"]
-    S --> R
-    A --> R
-    E --> D["Resumable, verifiable result"]
-```
-
-The root agent remains the sole orchestrator and final truth owner. Optional subagents receive narrow packets and stay leaf-only. The controller never calls a model API and never replaces semantic work with a state machine.
-
-When the controller is admitted, all four operational graphs share the same
-topology — `work → optional verify → complete` — while exposing different
-modes:
-
-- **Project Start:** `bootstrap`, `maintenance`, or automatic routing.
-- **Research:** skill-only single-agent answers by default; tracked fast/deep
-  work and independent verification are opt-in by evidence.
-- **Task Delivery:** quick skill-only delivery by default; tracked
-  `plan`/`implement`/`full` modes and verified risk profiles when needed.
-- **Continuous Improvement:** `audit` or `full`, with one candidate maximum and Task Delivery owning accepted implementation.
-
-## Artifact lifecycle
-
-Canonical plans, reports, handoffs, decisions, and maintained documentation stay
-at their project paths. Full run state remains untouched while work is active,
-blocked, or awaiting implementation. After safe terminal completion, the shared
-runtime can create one verified archive and one permanent compact receipt:
-
-```text
-.agent-graphs/history/<graph>/<run>/FINAL.json
-.agent-graphs/archives/<graph>/<run>.tar.gz
-```
-
-Inventory and compaction do not delete raw state. Pruning is a dry-run unless
-`--apply` is supplied, validates the archive and raw manifest again, never
-follows symlinks, and never deletes canonical outputs. Successful raw state has
-a seven-day default retention; its archive has thirty days. These values may be
-overridden per repository in `.agent-graphs/retention.json`.
-
-## Skills, plugins, and MCP
-
-Codex Agent Graphs is currently distributed as a source repository with native skills and agent configuration. **It does not bundle or require a plugin package.** A plugin wrapper can become a later distribution layer; it is not part of the runtime architecture.
-
-It also does not bundle an MCP server. A workflow discovers MCP only when it
-needs external, provider, library, or live-system context and then prefers the
-provider that owns the data. A tracked receipt records `mcp:<server>`, a checked
-`mcp:fallback:<reason>`, or `mcp:not-applicable:<reason>` for local-only work.
-
-Dependencies and companion capabilities are intentionally visible:
-
-| Capability | Relationship |
-| --- | --- |
-| System `$skill-creator` | Required only when `$agent-graph-builder` scaffolds or restructures a graph skill |
-| `domain-modeling` and `codebase-design` | Expected companion skills for the full Project Start bootstrap; they are not vendored by this repository |
-| `setup-matt-pocock-skills` | Optional Project Start companion; an internal Project Start fallback is used when it is unavailable |
-| Other installed skills, apps, and MCP servers | Selected adaptively inside `work` when the task actually needs them; they are not mandatory graph stages |
-
-This follows Codex's native separation of concerns: [`AGENTS.md`](https://learn.chatgpt.com/docs/agent-configuration/agents-md) carries durable guidance, [skills](https://learn.chatgpt.com/docs/build-skills) package reusable workflows, [subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) handle bounded specialist work, [MCP](https://learn.chatgpt.com/docs/extend/mcp) connects external systems, and [plugins](https://learn.chatgpt.com/docs/plugins) package workflows and integrations for distribution.
-
-## Inside each workflow
-
-### Project Start
-
-Project Start builds the working context that ordinary coding agents usually have to rediscover on every task. Bootstrap normalizes the documentation map, domain, business context, foundation, codebase, quality bar, implementation plan, and agent instructions. Maintenance classifies the exact documentation delta after delivery and updates only the affected layer.
-
-Task Delivery completion can create a durable maintenance obligation, so the next task does not quietly proceed on stale project context.
-
-### Research
-
-Research starts skill-only with one native Codex agent and a bounded evidence
-budget. It creates a tracked run only for resumability, persistent reports,
-durable evidence or verification. Deep mode can use focused scouts and a
-verifier, but agent count is a ceiling, not a target.
-
-The deterministic gate binds the report to its sources and control artifact; it does not pretend to validate reasoning by re-running it in code.
-
-### Task Delivery
-
-Task Delivery owns one software task. Small local work stays quick and
-skill-only. Tracked work finds the project's real plan owner, freezes outcome
-and scope, implements against that plan, runs narrow and project-level checks,
-and creates a handoff backed by exact digests. Review depth scales with actual
-risk instead of the profile name alone.
-
-Controller health is separate from task health: project context and code come first, protocol errors get one bounded repair and then degrade control without blocking implementation. Tracked tasks can suspend into one compact checkpoint and resume alongside other unfinished work. Graph 3.7 also allows declared, tested root integration edits after accepted slices.
-
-Parallel write delegation is intentionally fail-closed until isolated worktrees can be proven.
-
-### Agent Graph Builder
-
-Agent Graph Builder layers graph-specific structure on top of the system `$skill-creator`. Its validator checks graph identity and versioning, the three-node topology, bounded retries, capability receipts, controller/test presence, model-free routing, and the division between model judgment and deterministic enforcement.
-
-It is for repeated workflows that benefit from resumability, evidence handoffs, or conditional review — not for turning every prompt into a graph.
-
-## Validate before you trust it
-
-The repository gate uses only the Python standard library:
+The badges read the **published pack manifests**; they update when the source
+version changes, subject to badge caching. Each pack has its own version.
+Graph versions describe execution contracts, rather than a single suite release.
+[Changelog and version sources](docs/CHANGELOG.md).
 
 ```bash
 python3 scripts/check_all.py
-```
-
-It compiles controllers, validates TOML and skill structure, checks every
-operational graph against the shared contract, and runs focused test suites for
-installation, the shared artifact runtime, every operational graph, and Agent
-Graph Builder.
-
-For a release or local modification, run the complete gate:
-
-```bash
-python3 scripts/check_all.py
-python3 scripts/install.py install --all
-python3 scripts/install.py verify --all
 git diff --check
 ```
 
-## Design principles
+These checks validate repository structure, controllers, packaging and tests.
+Real CRM operation, live-agent E2E, deployment and adoption need project evidence.
+Publishing a commit and updating an installed copy are separate operations.
 
-1. **Keep judgment in the model.** Graphs constrain lifecycle and evidence, not reasoning.
-2. **Make the fast path cheap.** Multi-agent depth is conditional.
-3. **Bind claims to artifacts.** Receipts and SHA-256 digests make checkpoints inspectable.
-4. **Fail closed on unsafe orchestration.** Bounds, ownership, and compatibility are enforced in code.
-5. **Preserve user state.** Dirty work, installed configuration, and active legacy runs are treated as real constraints.
-6. **Use one control plane.** Codex orchestrates; scripts never become a competing agent runtime.
+## Explore the repository
 
-## Repository map
+| Path | Purpose |
+| --- | --- |
+| [`skills/`](skills/) | Reusable instructions, references, scripts and graph contracts |
+| [`products/`](products/) | Pack manifests, guides, sources and validation |
+| [`agents/`](agents/) · [`policies/`](policies/) | Codex roles and managed host policies |
+| [`agent-graph-runtime/`](agent-graph-runtime/) | Shared deterministic artifact lifecycle |
+| [`scripts/`](scripts/) · [`tests/`](tests/) | Installation, packaging and verification |
+| [`docs/`](docs/README.md) | Setup, workflow guides, research and historical task evidence |
 
-```text
-skills/       native skill instructions, graph contracts, references, and controllers
-agents/       installable custom-agent role definitions
-policies/     managed global AGENTS.md policies
-agent-graph-runtime/ shared deterministic artifact lifecycle
-scripts/      installer and repository-wide validation gate
-tests/        installer and integration checks
-```
+Read [AGENTS.md](AGENTS.md) before contributing. Keep changes scoped, preserve
+local work, and include reproducible evidence with an issue or pull request.
 
-Start with [`AGENTS.md`](AGENTS.md) for repository invariants, then read the relevant `skills/<name>/SKILL.md` and `graph.json`.
-
-## Current boundaries
-
-- Installation is built and tested for WSL CLI plus Codex Desktop homes; other host layouts may need an explicit path or installer adaptation.
-- Companion skills named above are not vendored here.
-- A Claude Code plugin/marketplace manifest is included (`.claude-plugin/`);
-  Codex installation remains `scripts/install.py` and ignores it entirely.
-- This repository currently has no declared open-source license. Public visibility lets you inspect and evaluate the work, but it is not an open-source grant.
-
-Issues and focused pull requests are welcome, especially when they include a reproducible workflow failure, a controller test, or a concrete portability improvement.
+There is no repository-wide `LICENSE` file. Component notices are recorded in
+[Business third-party sources](products/business-automation/THIRD_PARTY.md) and
+[Agent third-party sources](products/agent-lifecycle/THIRD_PARTY.md); the Claude
+plugin metadata has its own license label. Check the relevant source notices
+rather than treating the entire collection as uniformly licensed.
