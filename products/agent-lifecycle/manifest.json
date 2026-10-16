@@ -1,10 +1,10 @@
 {
   "files": {
-    "products/agent-lifecycle/README.md": "6a949faaa4965dea3b562bd365c52b9acc53d04d4650020378d67601a3fed8b7",
+    "products/agent-lifecycle/README.md": "8091da5294dca12f6d92f6d525e214ce238cbe93d05d02d412af96b9cc1fac31",
     "products/agent-lifecycle/SOURCES.md": "6d6e20b3b47f3bb42692d157378b916397872d2e727c930d60e31c8b38418fd2",
     "products/agent-lifecycle/THIRD_PARTY.md": "b76c814157cd6da17fff28fee74c5be52c169705fb02afb51db00776cae9604c",
-    "products/agent-lifecycle/VALIDATION.md": "d07ee04975d080b827eaa75ecc07eed2f28f5e9e84c3d2d67ca289844ea58557",
-    "products/agent-lifecycle/pack.json": "3c38de4cfe73655119f712e127512cd798e042a1cb6b6955d7eb32e5f91f8a17",
+    "products/agent-lifecycle/VALIDATION.md": "2adca93c7392b04f85aa240abd0c2c9883e2c2875313f0ca369f5583f345d045",
+    "products/agent-lifecycle/pack.json": "bdbfbedfdf7b714de86de5ff5b776b7c785ca1582c169da65a806a471407725e",
     "products/agent-lifecycle/validation/SCENARIOS.md": "14c5d44ebbc01d8730b3d3c8864a7b2496b332321c204eeeb6ec00e5b30625c9",
     "scripts/check_agent_pack.py": "fd9c340b4a344e316b7283a27902aaffcfc299728003a28f7b5350daabdbba57",
     "skills/agent-commercial-delivery/SKILL.md": "3d4c9db35f2dbf955c273fe60af7619d2eae27409587eb7b18a65773dc0381c9",
@@ -26,6 +26,6 @@
     "skills/agent-project-design/references/harness-and-tools.md": "cb0cdf4a3dca88a02ef4c72fafaeecc55cde67d81f2188f4987b9b85c1f59475",
     "tests/test_agent_pack.py": "e50537e427c9f958d6151c2ba72f7fee3e595e382860be0d7b523a4b0ba5c48c"
   },
-  "pack_version": "0.1.1",
+  "pack_version": "0.1.2",
   "schema_version": 1
 }
