@@ -1099,8 +1099,8 @@ def parser() -> argparse.ArgumentParser:
     scopes = command.add_mutually_exclusive_group()
     scopes.add_argument("--routing-only", action="store_true", help="Update model routing without skills or root model changes")
     scopes.add_argument("--skills-only", action="store_true", help="Update maintained skills/runtime only; preserve profiles, models, config, roles, policies and credentials")
-    command.add_argument("--pack", choices=("business-automation",), help="Select the modern business skill pack (requires --skills-only)")
-    command.add_argument("--business-root", type=Path, help="Shared modern skill root for --pack business-automation")
+    command.add_argument("--pack", choices=("business-automation", "agent-lifecycle"), help="Select one shared skill pack (requires --skills-only)")
+    command.add_argument("--business-root", "--skill-root", dest="business_root", type=Path, help="Shared modern skill root for --pack; --business-root remains compatible")
     command.add_argument("--wsl", action="store_true", help="Target WSL only")
     command.add_argument("--desktop", action="store_true", help="Target Desktop only")
     command.add_argument("--wsl-home", default=str(Path.home() / ".codex"))
@@ -1115,7 +1115,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.pack and not args.skills_only:
             raise InstallError("--pack requires --skills-only")
         if args.business_root is not None and not args.pack:
-            raise InstallError("--business-root requires --pack business-automation")
+            raise InstallError("--business-root/--skill-root requires --pack")
         homes = selected_homes(args, preserve_aliases=bool(args.pack))
         if args.pack:
             spec = importlib.util.spec_from_file_location("codex_business_pack", REPO_ROOT / "scripts/business_pack.py")
@@ -1126,7 +1126,7 @@ def main(argv: list[str] | None = None) -> int:
             class Primitives:
                 def __getattr__(self, name):
                     return globals()[name]
-            environments = [business.run(args.action, homes, args.business_root, api=Primitives())]
+            environments = [business.run(args.action, homes, args.business_root, api=Primitives(), pack_id=args.pack)]
         if not args.pack and args.action == "install":
             for _, home in homes:
                 if args.skills_only:

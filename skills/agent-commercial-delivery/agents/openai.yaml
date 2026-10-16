@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Commercial Delivery"
+  short_description: "Пилот, приёмка и передача агентского сервиса"
+  default_prompt: "Используй $agent-commercial-delivery для подготовки пилота, клиентской приёмки и передачи агента."

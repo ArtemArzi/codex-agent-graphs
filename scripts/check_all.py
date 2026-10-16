@@ -323,13 +323,14 @@ def main() -> int:
         run(command)
     from business_pack import load_pack
     business_skills = load_pack(ROOT)["managed_skills"]
-    for skill in business_skills:
+    agent_skills = load_pack(ROOT, "agent-lifecycle")["managed_skills"]
+    for skill in (*business_skills, *agent_skills):
         if not (ROOT / "skills" / skill / "SKILL.md").is_file():
             raise RuntimeError(f"Business pack skill is missing: {skill}")
     skill_validator = find_skill_validator()
     if skill_validator:
         from install import SKILLS, OPTIONAL_EXISTING_SKILLS
-        for skill in (*SKILLS, *OPTIONAL_EXISTING_SKILLS, "dev-policies", *business_skills):
+        for skill in (*SKILLS, *OPTIONAL_EXISTING_SKILLS, "dev-policies", *business_skills, *agent_skills):
             run([sys.executable, str(skill_validator), str(ROOT / "skills" / skill)])
     run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"])
     run([sys.executable, "-m", "unittest", "discover", "-s", "skills/deployment/scripts", "-p", "test_*.py", "-v"])

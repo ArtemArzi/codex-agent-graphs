@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Project Design"
+  short_description: "Проектирование агента и маршрут полного цикла"
+  default_prompt: "Используй $agent-project-design для проектирования агента по реальному процессу и проверяемому результату."

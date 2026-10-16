@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "agent-lifecycle",
+  "version": "0.1.1",
+  "entrypoint": "agent-project-design",
+  "managed_skills": [
+    "agent-project-design",
+    "agent-memory-lifecycle",
+    "agent-outcome-e2e",
+    "agent-commercial-delivery"
+  ],
+  "reused_capabilities": {
+    "management": "existing-owner-no-vendoring",
+    "required": false,
+    "skills": [
+      "business-work",
+      "business-hypothesis-check",
+      "nmt-craft-value-proposition",
+      "nmt-craft-go-to-market",
+      "project-start",
+      "task-delivery",
+      "agent-harness-construction",
+      "agent-introspection-debugging",
+      "eval-harness",
+      "ai-regression-testing",
+      "e2e",
+      "e2e-testing",
+      "deployment",
+      "production-audit",
+      "enterprise-agent-ops",
+      "product-care"
+    ]
+  },
+  "update_owner": "canonical-repository-first",
+  "runtime_dependencies": [],
+  "external_candidates_installed": false,
+  "installation": {
+    "method": "repository-manifest-shared-root",
+    "general_installer_pack_option_supported": true
+  },
+  "validation": {
+    "structural": "see VALIDATION.md",
+    "instruction_scenarios": "see VALIDATION.md",
+    "live_agent_e2e": "not-run"
+  }
+}

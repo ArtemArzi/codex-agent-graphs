@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Memory Lifecycle"
+  short_description: "Актуальность, исправление и проверка памяти агента"
+  default_prompt: "Используй $agent-memory-lifecycle, чтобы определить и проверить жизненный цикл памяти этого агента."

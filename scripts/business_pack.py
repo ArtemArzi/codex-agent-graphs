@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Resolve and install one shared business skill root using installer primitives."""
+"""Resolve and install reviewed shared skill packs using installer primitives."""
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -11,20 +12,33 @@ from typing import Any
 
 
 PACK_ID = "business-automation"
+PACK_IDS = (PACK_ID, "agent-lifecycle")
 
 
-def load_pack(repo: Path) -> dict[str, Any]:
-    pack = json.loads((repo / "products" / PACK_ID / "pack.json").read_text(encoding="utf-8"))
+def load_pack(repo: Path, pack_id: str = PACK_ID) -> dict[str, Any]:
+    if pack_id not in PACK_IDS:
+        raise ValueError(f"Unsupported shared skill pack: {pack_id}")
+    pack = json.loads((repo / "products" / pack_id / "pack.json").read_text(encoding="utf-8"))
     if not isinstance(pack, dict):
         raise ValueError("Business pack manifest must be an object")
     names = pack.get("managed_skills")
-    if (pack.get("schema_version") != 1 or pack.get("id") != PACK_ID
+    if (pack.get("schema_version") != 1 or pack.get("id") != pack_id
             or not isinstance(pack.get("version"), str) or not pack["version"]
             or not isinstance(names, list) or not names
             or any(not isinstance(name, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name)
                    for name in names)
             or len(names) != len(set(names)) or pack.get("entrypoint") not in names):
         raise ValueError("Invalid business pack identity, version or managed skill list")
+    if pack_id == "agent-lifecycle":
+        if pack.get("update_owner") != "canonical-repository-first":
+            raise ValueError("Agent pack must retain its canonical repository owner")
+        spec = importlib.util.spec_from_file_location("agent_pack_manifest", repo / "scripts/check_agent_pack.py")
+        if spec is None or spec.loader is None:
+            raise ValueError("Missing agent pack manifest validator")
+        checker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(checker)
+        checker.verify_manifest(repo)
+        return pack
     metadata = json.loads((repo / "skills/business-work/references/installation.json").read_text(encoding="utf-8"))
     if not isinstance(metadata, dict):
         raise ValueError("Canonical business installation metadata must be an object")
@@ -226,11 +240,12 @@ def inspect_duplicates(context: dict[str, Any], names: list[str], api: Any) -> N
                                    "preserve existing skills and resolve their discovery names before installing")
 
 
-def prepare(homes: list[tuple[str, Path]], requested: Path | None, api: Any) -> dict[str, Any]:
-    pack = load_pack(api.REPO_ROOT)
+def prepare(homes: list[tuple[str, Path]], requested: Path | None, api: Any,
+            *, pack_id: str = PACK_ID) -> dict[str, Any]:
+    pack = load_pack(api.REPO_ROOT, pack_id)
     context = resolve(homes, requested, api)
     context["pack"] = pack
-    context["pack_bytes"] = (api.REPO_ROOT / "products" / PACK_ID / "pack.json").read_bytes()
+    context["pack_bytes"] = (api.REPO_ROOT / "products" / pack_id / "pack.json").read_bytes()
     inspect_duplicates(context, pack["managed_skills"], api)
     items = []
     for name in pack["managed_skills"]:
@@ -252,12 +267,13 @@ def prepare(homes: list[tuple[str, Path]], requested: Path | None, api: Any) -> 
 
 
 def validate(context: dict[str, Any], touched: list[dict[str, Any]], api: Any) -> None:
+    pack_id = context["pack"]["id"]
     for path, identity in context["identities"].items():
         if root_identity(path, api) != identity:
             raise api.InstallError(f"Business root changed during installation: {path}")
-    if (api.REPO_ROOT / "products" / PACK_ID / "pack.json").read_bytes() != context["pack_bytes"]:
+    if (api.REPO_ROOT / "products" / pack_id / "pack.json").read_bytes() != context["pack_bytes"]:
         raise api.InstallError("Concurrent business pack manifest edit")
-    if load_pack(api.REPO_ROOT) != context["pack"]:
+    if load_pack(api.REPO_ROOT, pack_id) != context["pack"]:
         raise api.InstallError("Concurrent business pack metadata edit")
     inspect_duplicates(context, context["pack"]["managed_skills"], api)
     validate_storage(context, api)
@@ -285,7 +301,7 @@ def validate_storage(context: dict[str, Any], api: Any) -> None:
 
 
 def payload(context: dict[str, Any]) -> dict[str, Any]:
-    return {"status": "ok", "scope": "skills-only", "pack": PACK_ID,
+    return {"status": "ok", "scope": "skills-only", "pack": context["pack"]["id"],
             "version": context["pack"]["version"],
             "environments": [{"environment": label, "codex_home": str(home)} for label, home in context["homes"]],
             "requested_root": str(context["requested"]) if context["requested"] is not None else None,
@@ -295,8 +311,9 @@ def payload(context: dict[str, Any]) -> dict[str, Any]:
                       for item in context["items"]]}
 
 
-def run(action: str, homes: list[tuple[str, Path]], requested: Path | None, *, api: Any) -> dict[str, Any]:
-    context = prepare(homes, requested, api)
+def run(action: str, homes: list[tuple[str, Path]], requested: Path | None, *, api: Any,
+        pack_id: str = PACK_ID) -> dict[str, Any]:
+    context = prepare(homes, requested, api, pack_id=pack_id)
     result = payload(context)
     if action == "plan":
         return result
@@ -307,6 +324,9 @@ def run(action: str, homes: list[tuple[str, Path]], requested: Path | None, *, a
         return result
     if action != "install":
         raise ValueError(f"Unknown business pack action: {action}")
+    if pack_id == "agent-lifecycle" and any(item["status"] == "drift" for item in context["items"]):
+        raise api.InstallError("Agent skill drift must be explicitly reconciled before installation; "
+                               "preserve local changes and compare their source/version")
 
     def check(touched: list[dict[str, Any]]) -> None:
         validate(context, touched, api)
@@ -328,7 +348,8 @@ def run(action: str, homes: list[tuple[str, Path]], requested: Path | None, *, a
         validate_storage(context, api)
         return root_identity(context["root"], api) == context["physical_identity"]
 
-    batch = api.apply_skills_plans([("business-shared", context["root"], context["items"])],
+    label = "business-shared" if pack_id == PACK_ID else f"{pack_id}-shared"
+    batch = api.apply_skills_plans([(label, context["root"], context["items"])],
                                   validate=check, lock_roots=[context["root"].parent], make_backup=backup,
                                   rollback_allowed=rollback_allowed)
     result.update(changes=batch[0]["changes"], backup=batch[0]["backup"])

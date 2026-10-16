@@ -128,6 +128,20 @@ Upstream pins, adaptation ownership and individual third-party licences are
 recorded in the product folder. Updates go through reviewed repository sources
 before exact installation; publication is not evidence of real-world effect.
 
+## Building and delivering agents
+
+[Agent Lifecycle Pack](products/agent-lifecycle/README.md) adds four skills with
+`$agent-project-design` as the entrypoint: agent contracts and architecture,
+memory lifecycle, outcome E2E, and commercial delivery. Existing engineering,
+business and eval skills are reused by name, without duplicate payloads or a
+mandatory runtime. Checks distinguish scripted tests, live model/provider E2E,
+client acceptance and business effect.
+
+Use `python3 scripts/install.py <action> --skills-only --pack agent-lifecycle --all`
+for `plan`, `install` or `verify`. The shared discovery root is retained; duplicate
+names and unknown local drift stop installation. `--skill-root PATH` selects an
+explicit shared root. Open a new Codex session to discover installed skills.
+
 ## Software Factory
 
 Software Factory is an optional Codex skill layered on Task Delivery. It chooses

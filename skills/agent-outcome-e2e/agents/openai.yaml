@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Outcome E2E"
+  short_description: "Сквозная проверка действий и результата агента"
+  default_prompt: "Используй $agent-outcome-e2e для проверки реального результата агента, ограничений и восстановления."
