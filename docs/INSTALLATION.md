@@ -92,7 +92,7 @@ routing policy; full setup can still change the root model and managed defaults.
 
 ## 5. Install a product pack
 
-The default engineering installation contains 38 maintained skills, including
+The default engineering installation contains 39 maintained skills, including
 Grill Me, Grill with Docs and Improve Codebase Architecture. Their native
 metadata allows automatic selection when the task fits. Open a new conversation
 after installation and check fresh native `skills/list` in each host; matching
