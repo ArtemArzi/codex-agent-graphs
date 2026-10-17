@@ -68,3 +68,10 @@ are not elapsed release time. Cache reuse is distinct from new test execution.
 Bound concurrency to available resources. Remove artificial ordering only where
 there is no real dependency and resource capacity permits it. No universal timing
 target or performance gain is promised; use observed project bottlenecks.
+
+For whole-cycle claims include decision/approval waiting, staging, activation,
+fresh public verification and any rollback, not only a successful test interval.
+State the start/end boundary and failed attempts; compare the same release scope
+and trust requirements. A synthetic/warm staging improvement does not establish
+production downtime or end-to-end savings. Store timing with native evidence,
+without introducing another telemetry platform for a single measurement.

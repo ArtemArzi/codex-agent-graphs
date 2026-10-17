@@ -16,6 +16,11 @@ Do not kill mutating runs or free a lock whose owner may still be working.
 
 ## Outcomes
 
+Before an affected release, inspect unresolved temporary overrides and their
+review/removal conditions in the existing incident/runbook. Read effective
+configuration: an endpoint override may also retain an older image. Resolve the
+known compatibility condition through its owner; do not remove it automatically.
+
 1. Success: exact artifact installed, reconciliation and required fresh
    identity/health/public-user-path checks confirmed. Publication is intermediate.
 2. Failure before activation without data mutation: confirm previous current;
@@ -48,6 +53,14 @@ disposable isolation, including an unavailable dependency that recovery relies o
 Check that needed artifacts/tools are already available and hidden download/update
 or authentication calls do not depend on the failing service. Do not disable
 network access or experiment on a live target to perform this rehearsal.
+
+Rehearse the changed native path, including its actual proxy/service request
+context, lock ownership and failure/resume boundary. A direct ingress may reject
+a request differently from the public edge; define the expected result for each
+surface before activation. Check that a failed verification leaves the native
+journal/current state reconcilable and that a retry neither bypasses admission
+nor repeats external effects. Keep this in project-owned tests, not a second
+release simulator that only reports invented PASS labels.
 
 Readiness and a single successful request do not establish sustained behavior.
 Use the project's bounded observation window, meaningful safe activity and

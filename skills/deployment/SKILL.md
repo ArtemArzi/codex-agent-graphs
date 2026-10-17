@@ -67,6 +67,11 @@ When changing a container build or real test dependency, read
 [container and integration guidance](references/native-profiles.md#container-builds-and-real-test-dependencies)
 for readiness, ownership and actual assertions; preserve native checks and scope.
 
+When building/releasing container images or addressing image/cache accumulation,
+read [image-lifecycle.md](references/image-lifecycle.md). Check local and target
+storage separately, preserve native retention/recovery, perform authorized
+selective cleanup and record the disk result or pending gap with the release.
+
 ## Execution, failure and completion
 
 Read [operations-and-recovery.md](references/operations-and-recovery.md) before

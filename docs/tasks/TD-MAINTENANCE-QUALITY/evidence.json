@@ -1,0 +1,78 @@
+{
+  "status": "candidate-reviewed-delivery-pending",
+  "base_commit": "72a6411fa092e97bcff0890cc2d1f32801503fa0",
+  "feature_manifest": {
+    "skills/deployment/SKILL.md": "de3ba0c04c6a982718a6e7a4bea8c4d4170e6c9238b740c1ab1cde849f47c751",
+    "skills/deployment/references/check-placement.md": "53a94037ce101d857955498cf21317f5d3f06baaa19188937ab92555277c2cc9",
+    "skills/deployment/references/image-lifecycle.md": "89c0daa1b5e75cb7d1f93a1a4e4bb01f9cdf3b0fcf9665063cb898e80cee54c8",
+    "skills/deployment/references/operations-and-recovery.md": "cb30af4d8a8361f8af5aec3603bf2eac759c451e70f2f2629c7eb745ebc9558f",
+    "skills/product-care/SKILL.md": "b03ebdd5c027826bed0cec9c797b01fb4ca3f2a19cc9761ad396b5135a586ff8",
+    "skills/product-care/agents/openai.yaml": "e274a0627b03055269ada3db31baca419b318e5da3f897c9e97516c5a75ac5fa",
+    "skills/product-care/references/technical-maintenance.md": "2ec26e37a7f59bce8de1b88e1a9e659af8154142b6a59fda6efc647b9d88682b",
+    "skills/project-start/references/maintenance.md": "1096cc3bc9d4e185927da57dfd1f97c6a902261e13caaecba462b44f5deb5c12",
+    "skills/project-start/references/quality-and-intake.md": "86c19022405d96c24c64c609ad2943726c8360413883ccf07ff3c782c53ac8fd",
+    "skills/task-delivery/references/testing-and-review.md": "e40c627475de96cf14fd6f305556b8aed536816a5749f0d1d784caa28fc68a23",
+    "skills/verification-loop/SKILL.md": "7545d8e0e15e1b8b9b3ab2246d7e4a2fbd7823b89ac74c4ed0f2ed14256a0572",
+    "skills/verification-loop/references/fixtures-and-native-paths.md": "4b50971591e16b507e358f8f3cfd895f8123506cc7c589a3fa8f75f64461140f",
+    "skills/verification-loop/references/legacy-and-invariants.md": "c7fc7e77f5e3c4f0944b14bc6d4f140bbb95c264537206f7299acc32bac2c8e5"
+  },
+  "reviews": {
+    "challenge": {
+      "agent": "/root/maintenance_pack_challenge",
+      "verdict": "PASS",
+      "addition": "crash cleanup ownership"
+    },
+    "candidate": {
+      "agent": "/root/maintenance_pack_result",
+      "verdict": "PASS",
+      "scope": "original11featurefiles, imageguidance2files and deliveryscripts; finaldeliverypending"
+    }
+  },
+  "validation": {
+    "repository_check_all": "PASS",
+    "repository_check_all_exit": 0,
+    "repository_log_sha256": "a7bce891311a0bb1ec5d039715de153a0ac9029998c2412d71606cc4c1153ed8",
+    "diff_check": "PASS",
+    "forward_bundle_sha256": "58481091c11eda0aa51b711f70846477f527bcfac6cb1c341edd8ff699e9b2db",
+    "care_cases": [
+      "bounded historical recovery",
+      "public versus direct ingress",
+      "trivial text control",
+      "image lifecycle inventory/moving tag"
+    ],
+    "verification": {
+      "original_smoke_pass": 2,
+      "new_initial_failures": 9,
+      "focused_pass": 13,
+      "full_probe_tests": 14,
+      "full_probe_failures": 1,
+      "full_probe_failure_meaning": "known contact contract defect remains visible; no product acceptance claimed",
+      "mutations_detected": 2,
+      "limits": "single-process in-memory SQLite; crash simulation, not durable concurrency"
+    },
+    "post_gate_formatting": {
+      "change": "removed one extra trailing blank line from four new references; no semantic changes",
+      "files": [
+        "skills/deployment/references/image-lifecycle.md",
+        "skills/product-care/references/technical-maintenance.md",
+        "skills/verification-loop/references/fixtures-and-native-paths.md",
+        "skills/verification-loop/references/legacy-and-invariants.md"
+      ],
+      "revalidation": "cached diff check and targeted skill validators"
+    }
+  },
+  "delivery": {
+    "state": "pending",
+    "homes": [
+      "/home/artem/.codex",
+      "/mnt/c/Users/artem/.codex"
+    ],
+    "managed_skills": 38,
+    "baseline_protected_files": 44,
+    "actual_image_deletions": 0
+  },
+  "limitations": [
+    "No actual project/server changes or cleanup.",
+    "Synthetic behavior and native eligibility do not prove production benefit or future automatic selection rate."
+  ]
+}

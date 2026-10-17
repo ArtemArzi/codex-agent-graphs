@@ -1,6 +1,6 @@
 ---
 name: product-care
-description: "Inspect an existing product between releases, investigate an observed operational or support problem, and check application and outcomes after a shipped change. Use for product care, a product health review, or post-change follow-up; keep implementation and release with their existing owners."
+description: "Inspect an existing product between releases, diagnose technical or support problems, and check application and outcomes after a shipped change. Use for product health, code/data/dependency maintenance or post-change follow-up; keep implementation and release with their existing owners."
 ---
 
 # Product Care
@@ -19,6 +19,10 @@ the current behavior, gather specific evidence, or simplify the product.
 - **Follow-up**: an engineering or process change is expected to help; check
   whether it reached people and had the expected result. Read
   [follow-up.md](references/follow-up.md).
+
+For code/data/dependency health, recovery questions or a temporary incident fix,
+read [technical-maintenance.md](references/technical-maintenance.md) within the
+selected pass. A clear local implementation task can go straight to Task Delivery.
 
 Use [handoff.md](references/handoff.md) when work crosses into an existing task,
 release, audit, or documentation owner. Read [examples.md](references/examples.md)

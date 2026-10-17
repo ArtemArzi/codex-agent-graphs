@@ -54,6 +54,13 @@ if none exists, report meaningful uncovered risks without inventing a percentage
 Not every row applies to every task. The task's test plan should identify which
 checks already exist, which need adding, and when/where deferred checks run.
 
+Before a meaningful refactor of insufficiently protected behavior, or when
+stateful rules need invariant/sequence checks, read
+[legacy-and-invariants.md](references/legacy-and-invariants.md). For shared
+persistent fixtures or a platform's native editor/router/lifecycle, read
+[fixtures-and-native-paths.md](references/fixtures-and-native-paths.md).
+Select only the relevant branch; existing adequate tests need no new harness.
+
 ## Run checks faithfully
 
 1. Discover existing commands, configuration and available tools before running.
