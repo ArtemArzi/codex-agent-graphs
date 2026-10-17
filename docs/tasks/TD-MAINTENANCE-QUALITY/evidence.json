@@ -3,7 +3,7 @@
   "base_commit": "72a6411fa092e97bcff0890cc2d1f32801503fa0",
   "feature_manifest": {
     "skills/deployment/SKILL.md": "de3ba0c04c6a982718a6e7a4bea8c4d4170e6c9238b740c1ab1cde849f47c751",
-    "skills/deployment/references/check-placement.md": "53a94037ce101d857955498cf21317f5d3f06baaa19188937ab92555277c2cc9",
+    "skills/deployment/references/check-placement.md": "2c60d3cb6744afae1932fd3183b82829ea7b19fb94f8ff0b4db2947ae362cc4f",
     "skills/deployment/references/image-lifecycle.md": "89c0daa1b5e75cb7d1f93a1a4e4bb01f9cdf3b0fcf9665063cb898e80cee54c8",
     "skills/deployment/references/operations-and-recovery.md": "cb30af4d8a8361f8af5aec3603bf2eac759c451e70f2f2629c7eb745ebc9558f",
     "skills/product-care/SKILL.md": "b03ebdd5c027826bed0cec9c797b01fb4ca3f2a19cc9761ad396b5135a586ff8",
@@ -25,15 +25,15 @@
     "candidate": {
       "agent": "/root/maintenance_pack_result",
       "verdict": "PASS",
-      "scope": "original11featurefiles, imageguidance2files and deliveryscripts; finaldeliverypending"
+      "scope": "all13featurefiles and deliveryscripts, targeted image and transport clarifications PASS; finaldeliverypending"
     }
   },
   "validation": {
     "repository_check_all": "PASS",
     "repository_check_all_exit": 0,
-    "repository_log_sha256": "a7bce891311a0bb1ec5d039715de153a0ac9029998c2412d71606cc4c1153ed8",
+    "repository_log_sha256": "ecd1ef51ff9f47b58be476003798ae6aa9b12ca1cf587e55a0b9fbb6e14c098a",
     "diff_check": "PASS",
-    "forward_bundle_sha256": "58481091c11eda0aa51b711f70846477f527bcfac6cb1c341edd8ff699e9b2db",
+    "forward_bundle_sha256": "127c19e0a417fc91036ab20b0719902b799f5edb5fe208b4cf58156f438e5a4e",
     "care_cases": [
       "bounded historical recovery",
       "public versus direct ingress",
@@ -59,7 +59,12 @@
         "skills/verification-loop/references/legacy-and-invariants.md"
       ],
       "revalidation": "cached diff check and targeted skill validators"
-    }
+    },
+    "repository_log": "/tmp/care-check-all-final-20261017.log",
+    "transport_cases": [
+      "prebuilt packet over SSH does not need server GitHub principal",
+      "server fetch needs repository read grant at server identity; unrelated prep continues"
+    ]
   },
   "delivery": {
     "state": "pending",
@@ -74,5 +79,14 @@
   "limitations": [
     "No actual project/server changes or cleanup.",
     "Synthetic behavior and native eligibility do not prove production benefit or future automatic selection rate."
-  ]
+  ],
+  "transport_basis": {
+    "thread": "01a14356-8964-7ab3-9fa4-8ab53e31196e",
+    "successful_items": [
+      "exec-e9e16230-1088-48f6-9741-8dee00eb3b14",
+      "exec-6e7511bf-7f6a-4f1a-8fd2-a63ee5688788",
+      "exec-b015931d-aebf-4b92-9ff0-dff1a75780ab"
+    ],
+    "meaning": "historical source bundle/image archive/SSH transfer, not fresh access test"
+  }
 }

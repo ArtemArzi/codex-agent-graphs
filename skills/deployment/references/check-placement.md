@@ -7,6 +7,15 @@ GitHub is optional; local is not automatically faster or production-equivalent.
 
 ## Assign work once
 
+Before costly preparation, map source -> build/package runner -> transport or
+registry -> deployment target. Identify the actor and required access at each
+hop; use allowed read-only native preflight for that actual route. A workstation
+push to GitHub does not establish server fetch/registry access or SSH delivery.
+Conversely, a prebuilt packet delivered over SSH need not require a GitHub login
+on the server. Do not add unused logins, copy personal credentials or change
+authentication merely because source hosting and deployment are different.
+Resolve only a real missing prerequisite through its owner and current authority.
+
 Use existing scripts, Make targets or package commands as the shared entrypoint.
 Local and hosted wrappers call those commands rather than maintain separate test
 recipes. Prefer the existing real-stack/Compose setup when appropriate; do not

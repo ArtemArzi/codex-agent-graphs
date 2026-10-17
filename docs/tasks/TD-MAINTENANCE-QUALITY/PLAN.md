@@ -12,6 +12,7 @@ Improve existing skills and their conditional discovery, challenge recommendatio
 - Verification Loop: controlled observed baseline versus intended invariants; isolated test data and early native platform path.
 - Deployment: targeted full-path rehearsal, inherited temporary changes, meaningful cycle timing.
 - User steering: conditional image/cache lifecycle in Deployment for local and target hosts, native retained set and selective cleanup with existing authority. This task changes guidance only; no actual prune/deletion or server access.
+- User clarification: distinguish source hosting from delivery/authentication. Existing Five Sites history shows local package/image archive plus SSH transfer; add actual-hop/actor preflight before costly preparation, without new login/credential configuration or server actions.
 - Project Start/Task Delivery: small owning-document and conditional skill pointers, no duplicate procedures.
 - Independently authored concise guidance; primary-book links where useful, no external skill text or scripts vendored.
 
@@ -37,3 +38,5 @@ Result reviewer /root/maintenance_pack_result accepted the original11feature fil
 
 
 Image addition: same result reviewer content PASS. Independent inventory scenario preserves moved tag/current/rollback/staged/foreign/stopped/pinned images, selects only explicitly obsolete image IDs/owned staging archive, and defers shared cache/unknown ownership. No deletion ran. Final full repository gate PASS; actual delivery remains pending. Synthetic inputs/results are preserved in forward-evidence.json.
+
+Final user clarification validated: both transport scenarios choose required hop/identity without extra server login or credential changes. Final full gate after this guidance PASS; log and19-file synthetic evidence bundle hashes in evidence.json. No feature changes after that gate. Source/installation readback pending.
