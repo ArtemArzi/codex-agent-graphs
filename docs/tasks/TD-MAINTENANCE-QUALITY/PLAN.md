@@ -1,42 +1,40 @@
-# Maintenance quality refinements
+# Улучшение технического сопровождения и разработки
 
-Status: candidate content reviewed; source transfer and installation pending. Owner: this file.
-Basis: [six-chat research](/mnt/c/Users/artem/Documents/Codex/Research/research/2026-10-17-development-maintenance/README.md).
-Source baseline: 72a6411fa092e97bcff0890cc2d1f32801503fa0, clean canonical checkout.
+Статус: завершено 17.10.2026. Владелец состояния — этот документ.
 
-## Authorized outcome
-Improve existing skills and their conditional discovery, challenge recommendations independently, verify behavior, and synchronize the current user's WSL/Desktop installations. Preserve current models/settings/roles, authorization, graph identities/schemas and existing project owners. No production/project changes, background schedules or new general skills.
+Основание: [исследование шести чатов](/mnt/c/Users/artem/Documents/Codex/Research/research/2026-10-17-development-maintenance/README.md). Пользователь разрешил улучшить существующие скиллы, провести независимую проверку и обновить установленные версии. Поздние уточнения включили очистку образов и понятный маршрут доставки/доступов.
 
-## Bounded implementation
-- Product Care: optional technical-maintenance reference, temporary-fix and dependency follow-through.
-- Verification Loop: controlled observed baseline versus intended invariants; isolated test data and early native platform path.
-- Deployment: targeted full-path rehearsal, inherited temporary changes, meaningful cycle timing.
-- User steering: conditional image/cache lifecycle in Deployment for local and target hosts, native retained set and selective cleanup with existing authority. This task changes guidance only; no actual prune/deletion or server access.
-- User clarification: distinguish source hosting from delivery/authentication. Existing Five Sites history shows local package/image archive plus SSH transfer; add actual-hop/actor preflight before costly preparation, without new login/credential configuration or server actions.
-- Project Start/Task Delivery: small owning-document and conditional skill pointers, no duplicate procedures.
-- Independently authored concise guidance; primary-book links where useful, no external skill text or scripts vendored.
+## Результат
 
-## Acceptance
-- Independent challenge of coverage/value, then fresh auxiliary result review of final scope.
-- Structural/full repository check and skill validation; no graph/runtime/config/role changes.
-- Independent sandbox forward checks: technical care/release decisions and real legacy/fixture regression behavior, including a simple/no-op control.
-- Exact-path source transfer and canonical local commit; manifest-aware skills-only install/verify in both homes, backups/preimages, protected-setting readback and repeat no-op.
-- Fresh native CLI and Desktop catalogs/model prompt discovery for affected skills. These prove eligibility and bounded fixture behavior, not automatic selection rate or production benefit.
+Изменены 13 файлов пяти существующих скиллов, без новых навыков, графов, схем или runtime-кода:
 
-## Evidence and next step
-Independent challenge /root/maintenance_pack_challenge: PASS; no material scope/risk expansion. Reconciled its useful correction: fixtures include run identity/exclusive singletons, interrupted cleanup and current ownership before restoration. Existing deployment rehearsal/timing guidance receives only the discriminating scenario delta.
+- Product Care: условный технический проход по версии, пользовательскому пути, модулям, данным, зависимостям и восстановлению; видимость временных решений.
+- Verification Loop: наблюдаемое поведение старого кода отдельно от принятых инвариантов; содержательные проверки и безопасное владение fixtures, включая неуспешный запуск.
+- Deployment: различающий сценарий публичного proxy/direct service, прерывание/повтор и измерение полного цикла. Новый reference image-lifecycle описывает local/server/builder/registry, retained rollback/staged/current, архивы образов, выборочную разрешённую очистку и фактический disk readback. Уточнены участник и доступ на каждом шаге доставки до тяжёлой подготовки.
+- Project Start/Task Delivery: короткие условные указатели к существующим владельцам и сохранение точной версии договора, если к ней привязан допуск.
 
-Implemented 11 feature files across the five existing skills; no new skill or graph/runtime/config changes. New guidance is independently written; no external skill text/scripts are bundled.
+Текст написан самостоятельно, внешние skill-файлы и исполнимые скрипты не копировались. Полные процедуры остаются в проектных runbook/runner; полномочия, модели, роли, настройки и прежние владельцы сохранены. Обновление инструкций не является запуском очистки или изменением рабочего проекта.
 
-`scripts/check_all.py` PASS (exit0), `git diff --check` PASS and all changed Markdown local targets exist. Full gate log: /tmp/care-check-all-20261017.log, SHA256 bbcdf1e62bcf7df68bd8493afcb2ede4c8e0bfca9658b25d276a1b528d303256.
+## Проверки
 
-Forward care/release/static-control output: /tmp/care-forward-20261017/care/output/summary.md. Synthetic historical recovery stays bounded; effective old image identified, public415 criterion retained, interruption evidence gap reported; trivial typo gets only local static checks.
+Независимое мнение `/root/maintenance_pack_challenge`: PASS. Полезное уточнение про owner/run и cleanup после падения включено. Нового общего skill или обязательного аудита всех проектов не потребовалось; карта покрытия не объявляется гарантией полного lifecycle.
 
-Forward testing output: /tmp/care-forward-20261017/code-output/EVIDENCE.md. Original two smoke tests passed despite defects. New checks exposed9failures; fixture-only correction produced13focused PASS. Full14-test probe deliberately retains one visible known contact-contract failure (exit1); it is defect detection, not a claimed passing product. Two representative mutations were detected. Baseline observation did not silently accept the existing contact defect. SQLite uses one in-memory connection; crash/ownership simulation is process-local, not durable/concurrent recovery proof.
+Полный `scripts/check_all.py` PASS после последних смысловых изменений; `git diff --check`, targeted skill validators и ссылки изменённых Markdown PASS. Итоговый log: `/tmp/care-check-all-final-20261017.log`; SHA256 в evidence.json. Четыре лишние пустые строки EOF были нормализованы до этого финального полного прогона.
 
-Result reviewer /root/maintenance_pack_result accepted the original11feature files and delivery scripts, with final delivery pending. User then requested image cleanup guidance; same reviewer retains that verdict and reviews only the image lifecycle addition and pointers. Official Docker pruning/GC/disk-accounting sources checked17.10; existing native-profiles already forbids global prune, new reference fills retention/inventory/selective-cleanup/readback detail. No executable cleanup or authority expansion. The changed candidate receives affected structural/full validation and a bounded inventory scenario before delivery. Next: reconcile targeted verdict, freeze/commit candidate, guarded source return and skills-only install/readback. Completion evidence stays here and in evidence.json; no duplicate controller.
+Два независимых forward-прохода фактически выполнили проверки. Care/release/typo/image/auth-сценарии сохранили границы и выбрали нужные ветки. Python/SQLite: исходные2 smoke PASS не ловили дефекты; новые тесты дали9 FAIL; исправление только fixtures дало13 focused PASS. Полный14-test probe сохранил один известный FAIL требования lowercase, без ослабления/skip/xfail или правки продуктового модуля. Две намеренные регрессии обнаружены. Это подтверждает обнаружение дефекта, не PASS исходного продукта. 19 синтетических входных/результирующих файлов сохранены в forward-evidence.json.
 
+Независимое итоговое ревью `/root/maintenance_pack_result`: PASS полного результата, включая дополнения по образам/доступам и фактическую доставку. Существенных замечаний нет.
 
-Image addition: same result reviewer content PASS. Independent inventory scenario preserves moved tag/current/rollback/staged/foreign/stopped/pinned images, selects only explicitly obsolete image IDs/owned staging archive, and defers shared cache/unknown ownership. No deletion ran. Final full repository gate PASS; actual delivery remains pending. Synthetic inputs/results are preserved in forward-evidence.json.
+## Сохранение и установка
 
-Final user clarification validated: both transport scenarios choose required hop/identity without extra server login or credential changes. Final full gate after this guidance PASS; log and19-file synthetic evidence bundle hashes in evidence.json. No feature changes after that gate. Source/installation readback pending.
+Исходный baseline72a6411; implementation41a24c1, transport clarification3b60f1a659cc8bf747ab218a83f576ff351e382f. Проверенные изменения перенесены fast-forward в канонический репозиторий; GitHub push не выполнялся. Закрывающая правка меняет только этот документ и evidence.json, не принятые байты скиллов.
+
+Штатный manifest-aware skills-only install/verify выполнен в `/home/artem/.codex` и `/mnt/c/Users/artem/.codex`. Все38 managed skills и runtime совпали с исходниками. Изменились только пять выбранных деревьев;10 резервных деревьев сверены с preimage. Все44 защищённых файла настроек/global AGENTS/ролей неизменны, включая проверку после native probe. Повторный install — no-op,482 файла сохранили bytes/mtime, новых backup нет.
+
+Свежие фактические WSL CLI и Windows Desktop runtime: пять навыков включены ровно по одному,0 ошибок каталога, все пять имён присутствуют в native prompt preview. Model turn и GUI restart не запускались. Уже открытые чаты могут сохранять ранее загруженный контекст.
+
+## Границы и следующий шаг
+
+Бизнес-проекты, серверы, credentials, образы, registry и расписания не изменялись; удаления не запускались. Путь последнего зафиксированного выпуска Five Sites проверен по успешным историческим source-bundle/image-archive/SSH-transfer командам, не по свежему серверному доступу.
+
+Сценарии изолированные: SQLite в одном процессе, crash моделируется без durable restart; проверка образов/авторизации по синтетическим снимкам. Автоматическая частота выбора и production-эффект не доказаны. Обязательных незавершённых шагов этой поставки нет; реальное применение и уборка выполняются в следующей разрешённой задаче соответствующего проекта.

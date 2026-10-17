@@ -1,5 +1,5 @@
 {
-  "status": "candidate-reviewed-delivery-pending",
+  "status": "PASS",
   "base_commit": "72a6411fa092e97bcff0890cc2d1f32801503fa0",
   "feature_manifest": {
     "skills/deployment/SKILL.md": "de3ba0c04c6a982718a6e7a4bea8c4d4170e6c9238b740c1ab1cde849f47c751",
@@ -26,6 +26,12 @@
       "agent": "/root/maintenance_pack_result",
       "verdict": "PASS",
       "scope": "all13featurefiles and deliveryscripts, targeted image and transport clarifications PASS; finaldeliverypending"
+    },
+    "final_delivery": {
+      "agent": "/root/maintenance_pack_result",
+      "verdict": "PASS",
+      "scope": "complete skill content, behavioral probes, canonical return, installed trees/backups/protected files/repeat no-op and dual-runtime native catalog/prompt readback",
+      "material_findings": []
     }
   },
   "validation": {
@@ -64,17 +70,152 @@
     "transport_cases": [
       "prebuilt packet over SSH does not need server GitHub principal",
       "server fetch needs repository read grant at server identity; unrelated prep continues"
-    ]
+    ],
+    "artifacts_sha256": {
+      "care-install-delivery-20261017.py": "e81bd565bf75acf30529355219e50313b9361a43642f3647dbed52d028978dcb",
+      "care-install-readback-20261017.json": "b01bb56189a039585376923082123b7e6ff438aac049344cc2d054eadaf48c64",
+      "care-native-probe-20261017.py": "948b0b1f1b79bfd1bcb3d3aff6b389b85427216e0529a7b3faa3c09fde7ec4ef",
+      "care-native-readback-20261017.json": "0c781bfde550e55eefc9840c69cd24ce12e4d57ecbf971dffb0c39f2f253917b",
+      "care-preimages-20261017.json": "a0960b98d1c385e3d8e3f9c8a71f10a720925ef884206b1d4b2c5b0c7699e548"
+    }
   },
   "delivery": {
-    "state": "pending",
-    "homes": [
-      "/home/artem/.codex",
-      "/mnt/c/Users/artem/.codex"
-    ],
+    "status": "PASS",
+    "source_commit": "3b60f1a659cc8bf747ab218a83f576ff351e382f",
     "managed_skills": 38,
-    "baseline_protected_files": 44,
-    "actual_image_deletions": 0
+    "changed_skills": [
+      "deployment",
+      "product-care",
+      "project-start",
+      "task-delivery",
+      "verification-loop"
+    ],
+    "protected_files_before": 44,
+    "protected_files_after": 44,
+    "verified_backup_trees": [
+      "/home/artem/.codex/backups/agent-graphs/20261017-141927-470878-1513851/skills/project-start",
+      "/home/artem/.codex/backups/agent-graphs/20261017-141927-470878-1513851/skills/deployment",
+      "/home/artem/.codex/backups/agent-graphs/20261017-141927-470878-1513851/skills/verification-loop",
+      "/home/artem/.codex/backups/agent-graphs/20261017-141927-470878-1513851/skills/task-delivery",
+      "/home/artem/.codex/backups/agent-graphs/20261017-141927-470878-1513851/skills/product-care",
+      "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-141927-619557-1513851/skills/project-start",
+      "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-141927-619557-1513851/skills/deployment",
+      "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-141927-619557-1513851/skills/verification-loop",
+      "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-141927-619557-1513851/skills/task-delivery",
+      "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-141927-619557-1513851/skills/product-care"
+    ],
+    "repeat_unchanged_files": 482,
+    "source_return": {
+      "status": "PASS",
+      "base": "72a6411fa092e97bcff0890cc2d1f32801503fa0",
+      "head": "3b60f1a659cc8bf747ab218a83f576ff351e382f",
+      "feature_files": 13,
+      "source_clean": true,
+      "github_push": false
+    },
+    "native": [
+      {
+        "runtime": "WSL CLI",
+        "catalog_errors": 0,
+        "enabled_counts": {
+          "deployment": 1,
+          "task-delivery": 1,
+          "verification-loop": 1,
+          "project-start": 1,
+          "product-care": 1
+        },
+        "selected": [
+          {
+            "name": "deployment",
+            "enabled": true,
+            "path": "/home/artem/.codex/skills/deployment/SKILL.md"
+          },
+          {
+            "name": "product-care",
+            "enabled": true,
+            "path": "/home/artem/.codex/skills/product-care/SKILL.md"
+          },
+          {
+            "name": "project-start",
+            "enabled": true,
+            "path": "/home/artem/.codex/skills/project-start/SKILL.md"
+          },
+          {
+            "name": "task-delivery",
+            "enabled": true,
+            "path": "/home/artem/.codex/skills/task-delivery/SKILL.md"
+          },
+          {
+            "name": "verification-loop",
+            "enabled": true,
+            "path": "/home/artem/.codex/skills/verification-loop/SKILL.md"
+          }
+        ],
+        "prompt_preview_exit": 0,
+        "model_visible_names": [
+          "deployment",
+          "product-care",
+          "project-start",
+          "task-delivery",
+          "verification-loop"
+        ],
+        "missing_model_visible": [],
+        "pass": true,
+        "scope": "fresh native process; plugins/MCP disabled only for probe; no model turn or GUI restart; raw prompt omitted"
+      },
+      {
+        "runtime": "Windows Desktop runtime",
+        "catalog_errors": 0,
+        "enabled_counts": {
+          "deployment": 1,
+          "task-delivery": 1,
+          "verification-loop": 1,
+          "project-start": 1,
+          "product-care": 1
+        },
+        "selected": [
+          {
+            "name": "deployment",
+            "enabled": true,
+            "path": "C:\\Users\\artem\\.codex\\skills\\deployment\\SKILL.md"
+          },
+          {
+            "name": "product-care",
+            "enabled": true,
+            "path": "C:\\Users\\artem\\.codex\\skills\\product-care\\SKILL.md"
+          },
+          {
+            "name": "project-start",
+            "enabled": true,
+            "path": "C:\\Users\\artem\\.codex\\skills\\project-start\\SKILL.md"
+          },
+          {
+            "name": "task-delivery",
+            "enabled": true,
+            "path": "C:\\Users\\artem\\.codex\\skills\\task-delivery\\SKILL.md"
+          },
+          {
+            "name": "verification-loop",
+            "enabled": true,
+            "path": "C:\\Users\\artem\\.codex\\skills\\verification-loop\\SKILL.md"
+          }
+        ],
+        "prompt_preview_exit": 0,
+        "model_visible_names": [
+          "deployment",
+          "product-care",
+          "project-start",
+          "task-delivery",
+          "verification-loop"
+        ],
+        "missing_model_visible": [],
+        "pass": true,
+        "scope": "fresh native process; plugins/MCP disabled only for probe; no model turn or GUI restart; raw prompt omitted"
+      }
+    ],
+    "github_push": false,
+    "actual_image_deletions": 0,
+    "protected_readback_after_native": "PASS: all44 files remain identical"
   },
   "limitations": [
     "No actual project/server changes or cleanup.",
@@ -88,5 +229,6 @@
       "exec-b015931d-aebf-4b92-9ff0-dff1a75780ab"
     ],
     "meaning": "historical source bundle/image archive/SSH transfer, not fresh access test"
-  }
+  },
+  "source_commit": "3b60f1a659cc8bf747ab218a83f576ff351e382f"
 }
