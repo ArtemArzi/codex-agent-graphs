@@ -59,6 +59,7 @@ SKILLS = (
     "project-start",
     "research",
     "task-delivery",
+    "chat-coordination",
     "software-factory",
     "deployment",
     "product-care",

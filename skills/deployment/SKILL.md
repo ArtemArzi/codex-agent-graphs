@@ -17,6 +17,12 @@ and other operators. Identify source, artifact, operator version, target and nat
 operation separately. Existing decisions/current source outrank old receipts;
 previous local PASS does not establish today's installed state.
 
+When another independent task may share the target, source or release contract,
+use available `chat-coordination` to establish current owners and dependencies.
+Without its tools, preserve known work and isolate preparation. A reply or intent
+never replaces native lock/CAS, release authority or journal reconciliation;
+different repos/worktrees can still mutate the same service.
+
 - **Prepare**: “готовимся к деплою”, first pipeline setup or a changed deployment
   contract. Inspect the existing path, choose the actual profile, update one
   owning runbook, prepare reversible local commands/CI and verify in isolation.

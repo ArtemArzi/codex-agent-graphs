@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "optional_skills": [
+    {
+      "name": "chat-coordination",
+      "phase": "cross-chat-intersection",
+      "reason": "Avoid duplicating a known incident owner or conflicting with another task while retaining observation and repair boundaries."
+    }
+  ]
+}

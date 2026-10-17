@@ -91,6 +91,7 @@ the implementation passed or that an unfinished controller completed.
 
 | Capability | Role |
 | --- | --- |
+| [Chat Coordination](../skills/chat-coordination/SKILL.md) | Conditional discovery and authorized fact exchange between independent user tasks; resource guards stay with native owners |
 | [Agent Graph Builder](../skills/agent-graph-builder/SKILL.md) | Graph-specific structure on top of the system `skill-creator`; for recurring work that genuinely needs a graph |
 | [Development Recovery](../skills/development-recovery/SKILL.md) | Resolve divergence among specification, plan, implementation and evidence; independent of every graph |
 | [Domain Modeling](../skills/domain-modeling/SKILL.md) and [Codebase Design](../skills/codebase-design/SKILL.md) | Bundled companions for domain and architecture reasoning |

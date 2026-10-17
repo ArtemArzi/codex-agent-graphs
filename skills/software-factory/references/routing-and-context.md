@@ -183,8 +183,36 @@ file. Deployment, paid calls and main integration retain their own authority.
 If a contract, baseline or assigned scope changes during execution, stop the
 affected slice, preserve its work and issue updated context tied to the new
 decision. Do not let old assumptions become accepted just because code exists.
-On interruption, inspect current Git state and retained packets/evidence before
-resuming; a timeout is neither a failed implementation nor a completed task.
+Before follow-up or replacement after interruption, reconcile the existing task
+record, exact assignment/base, native agent state when available, worktree
+HEAD/dirty state, retained check/result artifacts and any actual integration.
+Record the observed result and next unfinished obligation in the existing task
+record. A missing final reply does not undo a commit, and worker exit does not
+prove acceptance. A timeout is neither failed implementation nor completion.
+
+If the owner is active or its liveness unknown, preserve ownership and continue
+independent work; do not dispatch another writer for the same mutable scope.
+If committed work exists, inspect its diff and continue only missing checks,
+review or authorized integration. If integration already happened, verify the
+outstanding postcondition instead of merging again. Preserve dirty partial work;
+continue with the same owner when available. Transfer unfinished writing only
+through root after prior activity is established absent and current state/context
+are supplied. A changed base/contract needs updated context and affected checks,
+while the old result/evidence remains preserved.
+
+Never replay a potentially external/non-idempotent action solely because its
+response was lost. Read the owning system's actual result and native retry/recovery
+rules. Factory grants no missing authority or durable session restart. Use
+available `chat-coordination` for an independent user task's boundary; native
+leaf continuation does not make that task a child.
+
+This reconciliation adapts ideas from the inspected
+[upstream Factory](https://github.com/zazencodes/zazencodes-season-3/blob/555467c365e6750278efba09349369109f62f65f/src/software-factory-claude-code/.claude/skills/factory/SKILL.md),
+[Symphony Draft v1](https://github.com/openai/symphony/blob/be10a1b79df723d6d7612b5651c8522704dafb2e/SPEC.md)
+and [long-running harness guidance](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents).
+Their schedulers, fixed reviewer chains, automatic main merge, cleanup and
+separate progress files are not imported; existing task owners/policy remain.
+
 With no available agent capacity, do useful independent work locally rather
 than duplicate an assignment. No automatic resume engine is supplied by this
 bundle. Installation, four-agent execution, tracked TD→PS and speed/cost savings

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Chat Coordination"
+  short_description: "Coordinate overlapping Codex tasks and resources"
+  default_prompt: "Use $chat-coordination to check related tasks and resolve a concrete resource or contract intersection."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,162 @@
+{
+  "scope": "Local forward fixture execution only; no oracle or expected-outcomes read, no agent/chat creation, no external calls, publication or installation.",
+  "guidance_read": [
+    "/tmp/codex-coordination-impl-20261017/skills/software-factory/SKILL.md",
+    "/tmp/codex-coordination-impl-20261017/skills/software-factory/references/routing-and-context.md",
+    "/tmp/codex-coordination-impl-20261017/skills/chat-coordination/SKILL.md",
+    "/tmp/codex-coordination-impl-20261017/skills/chat-coordination/references/messages-and-recovery.md"
+  ],
+  "recovery": {
+    "status": "postcondition_verified_existing_integration",
+    "baseline": "71ef5fd6cd780b66452c9a251ac3095468e36d41",
+    "head": "44eece7c2c91e5ba0fe920921e6b46969e63c548",
+    "branch": "integrated",
+    "leaf": "44eece7c2c91e5ba0fe920921e6b46969e63c548",
+    "integrated": "44eece7c2c91e5ba0fe920921e6b46969e63c548",
+    "dirty_before": false,
+    "dirty_after": false,
+    "actual_diff": "diff --git a/greet.py b/greet.py\nindex 3c48358..3b21f03 100644\n--- a/greet.py\n+++ b/greet.py\n@@ -1 +1 @@\n-print('starting')\n+print('ready')\n",
+    "check": {
+      "argv": [
+        "python3",
+        "/tmp/coordination-forward-20261017/recovery/greet.py"
+      ],
+      "exit_code": 0,
+      "stdout": "ready\n",
+      "stderr": ""
+    },
+    "action": "Inspected actual commit, refs, baseline ancestry and clean worktree; verified existing integrated candidate. No rewrite, commit or repeat integration performed.",
+    "outstanding_local_execution_obligations": [],
+    "limits": "No missing historical worker/integration reply was reconstructed. Parent independently assesses evidence; this is not independent acceptance or real independent-chat crash recovery."
+  },
+  "partial": {
+    "status": "writing_pending_owner_reconciliation",
+    "git_repository": false,
+    "observed_owner_record": "Previous writer activity unknown. No transfer has been accepted.\n",
+    "observed_partial_bytes": "unfinished owner bytes\n",
+    "hashes_before": {
+      "OWNER.md": "50c6ce32c4e1bed032875f0cdca075f44e174b6d3bb9e810415b1ce5dd36d235",
+      "owned.txt": "dafe5c47ba4fa9fc7a454f63cc1c363ed2e7598fc355da344b3d1107e56440dd"
+    },
+    "hashes_after": {
+      "OWNER.md": "50c6ce32c4e1bed032875f0cdca075f44e174b6d3bb9e810415b1ce5dd36d235",
+      "owned.txt": "dafe5c47ba4fa9fc7a454f63cc1c363ed2e7598fc355da344b3d1107e56440dd"
+    },
+    "preserved": true,
+    "action": "Read only; no takeover, replacement writer, edits, cleanup or lock clearing.",
+    "outstanding": [
+      "Authorized task owner must establish previous writer activity absent and supply current state/context before transferring unfinished writing; otherwise continue with same owner when available."
+    ],
+    "limits": "Fixture is not a Git repository, so dirty state is observed partial bytes, not a measurable Git diff. Owner liveness remains unknown; no real tasks were contacted."
+  },
+  "typo": {
+    "status": "fixed_verified",
+    "path": "/tmp/coordination-forward-20261017/typo/note.txt",
+    "before": "Release is raedy.\n",
+    "after": "Release is ready.\n",
+    "action": "Single byte-word substitution raedy to ready; no coordination scan required for isolated unrelated edit."
+  },
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/coordination-forward-20261017/recovery",
+        "status",
+        "--porcelain=v1",
+        "--branch"
+      ],
+      "exit_code": 0,
+      "stdout": "## integrated\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/coordination-forward-20261017/recovery",
+        "show-ref"
+      ],
+      "exit_code": 0,
+      "stdout": "44eece7c2c91e5ba0fe920921e6b46969e63c548 refs/heads/integrated\n44eece7c2c91e5ba0fe920921e6b46969e63c548 refs/heads/leaf\n71ef5fd6cd780b66452c9a251ac3095468e36d41 refs/heads/main\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/coordination-forward-20261017/recovery",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "stdout": "44eece7c2c91e5ba0fe920921e6b46969e63c548\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/coordination-forward-20261017/recovery",
+        "diff",
+        "71ef5fd6cd780b66452c9a251ac3095468e36d41..integrated",
+        "--"
+      ],
+      "exit_code": 0,
+      "stdout": "diff --git a/greet.py b/greet.py\nindex 3c48358..3b21f03 100644\n--- a/greet.py\n+++ b/greet.py\n@@ -1 +1 @@\n-print('starting')\n+print('ready')\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/coordination-forward-20261017/recovery",
+        "merge-base",
+        "--is-ancestor",
+        "71ef5fd6cd780b66452c9a251ac3095468e36d41",
+        "integrated"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "python3",
+        "/tmp/coordination-forward-20261017/recovery/greet.py"
+      ],
+      "exit_code": 0,
+      "stdout": "ready\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/tmp/coordination-forward-20261017/recovery",
+        "status",
+        "--porcelain=v1",
+        "--branch"
+      ],
+      "exit_code": 0,
+      "stdout": "## integrated\n",
+      "stderr": ""
+    }
+  ],
+  "other_inspections": [
+    {
+      "command": "git -C /tmp/coordination-forward-20261017/recovery worktree list --porcelain",
+      "result": "One worktree, HEAD 44eece7c2c91e5ba0fe920921e6b46969e63c548, refs/heads/integrated"
+    },
+    {
+      "command": "git -C /tmp/coordination-forward-20261017/partial status --short --branch",
+      "exit_code": 128,
+      "result": "fatal: not a git repository (or any of the parent directories): .git"
+    },
+    {
+      "command": "git -C /tmp/coordination-forward-20261017/partial diff",
+      "exit_code": 129,
+      "result": "Not a git repository; usage emitted. No mutation."
+    }
+  ]
+}

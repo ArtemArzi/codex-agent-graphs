@@ -20,6 +20,13 @@ For worktree operations, read [helper-usage.md](references/helper-usage.md).
 The transferable helper is `scripts/factory.py`, resolved against THIS skill
 directory, not the target project CWD. It requires Python 3.10+ and Git.
 
+Before assigning shared work, use available `chat-coordination` if another
+independent user task can affect the source, contract or mutable environment.
+Carry that task-level boundary into each child packet; a child receives only
+this task's suballocation. Without the skill/tools, preserve known owners and
+isolate preparation rather than assuming no other work exists. Ordinary isolated
+work needs no chat scan. Factory jobs/workspace locks are not cross-chat claims.
+
 Before delegation, read [routing-and-context.md](references/routing-and-context.md).
 Check native tool availability; use explicit message acknowledgments for changed
 instructions and bounded follow-up turns for completed leaves, as described there.

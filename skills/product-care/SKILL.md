@@ -36,6 +36,12 @@ owner, relevant operational procedure, and latest decisions or pending checks.
 Use the context already established for this outcome. Reopen discovery only for
 a material gap; switching modes or skills does not restart intake.
 
+If a separate chat already works on the affected incident, contract or mutable
+environment, use available `chat-coordination` for that intersection before
+duplicating work or proposing a conflicting operation. Keep the current task
+owner; missing tools/partial visibility do not authorize takeover. Observation,
+contact, repair and release retain their distinct existing authority.
+
 Choose the user's question and an actual working episode: who needs to complete
 what, through which product surface, and what would count as a useful result.
 If the scope is broad, select a justified focus and disclose what it leaves out.

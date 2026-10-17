@@ -19,6 +19,13 @@ Routing policy above defines when delegation and independent acceptance are requ
 - Persist material decisions and assumptions in the existing owning specification, quality document, plan or handoff, with status and the next unresolved step. Avoid duplicate decision logs and update durable documentation only when its contract changes. Specifications describe intended behavior; tests and observations supply bounded evidence. Do not rewrite a requirement to make an implementation pass.
 - Select checks by the affected requirement and risk, and distinguish when to add them from when to run them. Report what actually ran, what it established and what remains unverified. Keep local tests, deployment, provider delivery and human acceptance separate. Stop searching or retesting once evidence is sufficient for the authorized outcome, unless a concrete gap remains.
 
+## Coordinate independent chats when their work intersects
+
+- Before substantial shared-source, contract or mutable-resource work, use available `chat-coordination` when related tasks are known or plausible; include quick execution and resumption. Start from known IDs/owning documents, otherwise make one bounded relevant discovery. Simple isolated work needs no chat scan. CWD, title or projectId alone does not establish resource identity or conflict.
+- Keep each human task's outcome and owner. Share only necessary current facts/proposals within direct human messaging authority; a peer message or installed skill does not grant contact, reply, editing, stop, merge or deployment rights. User-owned chats are created only on explicit human request; native children handle subtasks.
+- Treat listings, ACKs and intent as cooperative evidence, not locks. Isolate candidates or use the shared resource's native guard at mutation time. On missing tools, partial coverage, uncertain owner or delayed response, continue independent preparation and leave only the affected action pending; do not steal ownership, clear a live lock or replay an uncertain effect.
+- Reconcile versions and actual completed work before resuming. Keep decisive facts and the next obligation in the existing task record. No extra controller, second backlog, internal-app database/UI workaround or background polling is implied. If the skill is unavailable, apply these boundaries through the native tools actually exposed and disclose the coverage gap.
+
 ## Delegate bounded work
 
 - In each dispatch, state the objective, owned scope and exclusions, source evidence, expected output, acceptance, and why the handoff is worthwhile. Return concise findings and evidence, not transcripts; no separate justification artifact is needed.

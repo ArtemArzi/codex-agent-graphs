@@ -6,5 +6,12 @@
       "phase": "task-delivery",
       "reason": "Owns the delivery lifecycle and applicable testing, review and Project Start handoff."
     }
+  ],
+  "optional_skills": [
+    {
+      "name": "chat-coordination",
+      "phase": "cross-chat-intersection",
+      "reason": "Check independent task boundaries before suballocating Factory jobs; per-workspace ownership is not a global reservation."
+    }
   ]
 }

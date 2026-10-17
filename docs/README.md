@@ -18,6 +18,7 @@ contents; current `skills/`, `policies/` and project instructions own execution.
 | [Changelog](CHANGELOG.md) | Checking published changes and version sources |
 | [Project Start handoff, RU](PROJECT_START_HANDOFF.ru.md) | Giving another person or their agent a project-setup starting point |
 | [Software Factory, RU](SOFTWARE_FACTORY.ru.md) | Coordinating sequential/parallel engineering work with isolated context and integration checks |
+| [Chat Coordination, RU](CHAT_COORDINATION.ru.md) | Discovering intersections between independent chats while preserving each task and native authority |
 
 Detailed installation and workflow guides are in English; the root Russian
 README includes the overview, pack selection, examples and quick-start commands.

@@ -1,0 +1,34 @@
+{
+  "base_commit": "f55f7d76b1fa1e2045d3bf51a68528da08b3db32",
+  "plan_review": {
+    "receipt": "PLAN-CHAT-COORDINATION-IMPL-20261017-F55F7D7-6D42-PASS",
+    "verdict": "PASS"
+  },
+  "checks": [
+    {
+      "command": "python3 scripts/check_all.py",
+      "cwd": "/tmp/codex-coordination-impl-20261017",
+      "exit_code": 0,
+      "log": "/tmp/coordination-check-all-20261017.log",
+      "sha256": "7f608d3ac33f687fc8caed7d9a5ef2d0fdae488c64a315806b1c275df10c7c5e"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p test_software_factory.py -q",
+      "tests": 21,
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p test_install.py -q",
+      "tests": 37,
+      "exit_code": 0
+    }
+  ],
+  "forward": {
+    "status": "bounded probes met frozen expected behavior",
+    "actual_git_commits_preserved": true,
+    "partial_bytes_preserved": true,
+    "typo_exact": true,
+    "messages_sent": 0,
+    "limits": "Native child instruction-use probes; no automatic discovery or full independent-chat pilot."
+  }
+}
