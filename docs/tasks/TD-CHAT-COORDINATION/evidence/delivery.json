@@ -1,5 +1,5 @@
 {
-  "status": "source and installed readiness PASS; publication and final whole acceptance pending",
+  "status": "PASS: bounded instruction delivery installed, published and independently accepted",
   "source_commit": "b7208e622838c47c7aac3163535f3f41884ef8e9",
   "feature_manifest": {
     "policies/orchestration.md": "81872d901ed598430f223c3245f895a506d4623cc043d5a1f8d7692ded8c6330",
@@ -202,5 +202,12 @@
     "Native catalogs/prompt previews used fresh clients with plugins/MCP disabled only for probe; no model turn or GUI restart.",
     "No production/server/DB operations, external service installs or background loops."
   ],
-  "readiness_receipt": "READY-CHAT-COORDINATION-20261017-B7208E6-4C91"
+  "readiness_receipt": "READY-CHAT-COORDINATION-20261017-B7208E6-4C91",
+  "final_review": {
+    "verdict": "pass",
+    "receipt": "RESULT-CHAT-COORDINATION-20261017-47A7110-D834-PASS",
+    "accepted_published_main": "47a7110dea2f3cad3467a931ef644fbbba33d9f2",
+    "repair_list": [],
+    "closure_change": "documentation only; feature review remains valid"
+  }
 }

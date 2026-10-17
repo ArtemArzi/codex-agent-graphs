@@ -1,6 +1,6 @@
 # Chat Coordination и точечное развитие Software Factory
 
-Статус: реализация и двухпрофильная установка проверены; итоговое независимое ревью и публикация ожидаются. Единственный владелец состояния этой задачи — этот документ.
+Статус: ограниченная поставка завершена: реализация, двухпрофильная установка, независимое итоговое ревью и публикация подтверждены. Единственный владелец состояния этой задачи — этот документ.
 
 ## Задача и основания
 
@@ -68,7 +68,7 @@ Implementation plan принят: PLAN-CHAT-COORDINATION-IMPL-20261017-F55F7D7-6
 
 В отдельной ветке совместимости8a899f1 на fddc28d каталог57 и closure проверены16 тестами. Новый тест воспроизвёл ненормализованный UI default_prompt; штатный token mapper выделен и применён только к agents/openai.yaml.18 bundle tests и полный gate PASS; собраны CRM1+Engineering17. Исходный preview и его архивы не менялись и не публиковались. Более ранний native plugin17-name pilot не выдаётся за доказательство новой18-name сборки.
 
-Точные manifests, readback, failed/baseline/final native результаты и ограничения — evidence/delivery.json, evidence/compatibility.json и соседние файлы. Следующий шаг: другое fresh whole-result ревью, затем только принятые main-line commits → canonical/GitHub и targeted readback той же приёмкой.
+Точные manifests, readback, failed/baseline/final native результаты и ограничения — evidence/delivery.json, evidence/compatibility.json и соседние файлы. Эта последовательность завершена; точный принятый опубликованный head и итоговая приёмка ниже.
 
 ## Уточнение границы поставки после независимого ревью
 
@@ -79,3 +79,11 @@ Implementation plan принят: PLAN-CHAT-COORDINATION-IMPL-20261017-F55F7D7-6
 Совместимость упаковки дополнительно сохранена вне /tmp: `/mnt/c/Users/artem/Documents/Codex/2026-10-17/codex-agent-graph-github-github-codex/work/chat-coordination-integration/compatibility.bundle`, base fddc28de4fc77209f0c283da6385d16accb9a280, head8a899f13a3cad50d5c1471ef51e44a6b8f8fa1c5, SHA256 be98db75fa7e474a0caf34a83563173a701392664198c72988c28b64cf9f1cea. Это отдельный private handoff, не опубликованный preview.
 
 Source/installed readiness принят другим fresh whole-result reviewer: READY-CHAT-COORDINATION-20261017-B7208E6-4C91. Материальных исправлений нет; финальный whole-result вердикт ожидает exact canonical/GitHub HEAD и protected readback после публикации.
+
+## Завершение
+
+Итоговое независимое whole-result ревью: RESULT-CHAT-COORDINATION-20261017-47A7110-D834-PASS, repair list пуст. Reviewer независимо подтвердил чистый канон и GitHub main47a7110dea2f3cad3467a931ef644fbbba33d9f2, все18 source bindings,2homes×39 in-sync skills,44 защищённых файла и обе policy-only дельты с backups. После этого записывается только документация приёмки; feature bytes и настройки не меняются. Publication/readback — evidence/publication.json.
+
+В разрешённый чат «Спланировать упаковку и установку» переданы опубликованный head и durable private compatibility bundle; tool принял отправку. Это подтверждает отправку, не его согласие/интеграцию. Original previewfddc28d остаётся чистым и неизменённым. Архивы и packaging preview не опубликованы этим поручением.
+
+Открытые границы: implicit selection, полный отказный пилот двух пользовательских чатов и native plugin18-name composition. Они остаются кандидатами проверки на следующем подходящем реальном задании/отдельном поручении; не являются незавершённой частью принятой ограниченной поставки. Фоновые действия не назначены. Новое разрешение на сообщения, создание чатов, merge или production эта задача не выдаёт.

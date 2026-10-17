@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "canonical_head": "47a7110dea2f3cad3467a931ef644fbbba33d9f2",
+  "canonical_clean": true,
+  "feature_bindings": 18,
+  "installed_homes": 2,
+  "managed_per_home": 39,
+  "protected_unchanged": 44,
+  "policy_targets_and_backups": 2,
+  "remote_verification": "separate GitHub MCP exact HEAD readback",
+  "github_main": "47a7110dea2f3cad3467a931ef644fbbba33d9f2",
+  "github_verification": "Root and independent result reviewer separately read exact GitHub main through MCP",
+  "final_receipt": "RESULT-CHAT-COORDINATION-20261017-47A7110-D834-PASS",
+  "packaging_handoff": {
+    "send_tool_accepted": true,
+    "peer_integration_verified": false,
+    "original_preview_clean_head": "fddc28de4fc77209f0c283da6385d16accb9a280"
+  }
+}
