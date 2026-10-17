@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "changes": [
+    {
+      "target": "/home/artem/.codex/AGENTS.md",
+      "backup": "/home/artem/.codex/backups/agent-graphs/20261017-155026-189363-1948933/AGENTS.md",
+      "before_sha256": "9adc0a64c802183cb76dd234c3d966dc768d4879505cbadca80ae29efb658ccb",
+      "after_sha256": "c1f4005fd6000e2f33162da620390526cf58d6074f506be2dd145f0e517cddeb"
+    },
+    {
+      "target": "/mnt/c/Users/artem/.codex/AGENTS.md",
+      "backup": "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-155026-192393-1948933/AGENTS.md",
+      "before_sha256": "9adc0a64c802183cb76dd234c3d966dc768d4879505cbadca80ae29efb658ccb",
+      "after_sha256": "c1f4005fd6000e2f33162da620390526cf58d6074f506be2dd145f0e517cddeb"
+    }
+  ],
+  "homes": 2,
+  "scope": "Only orchestration block; cooperative installer locks and fresh preimages, no protection against arbitrary editors."
+}

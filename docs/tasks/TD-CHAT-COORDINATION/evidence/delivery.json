@@ -1,0 +1,206 @@
+{
+  "status": "source and installed readiness PASS; publication and final whole acceptance pending",
+  "source_commit": "b7208e622838c47c7aac3163535f3f41884ef8e9",
+  "feature_manifest": {
+    "policies/orchestration.md": "81872d901ed598430f223c3245f895a506d4623cc043d5a1f8d7692ded8c6330",
+    "scripts/install.py": "6bc5c2754793398323bc9d1e29fbf30cbbddda6b77c3343215a94f5a3489f398",
+    "skills/chat-coordination/SKILL.md": "ed0c8663ee4ac69641986d6af0e681a5951771303c1c28aeefe8115581c3326e",
+    "skills/chat-coordination/agents/openai.yaml": "b0019db888ed3d0a91fb8b2457bf3e663bcb4f9edf75eb2b9c242a0039471c6c",
+    "skills/chat-coordination/references/messages-and-recovery.md": "734d01068f6d7e8e641a9f40c029b3ef3adcfa956cf60a8f99c94afb70364507",
+    "skills/chat-coordination/references/resources-and-handoffs.md": "e18813e1d423845988cb901cd239f007cc9c0e97ebf6c5a001e5f8b9cf1e7000",
+    "skills/chat-coordination/references/scenarios.md": "a0668fe2593048ce9bb603aa7df127f39f5636023844d52975191599983296ec",
+    "skills/deployment/SKILL.md": "90442b9da09558559cabc36237cebf348b11cbeac765fbad96fbe552d2034b83",
+    "skills/deployment/skill-dependencies.json": "be78986f352f7c6c4659b9a54804048c3a19dabd229e2884f9254d2ec028a1f6",
+    "skills/product-care/SKILL.md": "1ec3cfb666b0daf5d5e02a8561dd1e51cba3634b1a21abe06d0caeb173808024",
+    "skills/product-care/skill-dependencies.json": "73a5becc2518c95ab5fb9b7c3ea192fd6ebca60eb31b0c86296a9aadb0f39178",
+    "skills/project-start/SKILL.md": "216720f48fde3656dc930bd1035fb58a77377016710508a2b9e3fdcda2b966c0",
+    "skills/project-start/skill-dependencies.json": "f26392f5b1da25ce920ff0d3844336ffc6a8c3bb53acd29bd36232b9b31ddc58",
+    "skills/software-factory/SKILL.md": "e392aa4692c445655f7aa9c1e2b6b0319fcabbea5fd96c4d8ca7a72c277870c6",
+    "skills/software-factory/references/routing-and-context.md": "b1a6b8678fc8dbdf89063cf1f29becf74cc10dd3531b32cdff7bdf85ad98ea20",
+    "skills/software-factory/skill-dependencies.json": "29bd73b0fa4be839df26a624ce7880c6590c57faee93a33a710903653a6ccc79",
+    "skills/task-delivery/SKILL.md": "0947bf8cc0e2a689e3d7c740b72d8560bb65258f1ebb5682e650612da1c02701",
+    "skills/task-delivery/skill-dependencies.json": "f54c52fbde34bdb4ca7896f357da226c189bef15c19f505fd8735017e901096e"
+  },
+  "managed_skills": 39,
+  "changed_skills": [
+    "chat-coordination",
+    "deployment",
+    "product-care",
+    "project-start",
+    "software-factory",
+    "task-delivery"
+  ],
+  "protected_files_unchanged": 44,
+  "verified_backup_trees": [
+    "/home/artem/.codex/backups/agent-graphs/20261017-154934-806514-1941246/skills/deployment",
+    "/home/artem/.codex/backups/agent-graphs/20261017-154934-806514-1941246/skills/product-care",
+    "/home/artem/.codex/backups/agent-graphs/20261017-154934-806514-1941246/skills/project-start",
+    "/home/artem/.codex/backups/agent-graphs/20261017-154934-806514-1941246/skills/task-delivery",
+    "/home/artem/.codex/backups/agent-graphs/20261017-154934-806514-1941246/skills/software-factory",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-154934-922592-1941246/skills/deployment",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-154934-922592-1941246/skills/product-care",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-154934-922592-1941246/skills/project-start",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-154934-922592-1941246/skills/task-delivery",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-154934-922592-1941246/skills/software-factory"
+  ],
+  "repeat_unchanged_files": 500,
+  "policy": {
+    "status": "PASS",
+    "changes": [
+      {
+        "target": "/home/artem/.codex/AGENTS.md",
+        "backup": "/home/artem/.codex/backups/agent-graphs/20261017-155026-189363-1948933/AGENTS.md",
+        "before_sha256": "9adc0a64c802183cb76dd234c3d966dc768d4879505cbadca80ae29efb658ccb",
+        "after_sha256": "c1f4005fd6000e2f33162da620390526cf58d6074f506be2dd145f0e517cddeb"
+      },
+      {
+        "target": "/mnt/c/Users/artem/.codex/AGENTS.md",
+        "backup": "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-155026-192393-1948933/AGENTS.md",
+        "before_sha256": "9adc0a64c802183cb76dd234c3d966dc768d4879505cbadca80ae29efb658ccb",
+        "after_sha256": "c1f4005fd6000e2f33162da620390526cf58d6074f506be2dd145f0e517cddeb"
+      }
+    ],
+    "homes": 2,
+    "scope": "Only orchestration block; cooperative installer locks and fresh preimages, no protection against arbitrary editors."
+  },
+  "native": [
+    {
+      "runtime": "WSL CLI",
+      "catalog_errors": 0,
+      "enabled_counts": {
+        "chat-coordination": 1,
+        "deployment": 1,
+        "software-factory": 1,
+        "project-start": 1,
+        "task-delivery": 1,
+        "product-care": 1
+      },
+      "selected": [
+        {
+          "name": "chat-coordination",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/chat-coordination/SKILL.md"
+        },
+        {
+          "name": "deployment",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/deployment/SKILL.md"
+        },
+        {
+          "name": "product-care",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/product-care/SKILL.md"
+        },
+        {
+          "name": "project-start",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/project-start/SKILL.md"
+        },
+        {
+          "name": "software-factory",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/software-factory/SKILL.md"
+        },
+        {
+          "name": "task-delivery",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/task-delivery/SKILL.md"
+        }
+      ],
+      "prompt_preview_exit": 0,
+      "model_visible_names": [
+        "chat-coordination",
+        "deployment",
+        "product-care",
+        "project-start",
+        "software-factory",
+        "task-delivery"
+      ],
+      "missing_model_visible": [],
+      "pass": true,
+      "scope": "fresh native process; plugins/MCP disabled only for probe; no model turn or GUI restart; raw prompt omitted"
+    },
+    {
+      "runtime": "Windows Desktop runtime",
+      "catalog_errors": 0,
+      "enabled_counts": {
+        "chat-coordination": 1,
+        "deployment": 1,
+        "software-factory": 1,
+        "project-start": 1,
+        "task-delivery": 1,
+        "product-care": 1
+      },
+      "selected": [
+        {
+          "name": "chat-coordination",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\chat-coordination\\SKILL.md"
+        },
+        {
+          "name": "deployment",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\deployment\\SKILL.md"
+        },
+        {
+          "name": "product-care",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\product-care\\SKILL.md"
+        },
+        {
+          "name": "project-start",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\project-start\\SKILL.md"
+        },
+        {
+          "name": "software-factory",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\software-factory\\SKILL.md"
+        },
+        {
+          "name": "task-delivery",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\task-delivery\\SKILL.md"
+        }
+      ],
+      "prompt_preview_exit": 0,
+      "model_visible_names": [
+        "chat-coordination",
+        "deployment",
+        "product-care",
+        "project-start",
+        "software-factory",
+        "task-delivery"
+      ],
+      "missing_model_visible": [],
+      "pass": true,
+      "scope": "fresh native process; plugins/MCP disabled only for probe; no model turn or GUI restart; raw prompt omitted"
+    }
+  ],
+  "artifacts": {
+    "/tmp/coordination-install-delivery-20261017.py": "cbe319dfe273285178bff93d04668670898287bd52ea0fcd7da5edcec0ea32c7",
+    "/tmp/coordination-policy-activation-20261017.py": "1b1cdb8cfaacb8833730b981083419f9696384bfbf2d3321cb1fb02028352319",
+    "/tmp/coordination-native-probe-20261017.py": "7e5eb1d9915106b8a94885b185658906af4c61495d2504bc9ca3bac2352f2396",
+    "/tmp/coordination-install-preimages-20261017.json": "972525b87a1b3941cbed577be985be2dc4cae0b7f93dd4ad2434df2849d28cae"
+  },
+  "initial_failure_and_recovery": {
+    "failure": "Fresh native subprocesses could not start inside restricted read-only/vsock environment, including on unchanged old skill baseline.",
+    "owned_rollback": "Both AGENTS files and all twelve changed/new skill trees restored to original preimages, no conflicts; new bytes retained in failed-owned backups.",
+    "discrimination": "Unchanged baseline passed both native catalogs/prompt previews in suitable authorized execution context; new source then reinstalled, same checks passed.",
+    "source_changes_for_this_failure": 0
+  },
+  "policy_guard_tests": {
+    "owned_block_and_noop": "PASS",
+    "failure_between_homes_restores_preimage": "PASS",
+    "preimage_drift_preserved": "PASS",
+    "rollback_preserves_foreign_edit": "PASS",
+    "locked_skill_rollback_fixture": "PASS"
+  },
+  "scope_limits": [
+    "No new user chats or full root-to-root failure pilot.",
+    "Forward probes use native children and supplied candidate instructions; automatic invocation frequency not established.",
+    "Native catalogs/prompt previews used fresh clients with plugins/MCP disabled only for probe; no model turn or GUI restart.",
+    "No production/server/DB operations, external service installs or background loops."
+  ],
+  "readiness_receipt": "READY-CHAT-COORDINATION-20261017-B7208E6-4C91"
+}

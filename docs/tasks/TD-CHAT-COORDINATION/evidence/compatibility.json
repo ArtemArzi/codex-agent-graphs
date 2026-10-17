@@ -1,0 +1,38 @@
+{
+  "status": "PASS bounded compatibility branch",
+  "base": "fddc28de4fc77209f0c283da6385d16accb9a280",
+  "commit": "8a899f13a3cad50d5c1471ef51e44a6b8f8fa1c5",
+  "path": "/tmp/coordination-packaging-compat-20261017",
+  "source_skills": 57,
+  "legacy_managed": 39,
+  "engineering_resolved": 17,
+  "crm_plus_engineering": 18,
+  "targeted_catalog_tests": 16,
+  "targeted_bundle_tests": 18,
+  "bundle_output": "/tmp/coordination-compatible-bundles-20261017",
+  "bundle_build_manifest_sha256": "88c01efd1ae4f17c2c3dff69f872198bda04a30b61024b731b55c5b48651932c",
+  "checks": {
+    "/tmp/coordination-compat-catalog-20261017.log": "770238b8b9bfb0dc853107670c1f6dfb5b04a9b0c68d7a2fe8be48731c2779d1",
+    "/tmp/coordination-compat-bundles-20261017.log": "82b2210fa78964703ecd0315d0e5ff2a1038652b86c38b1f29355a9f84688175",
+    "/tmp/coordination-compat-bundles-fixed-20261017.log": "5c016a4dbd35a051a2619077829c94d313e9a60035964c22f0b691e3f60ec47b",
+    "/tmp/coordination-compat-check-all-20261017.log": "5d63ba809efb89f9d093ac6529fb592e8579f7795dc219fe1d373e1d1a9ff63c"
+  },
+  "regression": {
+    "observed": "SKILL.md selected invocations were namespaced, agents/openai.yaml default_prompt was not. New bundle regression failed before fix.",
+    "challenge_sources": [
+      "existing build_plugins.py renderer and required exact invocation map",
+      "https://developers.openai.com/plugins/deploy/submission-errors#skill-agent-metadata-errors"
+    ],
+    "fix": "Reuse pure complete-token mapping for exact skills/<name>/agents/openai.yaml only; no Markdown/runtime footer in YAML, unrelated formats/graph bytes preserved.",
+    "after": "same test passes; all18 bundle tests and whole check_all PASS"
+  },
+  "original_packaging_candidate_and_archives": "untouched; local compatibility branch is not published",
+  "limits": "Built and tested new bundle18 composition; prior native plugin17-name proof remains historical and is not relabelled. Current real native proof is direct installed skills.",
+  "durable_handoff": {
+    "path": "/mnt/c/Users/artem/Documents/Codex/2026-10-17/codex-agent-graph-github-github-codex/work/chat-coordination-integration/compatibility.bundle",
+    "base": "fddc28de4fc77209f0c283da6385d16accb9a280",
+    "head": "8a899f13a3cad50d5c1471ef51e44a6b8f8fa1c5",
+    "sha256": "be98db75fa7e474a0caf34a83563173a701392664198c72988c28b64cf9f1cea",
+    "published": false
+  }
+}

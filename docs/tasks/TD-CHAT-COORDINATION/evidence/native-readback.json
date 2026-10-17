@@ -1,0 +1,114 @@
+[
+  {
+    "runtime": "WSL CLI",
+    "catalog_errors": 0,
+    "enabled_counts": {
+      "chat-coordination": 1,
+      "deployment": 1,
+      "software-factory": 1,
+      "project-start": 1,
+      "task-delivery": 1,
+      "product-care": 1
+    },
+    "selected": [
+      {
+        "name": "chat-coordination",
+        "enabled": true,
+        "path": "/home/artem/.codex/skills/chat-coordination/SKILL.md"
+      },
+      {
+        "name": "deployment",
+        "enabled": true,
+        "path": "/home/artem/.codex/skills/deployment/SKILL.md"
+      },
+      {
+        "name": "product-care",
+        "enabled": true,
+        "path": "/home/artem/.codex/skills/product-care/SKILL.md"
+      },
+      {
+        "name": "project-start",
+        "enabled": true,
+        "path": "/home/artem/.codex/skills/project-start/SKILL.md"
+      },
+      {
+        "name": "software-factory",
+        "enabled": true,
+        "path": "/home/artem/.codex/skills/software-factory/SKILL.md"
+      },
+      {
+        "name": "task-delivery",
+        "enabled": true,
+        "path": "/home/artem/.codex/skills/task-delivery/SKILL.md"
+      }
+    ],
+    "prompt_preview_exit": 0,
+    "model_visible_names": [
+      "chat-coordination",
+      "deployment",
+      "product-care",
+      "project-start",
+      "software-factory",
+      "task-delivery"
+    ],
+    "missing_model_visible": [],
+    "pass": true,
+    "scope": "fresh native process; plugins/MCP disabled only for probe; no model turn or GUI restart; raw prompt omitted"
+  },
+  {
+    "runtime": "Windows Desktop runtime",
+    "catalog_errors": 0,
+    "enabled_counts": {
+      "chat-coordination": 1,
+      "deployment": 1,
+      "software-factory": 1,
+      "project-start": 1,
+      "task-delivery": 1,
+      "product-care": 1
+    },
+    "selected": [
+      {
+        "name": "chat-coordination",
+        "enabled": true,
+        "path": "C:\\Users\\artem\\.codex\\skills\\chat-coordination\\SKILL.md"
+      },
+      {
+        "name": "deployment",
+        "enabled": true,
+        "path": "C:\\Users\\artem\\.codex\\skills\\deployment\\SKILL.md"
+      },
+      {
+        "name": "product-care",
+        "enabled": true,
+        "path": "C:\\Users\\artem\\.codex\\skills\\product-care\\SKILL.md"
+      },
+      {
+        "name": "project-start",
+        "enabled": true,
+        "path": "C:\\Users\\artem\\.codex\\skills\\project-start\\SKILL.md"
+      },
+      {
+        "name": "software-factory",
+        "enabled": true,
+        "path": "C:\\Users\\artem\\.codex\\skills\\software-factory\\SKILL.md"
+      },
+      {
+        "name": "task-delivery",
+        "enabled": true,
+        "path": "C:\\Users\\artem\\.codex\\skills\\task-delivery\\SKILL.md"
+      }
+    ],
+    "prompt_preview_exit": 0,
+    "model_visible_names": [
+      "chat-coordination",
+      "deployment",
+      "product-care",
+      "project-start",
+      "software-factory",
+      "task-delivery"
+    ],
+    "missing_model_visible": [],
+    "pass": true,
+    "scope": "fresh native process; plugins/MCP disabled only for probe; no model turn or GUI restart; raw prompt omitted"
+  }
+]

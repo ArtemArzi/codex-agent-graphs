@@ -1,0 +1,14 @@
+[
+  {
+    "runtime": "WSL CLI",
+    "pass": false,
+    "error_type": "RuntimeError",
+    "error": "Probe unavailable; no raw stderr or settings emitted"
+  },
+  {
+    "runtime": "Windows Desktop runtime",
+    "pass": false,
+    "error_type": "RuntimeError",
+    "error": "Probe unavailable; no raw stderr or settings emitted"
+  }
+]
