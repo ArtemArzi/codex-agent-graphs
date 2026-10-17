@@ -1,0 +1,187 @@
+{
+  "status": "PASS",
+  "source_commit": "a0f4a353527b1a7f59e8bed175b3a62a778fafe7",
+  "managed_skills": 38,
+  "protected_counts_before": {
+    "/home/artem/.codex": 22,
+    "/mnt/c/Users/artem/.codex": 22
+  },
+  "protected_counts_after": {
+    "/home/artem/.codex": 22,
+    "/mnt/c/Users/artem/.codex": 22
+  },
+  "changed_skill_names": [
+    "development-recovery",
+    "grill-me",
+    "grill-with-docs",
+    "grilling",
+    "improve-codebase-architecture",
+    "project-start",
+    "task-delivery"
+  ],
+  "verified_backup_trees": [
+    "/home/artem/.codex/backups/agent-graphs/20261017-133826-169958-1234592/skills/grilling",
+    "/home/artem/.codex/backups/agent-graphs/20261017-133826-169958-1234592/skills/project-start",
+    "/home/artem/.codex/backups/agent-graphs/20261017-133826-169958-1234592/skills/task-delivery",
+    "/home/artem/.codex/backups/agent-graphs/20261017-133826-169958-1234592/skills/development-recovery",
+    "/home/artem/.codex/backups/agent-graphs/20261017-133826-169958-1234592/skills/grill-with-docs",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-133826-286363-1234592/skills/grilling",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-133826-286363-1234592/skills/project-start",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-133826-286363-1234592/skills/task-delivery",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-133826-286363-1234592/skills/development-recovery",
+    "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261017-133826-286363-1234592/skills/grill-with-docs"
+  ],
+  "installed_file_count_checked_for_noop": 466,
+  "native": [
+    {
+      "runtime": "WSL CLI",
+      "catalog_errors": 0,
+      "enabled_counts": {
+        "grilling": 1,
+        "grill-with-docs": 1,
+        "project-start": 1,
+        "task-delivery": 1,
+        "improve-codebase-architecture": 1,
+        "grill-me": 1,
+        "development-recovery": 1
+      },
+      "selected": [
+        {
+          "name": "development-recovery",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/development-recovery/SKILL.md"
+        },
+        {
+          "name": "grill-me",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/grill-me/SKILL.md"
+        },
+        {
+          "name": "grill-with-docs",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/grill-with-docs/SKILL.md"
+        },
+        {
+          "name": "grilling",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/grilling/SKILL.md"
+        },
+        {
+          "name": "improve-codebase-architecture",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/improve-codebase-architecture/SKILL.md"
+        },
+        {
+          "name": "project-start",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/project-start/SKILL.md"
+        },
+        {
+          "name": "task-delivery",
+          "enabled": true,
+          "path": "/home/artem/.codex/skills/task-delivery/SKILL.md"
+        }
+      ],
+      "prompt_preview_exit": 0,
+      "model_visible_names": [
+        "development-recovery",
+        "grill-me",
+        "grill-with-docs",
+        "grilling",
+        "improve-codebase-architecture",
+        "project-start",
+        "task-delivery"
+      ],
+      "missing_model_visible": [],
+      "pass": true,
+      "scope": "fresh native process; plugins/MCP disabled only for probe; no model turn or GUI restart; raw prompt omitted"
+    },
+    {
+      "runtime": "Windows Desktop runtime",
+      "catalog_errors": 0,
+      "enabled_counts": {
+        "grilling": 1,
+        "grill-with-docs": 1,
+        "project-start": 1,
+        "task-delivery": 1,
+        "improve-codebase-architecture": 1,
+        "grill-me": 1,
+        "development-recovery": 1
+      },
+      "selected": [
+        {
+          "name": "development-recovery",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\development-recovery\\SKILL.md"
+        },
+        {
+          "name": "grill-me",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\grill-me\\SKILL.md"
+        },
+        {
+          "name": "grill-with-docs",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\grill-with-docs\\SKILL.md"
+        },
+        {
+          "name": "grilling",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\grilling\\SKILL.md"
+        },
+        {
+          "name": "improve-codebase-architecture",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\improve-codebase-architecture\\SKILL.md"
+        },
+        {
+          "name": "project-start",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\project-start\\SKILL.md"
+        },
+        {
+          "name": "task-delivery",
+          "enabled": true,
+          "path": "C:\\Users\\artem\\.codex\\skills\\task-delivery\\SKILL.md"
+        }
+      ],
+      "prompt_preview_exit": 0,
+      "model_visible_names": [
+        "development-recovery",
+        "grill-me",
+        "grill-with-docs",
+        "grilling",
+        "improve-codebase-architecture",
+        "project-start",
+        "task-delivery"
+      ],
+      "missing_model_visible": [],
+      "pass": true,
+      "scope": "fresh native process; plugins/MCP disabled only for probe; no model turn or GUI restart; raw prompt omitted"
+    }
+  ],
+  "protected_files_rechecked_after_native_probe": 44,
+  "full_gate": {
+    "command": "python3 scripts/check_all.py",
+    "exit_code": 0,
+    "log_sha256": "de066a87b4d16ce2d97cf739b6db5e7dc6f4fb1748823e91b4df4d0a0be8d50c"
+  },
+  "forward": {
+    "interview_rounds": 3,
+    "quality_commands": 13,
+    "quality_evidence_sha256": "f7fe794b0ba187b21f1bb71cd59dec7e1f337b97d5efe0e510669a487d37640b",
+    "scope": "synthetic fixtures, no measured live automatic invocation rate"
+  },
+  "source_delivery": {
+    "status": "PASS",
+    "previous_head": "ca99989eb922618265ed336091352d44eb354e1f",
+    "head": "a0f4a353527b1a7f59e8bed175b3a62a778fafe7",
+    "clean": true,
+    "scope": "local canonical checkout only; no GitHub push"
+  },
+  "final_acceptance": {
+    "verdict": "PASS",
+    "reviewer_receipt": "RESULT-MATT-FINAL-20261017-b183a7e4",
+    "scope": "complete local delivery; no GitHub publication or production-effect claim"
+  }
+}

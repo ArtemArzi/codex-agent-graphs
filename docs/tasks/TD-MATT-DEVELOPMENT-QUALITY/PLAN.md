@@ -1,6 +1,6 @@
 # Matt companions: interviews and development quality
 
-Status: source implemented and checked; awaiting result review/delivery, 2026-10-17.
+Status: complete local delivery, independently accepted, 2026-10-17.
 Owner: this task document.
 
 ## Requested outcome
@@ -130,7 +130,30 @@ implementation, TDD, handoff, review and debugging pipelines.
   `RESULT-MATT-SOURCE-20261017-9d28c6f1`; reviewer checked the complete 31-path
   feature delta and reran both relevant installer integration tests. Live
   installation/discovery is pending and is not covered by this source receipt.
-- Next: freeze/deliver candidate locally, skills-only install with backup/CAS,
-  readback/idempotence and fresh native WSL/Windows discovery, then return this
-  evidence to the same whole-result reviewer. GitHub publication and actual
-  project effects remain unclaimed.
+- Reviewed implementation committed as
+  `a0f4a353527b1a7f59e8bed175b3a62a778fafe7`. Canonical local checkout fast-forwarded
+  from the verified unchanged `ca99989` and read back clean. Both prior histories
+  preserved. No GitHub push was requested/performed.
+- Installed with the existing skills-only CLI in both homes. All 38 managed
+  trees match source; five replaced trees per home have verified exact backups.
+  Verification passed. Repeat install changed no bytes/mtimes in 466 checked
+  files and made no backup. All 44 protected files remained unchanged, including
+  after native processes. Raw delivery: `/tmp/matt-install-delivery-20261017.json`.
+- Fresh WSL CLI and actual Windows Desktop `codex.exe` app-server skills/list:
+  all seven affected names enabled exactly once, zero catalog errors. Native
+  `debug prompt-input` also contains every affected skill, with no missing name.
+  No model turn, GUI restart or persistent override; plugins/MCP suppressed
+  only in owned diagnostic processes. Raw prompt was not saved. Native result:
+  `/tmp/matt-native-readback-20261017.json`; compact durable evidence:
+  [evidence.json](evidence.json).
+- Existing chats retain their loaded context; open a new chat to use the new
+  catalog. Automatic eligibility and synthetic forward uses do not guarantee
+  every future invocation or production quality improvement.
+- Complete local delivery independently accepted:
+  `RESULT-MATT-FINAL-20261017-b183a7e4`. Reviewer independently checked all 38
+  skill trees/runtime, ten replacement backups and 44 protected files, plus
+  no-op and both native prompt/catalog results. No required check remains unmet.
+- Completion evidence is saved locally; installed instruction payload remains
+  the exact reviewed implementation commit above. Next use: open a new chat
+  and invoke the appropriate workflow or interview. Actual project effects and
+  GitHub publication remain outside the completed installation scope.
