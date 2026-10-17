@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "package_id": "business-automation",
+  "package_version": "1.0.0",
+  "baseline_package_version": "1.2",
+  "canonical_repository": "https://github.com/ArtemArzi/codex-agent-graphs",
+  "canonical_product_path": "products/business-automation",
+  "update_owner": "canonical-repository-first",
+  "pins": {
+    "nmt": {
+      "repo": "zamesin/Next-Move-Theory-Canon-and-Skills",
+      "commit": "f8e87d10255b48d381ebc7fa65172960eb6d483f"
+    },
+    "last30days": {
+      "repo": "mvanhorn/last30days-skill",
+      "commit": "5103ba478b380552207a3754b74c7655d64208cd"
+    }
+  },
+  "skills": [
+    "nmt-analyze-interviews",
+    "nmt-chat",
+    "nmt-craft-go-to-market",
+    "nmt-craft-value-proposition",
+    "nmt-diagnose",
+    "nmt-market-research",
+    "nmt-product-requirements",
+    "nmt-update",
+    "last30days",
+    "business-work",
+    "business-hypothesis-check"
+  ],
+  "installation_scope": "--skills-only --pack business-automation",
+  "discovery_layout": "one resolved modern skills root; preserve existing host aliases",
+  "beads": "deferred until pilot",
+  "local_changes": [
+    "NMT paths/contracts/precedence/output/telemetry/update",
+    "last30days precedence and safe launcher",
+    "original business routing and hypothesis reporter",
+    "single canonical modern root after native duplicate detection",
+    "last30days clean config, no shared cache/store/queue/recording; environment credentials retained",
+    "Pilot refinement: nmt-chat overview references include exact canon subdirectories; Krasinsky notes link full findings/cards and timestamped transcript",
+    "repository-first version management",
+    "business-work process/context/adoption guides",
+    "portable optional source notes"
+  ]
+}

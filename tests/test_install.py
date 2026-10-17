@@ -217,7 +217,9 @@ class InstallerTests(unittest.TestCase):
     def test_native_companion_trees_are_installed_complete(self) -> None:
         installer.install_environment(self.home)
         for skill in ("writing-for-agents", "retro", "to-questionnaire", "pr",
-                      "grilling", "domain-modeling", "codebase-design"):
+                      "grilling", "grill-me", "grill-with-docs",
+                      "domain-modeling", "codebase-design",
+                      "improve-codebase-architecture"):
             with self.subTest(skill=skill):
                 source = installer.SKILLS_ROOT / skill
                 target = self.home / "skills" / skill
@@ -225,6 +227,36 @@ class InstallerTests(unittest.TestCase):
                 self.assertTrue((target / "LICENSE").is_file())
                 self.assertTrue((target / "agents" / "openai.yaml").is_file())
                 self.assertFalse((target / "graph.json").exists())
+
+    def test_discovery_companion_upgrade_is_backed_up_and_repeat_is_noop(self) -> None:
+        target = self.home / "skills/grill-with-docs"
+        (target / "agents").mkdir(parents=True)
+        (target / "SKILL.md").write_text("legacy explicit interview wrapper\n")
+        (target / "agents/openai.yaml").write_text(
+            "policy:\n  allow_implicit_invocation: false\n")
+        previous = installer.manifest(target)
+        protected = {p: p.read_bytes() for p in
+                     (self.home / "config.toml", self.home / "AGENTS.md")}
+        result = installer.install_skills_batch([("fixture", self.home)])[0]
+        backup = Path(result["backup"]) / "skills/grill-with-docs"
+        self.assertEqual(previous, installer.manifest(backup))
+        for name in ("grill-me", "grill-with-docs", "improve-codebase-architecture"):
+            self.assertEqual(installer.manifest(installer.SKILLS_ROOT / name),
+                             installer.manifest(self.home / "skills" / name))
+        discovery = self.home / "skills/grilling/references/product-discovery.md"
+        self.assertEqual(
+            (installer.SKILLS_ROOT / "grilling/references/product-discovery.md").read_bytes(),
+            discovery.read_bytes())
+        tracked = [f for name in ("grill-me", "grill-with-docs", "improve-codebase-architecture")
+                   for f in (self.home / "skills" / name).rglob("*") if f.is_file()]
+        mtimes = {p: p.stat().st_mtime_ns for p in tracked}
+        repeat = installer.install_skills_batch([("fixture", self.home)])[0]
+        self.assertIsNone(repeat["backup"])
+        self.assertTrue(all(item["status"] == "in-sync" for item in repeat["changes"]))
+        self.assertEqual(mtimes, {p: p.stat().st_mtime_ns for p in tracked})
+        self.assertEqual(protected, {p: p.read_bytes() for p in protected})
+        for duplicate in ("diagnosing-bugs", "code-review", "implement-spec", "wizard"):
+            self.assertFalse((self.home / "skills" / duplicate).exists())
 
     def test_global_policy_install_is_idempotent(self) -> None:
         installer.install_environment(self.home)

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Grill Me"
+  short_description: "Develop a product idea through adaptive questions"
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "crm-business-pack",
+  "version": "1.0.0",
+  "entrypoint": "crm-implementation",
+  "managed_skills": [
+    "crm-implementation"
+  ],
+  "reused_capabilities": {
+    "required": false,
+    "skills": [
+      "business-work",
+      "task-delivery",
+      "deployment",
+      "api-connector-builder",
+      "reliable-leads"
+    ]
+  },
+  "update_owner": "canonical-repository-first",
+  "installer_registered": false,
+  "external_candidates_installed": false
+}

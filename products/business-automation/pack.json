@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "id": "business-automation",
+  "version": "1.0.0",
+  "entrypoint": "business-work",
+  "managed_skills": [
+    "nmt-analyze-interviews",
+    "nmt-chat",
+    "nmt-craft-go-to-market",
+    "nmt-craft-value-proposition",
+    "nmt-diagnose",
+    "nmt-market-research",
+    "nmt-product-requirements",
+    "nmt-update",
+    "last30days",
+    "business-work",
+    "business-hypothesis-check"
+  ],
+  "reused_capabilities": {
+    "management": "existing-general-skills-installer",
+    "required": false,
+    "skills": [
+      "to-questionnaire",
+      "research",
+      "task-delivery",
+      "deployment",
+      "product-care"
+    ]
+  },
+  "project_capabilities": {
+    "required": false,
+    "provider": "project-owned CWS",
+    "skills": [
+      "company-context",
+      "company-knowledge",
+      "company-episodes",
+      "company-incident"
+    ]
+  },
+  "upstream_pins": {
+    "nmt": {
+      "repository": "https://github.com/zamesin/Next-Move-Theory-Canon-and-Skills",
+      "commit": "f8e87d10255b48d381ebc7fa65172960eb6d483f",
+      "version": "0.6.18",
+      "license": "CC-BY-NC-SA-4.0"
+    },
+    "last30days": {
+      "repository": "https://github.com/mvanhorn/last30days-skill",
+      "commit": "5103ba478b380552207a3754b74c7655d64208cd",
+      "license": "MIT"
+    }
+  },
+  "update_owner": "canonical-repository-first",
+  "baseline": "adapted-business-library-1.2",
+  "external_candidates_installed": false,
+  "optional_products": [
+    {
+      "id": "crm-business-pack",
+      "entrypoint": "crm-implementation",
+      "required": false,
+      "management": "separate-product"
+    }
+  ]
+}

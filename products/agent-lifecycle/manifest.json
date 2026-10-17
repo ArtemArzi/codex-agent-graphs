@@ -1,0 +1,31 @@
+{
+  "files": {
+    "products/agent-lifecycle/README.md": "8091da5294dca12f6d92f6d525e214ce238cbe93d05d02d412af96b9cc1fac31",
+    "products/agent-lifecycle/SOURCES.md": "6d6e20b3b47f3bb42692d157378b916397872d2e727c930d60e31c8b38418fd2",
+    "products/agent-lifecycle/THIRD_PARTY.md": "b76c814157cd6da17fff28fee74c5be52c169705fb02afb51db00776cae9604c",
+    "products/agent-lifecycle/VALIDATION.md": "2adca93c7392b04f85aa240abd0c2c9883e2c2875313f0ca369f5583f345d045",
+    "products/agent-lifecycle/pack.json": "bdbfbedfdf7b714de86de5ff5b776b7c785ca1582c169da65a806a471407725e",
+    "products/agent-lifecycle/validation/SCENARIOS.md": "14c5d44ebbc01d8730b3d3c8864a7b2496b332321c204eeeb6ec00e5b30625c9",
+    "scripts/check_agent_pack.py": "fd9c340b4a344e316b7283a27902aaffcfc299728003a28f7b5350daabdbba57",
+    "skills/agent-commercial-delivery/SKILL.md": "3d4c9db35f2dbf955c273fe60af7619d2eae27409587eb7b18a65773dc0381c9",
+    "skills/agent-commercial-delivery/agents/openai.yaml": "ca3de324c0fdbf9b60b506fa17af1b4ddefc2d32a6c7ac448c7f032ff222cc21",
+    "skills/agent-commercial-delivery/references/handover.md": "3aaedd34cf8443928b04f102cc092f5ea4ff83f1daf7e264dfcea88d673a6859",
+    "skills/agent-commercial-delivery/references/pilot-and-offer.md": "069be62762ae51b65260df88680f0d3f932a987f79daadc84912aecf6ce9279d",
+    "skills/agent-memory-lifecycle/SKILL.md": "e62032a9d9958ae56099c76c199f7a6e0649aff1d7be3f146c6c007745954856",
+    "skills/agent-memory-lifecycle/agents/openai.yaml": "9214e414e7349df450acc15481ea46aa75c2ecaeb4a14f2e95d950a7a79f615b",
+    "skills/agent-memory-lifecycle/references/memory-checks.md": "6fca13c24781c3f4e32782c037245cf12ef1bd13df562dc189785100b2293a5b",
+    "skills/agent-memory-lifecycle/references/memory-contract.md": "4ac41b80c0c846b2c5e25c9adc90dc87a7b16ca4d4039cc3c095e9cc2dfb14dd",
+    "skills/agent-outcome-e2e/SKILL.md": "7d08250965517e23024a3593646be2a61d4403eed49cbad01996627b0751dfb9",
+    "skills/agent-outcome-e2e/agents/openai.yaml": "26a287e0ef4aa7835d33f089fc4199884c5f8f550cde508cd04e7aeedffe72a3",
+    "skills/agent-outcome-e2e/references/case-contract.md": "21c0a3f6cf09020329822ff94d6de1e2a1aacad35c33da36b871611b4415c4dd",
+    "skills/agent-outcome-e2e/references/effects-and-faults.md": "7cb560ec2c0e01c0d0e574e29293ca465d9982fdb45d63e1f97b9c1756409d42",
+    "skills/agent-outcome-e2e/references/results-and-sources.md": "79746b36f567860d5ed38416ae3a88e36205c718979e072e0cd8c71b5936a044",
+    "skills/agent-project-design/SKILL.md": "72deeeeea545b2089bd1ee88939d286c90f1677c6bc5fcdf6c47fa060023c797",
+    "skills/agent-project-design/agents/openai.yaml": "efc488070e51d089f8ba1dad051d0934c3b7179e2ef213785ceef6a562d3a712",
+    "skills/agent-project-design/references/agent-contract.md": "a6162e3fba6c46142194a55d3d8d88d26e41206e8cfb7ef6ba8a4132330d3a75",
+    "skills/agent-project-design/references/harness-and-tools.md": "cb0cdf4a3dca88a02ef4c72fafaeecc55cde67d81f2188f4987b9b85c1f59475",
+    "tests/test_agent_pack.py": "e50537e427c9f958d6151c2ba72f7fee3e595e382860be0d7b523a4b0ba5c48c"
+  },
+  "pack_version": "0.1.2",
+  "schema_version": 1
+}
