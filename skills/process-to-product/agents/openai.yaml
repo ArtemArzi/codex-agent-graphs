@@ -1,0 +1,6 @@
+interface:
+  display_name: "Из процесса в продукт"
+  short_description: "Повторяемое ядро, различия и следующие поставки"
+  default_prompt: "Используй $process-to-product: проверь, какую часть этих клиентских процессов можно повторять как услугу или продукт и что проверить следующим."
+policy:
+  allow_implicit_invocation: true

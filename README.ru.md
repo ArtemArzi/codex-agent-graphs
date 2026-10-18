@@ -25,6 +25,7 @@
 | Подготовить новый или старый проект | [`$project-start`](skills/project-start/SKILL.md) | Контекст, архитектура, инженерные правила и рабочий план |
 | Написать, исправить или выпустить код | [`$task-delivery`](skills/task-delivery/SKILL.md) | Изменение, применимые тесты, ревью и передача результата; выпуском владеет [`$deployment`](skills/deployment/SKILL.md) |
 | Разобраться в работе бизнеса и улучшить процесс | [`$business-work`](products/business-automation/README.md) | Текущая работа, выбранное улучшение, будущий процесс и проверка внедрения |
+| Найти бизнес-возможность или превратить процесс в продукт | [`$business-work`](products/business-model/README.md) | Бизнес-модель, экономика, проверяемые предположения и решение о следующем шаге |
 | Настроить Bitrix24 или amoCRM | [`$crm-implementation`](products/crm-business-pack/README.md) | Процесс, переведённый в модель CRM, настройки, интеграции и проверку запуска |
 | Создать, проверить или передать ИИ-агента | [`$agent-project-design`](products/agent-lifecycle/README.md) | Поведение, инструменты, нужная память, сквозные проверки, пилот и передача |
 | Исследовать вопрос | [`$research`](skills/research/SKILL.md) | Вывод с источниками, доказательствами и обозначенной неопределённостью |
@@ -39,6 +40,7 @@
 | --- | --- | --- |
 | **Инженерные процессы** | Project Start, Research, Task Delivery, Software Factory, Deployment, Product Care и вспомогательные скиллы | Общий установщик; `--skills-only` сохраняет настройки среды |
 | **[Бизнес и автоматизация](products/business-automation/README.md)** | 11 скиллов: бизнес-процесс, проверка гипотез, методы NMT и свежие внешние сигналы | `--skills-only --pack business-automation` |
+| **[Бизнес-модель](products/business-model/README.md)** | Общий business-work и 3 новых скилла: модель, экономика, процесс → продукт; российский рынок по умолчанию | `--skills-only --pack business-model` |
 | **[CRM](products/crm-business-pack/README.md)** | Один скилл со справочниками Bitrix24/amoCRM: проектирование, обмен, запуск и сопровождение | Исходники опубликованы; в установщике пока не зарегистрирован |
 | **[Жизненный цикл агентов](products/agent-lifecycle/README.md)** | 4 скилла: проектирование, память, сквозная проверка результата и коммерческая передача | `--skills-only --pack agent-lifecycle` |
 

@@ -28,13 +28,15 @@ than proof that the skill is installed or automatically discovered.
 | `--skills-only` | Engineering skill set and shared artifact runtime | Models, profiles, roles, policies and credentials preserved |
 | `--skills-only --pack business-automation` | Only the 11 skills in the business manifest | Preserved; shared modern skill root |
 | `--skills-only --pack agent-lifecycle` | Only the 4 skills in the agent manifest | Preserved; shared modern skill root |
+| `--skills-only --pack business-model` | Shared business-work and 3 Business Model skills | Preserved; shared modern skill root |
 | `--routing-only` | Managed role files, routing block, subagent defaults and usage hint | Selected root model/effort and unrelated settings preserved |
 | No scope flag | Engineering skills/runtime, supplied roles, managed host policies and configuration | Applies the configured root defaults and managed registrations |
 
 The current source of the default skill set is `SKILLS` in
 [scripts/install.py](../scripts/install.py). Product membership is owned by
 [business pack.json](../products/business-automation/pack.json) and
-[agent pack.json](../products/agent-lifecycle/pack.json).
+[agent pack.json](../products/agent-lifecycle/pack.json) and
+[Business Model pack.json](../products/business-model/pack.json).
 **`--all` selects WSL and Desktop environments; it does not select every pack.**
 
 The legacy `playwright-interactive` companion is updated by the default
@@ -110,6 +112,11 @@ python3 scripts/install.py verify --skills-only --pack business-automation --all
 python3 scripts/install.py plan --skills-only --pack agent-lifecycle --all
 python3 scripts/install.py install --skills-only --pack agent-lifecycle --all
 python3 scripts/install.py verify --skills-only --pack agent-lifecycle --all
+
+# Business Model
+python3 scripts/install.py plan --skills-only --pack business-model --all
+python3 scripts/install.py install --skills-only --pack business-model --all
+python3 scripts/install.py verify --skills-only --pack business-model --all
 ```
 
 These examples assume an existing, unambiguous shared modern skill root visible
@@ -117,6 +124,14 @@ to both selected environments. The installer considers
 `<CODEX_HOME>/.agents/skills` and `<CODEX_HOME parent>/.agents/skills`, preserving
 intentional aliases to the same physical directory. It checks known legacy
 roots for duplicate names as well.
+
+Business Automation and Business Model share one business-work source. Install
+both from the same reviewed checkout; installing an older Business Automation
+checkout can replace shared guidance. Business Model rejects target drift before
+writing. Inspect differences first. If an existing Business Automation installation
+matches a known older source, reconcile that update and use its supported installer
+from the selected checkout before installing Business Model. Unknown local edits
+must remain preserved; a backup alone does not authorize overwriting them.
 
 For a new single environment without an existing modern root, select `--wsl`
 or `--desktop`; the default new root is its `<CODEX_HOME parent>/.agents/skills`.

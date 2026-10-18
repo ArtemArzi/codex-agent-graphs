@@ -1,6 +1,6 @@
 ---
 name: business-work
-description: Diagnose and improve a business or operational process, from an initial client conversation through current and future process design, an automation pilot, employee adoption and outcome review. Also route business-model and offer discovery. Use existing company context and suitable installed skills; ordinary coding and career wording alone do not require this workflow.
+description: Diagnose and improve a business or operational process, or route opportunity discovery, business-model design, delivery economics and process productization through the appropriate installed skills. Preserve existing company context, implementation owners and evidence boundaries.
 ---
 
 # Разбор и улучшение бизнеса
@@ -15,6 +15,7 @@ description: Diagnose and improve a business or operational process, from an ini
 
 | Ситуация | Следующее действие и нужное руководство |
 | --- | --- |
+| Ищу новое дело или хочу сделать продукт из повторяющейся клиентской работы | [Бизнес-модель и следующий проверяемый шаг](references/business-model.md); для этого маршрута Россия является исходным рынком, если пользователь не задал другой |
 | Неясно, что продавать, кому и почему купят | Исследуй задачи и альтернативы, спрос, привлечение, стоимость исполнения и сопровождения; подключи подходящий NMT-скилл из таблицы ниже |
 | Клиент начинает с рассказа; процесс не описан или описания расходятся | [Сбор контекста и текущий процесс](references/context-and-current.md) |
 | Есть жалоба, инцидент или запрос «автоматизировать всё» | Разбери реальные эпизоды и возможные причины по тому же руководству; из общей карты выдели ограниченный участок |
@@ -29,6 +30,7 @@ description: Diagnose and improve a business or operational process, from an ini
 
 | Задача | Существующая возможность, если доступна |
 | --- | --- |
+| Связная бизнес-модель / экономика поставки / переносимость между клиентами | business-model-design / business-economics / process-to-product из отдельного пака Business Model; подключай по вопросу |
 | Обсудить бизнес-идею / диагностировать продукт | `nmt-chat` / `nmt-diagnose` |
 | Сегмент, задачи клиента и альтернативы / анализ настоящих интервью | `nmt-market-research` / `nmt-analyze-interviews` |
 | Обоснованное предложение / требования / рыночный эксперимент | `nmt-craft-value-proposition` / `nmt-product-requirements` / `nmt-craft-go-to-market` |

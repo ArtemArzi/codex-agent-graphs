@@ -9,6 +9,21 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
+## 2026-10-18 - Business Model
+
+[Business Model 0.1.0](../products/business-model/README.md) adds three original
+skills for connected business models, delivery economics and process productization.
+The existing business-work entry routes opportunity search and recurring client
+work with Russia as the default target and explicit foreign-reference boundaries.
+Selective shared-root installation preserves existing settings and rejects drift.
+Business Automation is 1.0.1 because its shared router source changed; NMT and
+last30days pins are unchanged. Scenario, source and installation evidence are
+recorded separately in [the task plan](tasks/TD-BUSINESS-MODEL/PLAN.md).
+
+Добавлены три навыка и маршрут полного цикла через существующих владельцев.
+Синтетические проверки инструкций не подтверждают российский спрос или
+коммерческий эффект.
+
 ## 2026-10-17 — product interviews and development quality
 
 Three discoverable engineering companions: Grill Me, Grill with Docs and

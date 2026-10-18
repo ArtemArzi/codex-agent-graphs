@@ -25,6 +25,7 @@ distribution. An independent community project.
 | Prepare a new or inherited codebase | [`$project-start`](skills/project-start/SKILL.md) | Project context, architecture, engineering guidance and a usable plan |
 | Build, fix or release software | [`$task-delivery`](skills/task-delivery/SKILL.md) | A scoped change, appropriate tests, review and handoff; [`$deployment`](skills/deployment/SKILL.md) owns release |
 | Understand and improve a business process | [`$business-work`](products/business-automation/README.md) | Current work, a chosen improvement, a future process and checks for adoption |
+| Find an opportunity or productize client work | [`$business-work`](products/business-model/README.md) | Connected business model, delivery economics, repeatability and the next evidence-based step |
 | Configure Bitrix24 or amoCRM | [`$crm-implementation`](products/crm-business-pack/README.md) | A process translated into CRM configuration, integrations and launch checks |
 | Design, verify or hand over an AI agent | [`$agent-project-design`](products/agent-lifecycle/README.md) | Agent behavior, tools, memory where needed, outcome E2E and pilot/handover |
 | Investigate a question | [`$research`](skills/research/SKILL.md) | A sourced answer with evidence and uncertainty |
@@ -39,6 +40,7 @@ distribution. An independent community project.
 | --- | --- | --- |
 | **Engineering workflows** | Project Start, Research, Task Delivery, Software Factory, Deployment, Product Care and supporting skills | Default installer; `--skills-only` preserves host settings |
 | **[Business Automation](products/business-automation/README.md)** | 11 skills: business workflow, hypothesis checks, NMT methods and recent external signals | `--skills-only --pack business-automation` |
+| **[Business Model](products/business-model/README.md)** | Shared business-work entry and 3 skills: model design, delivery economics and process productization; Russian market by default | `--skills-only --pack business-model` |
 | **[CRM Business Pack](products/crm-business-pack/README.md)** | One skill with Bitrix24/amoCRM references for design, integrations, launch and support | Published sources; not registered in the installer yet |
 | **[Agent Lifecycle](products/agent-lifecycle/README.md)** | 4 skills: project design, memory lifecycle, outcome E2E and commercial delivery | `--skills-only --pack agent-lifecycle` |
 

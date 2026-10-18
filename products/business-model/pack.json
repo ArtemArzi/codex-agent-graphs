@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "business-model",
+  "version": "0.1.0",
+  "entrypoint": "business-work",
+  "managed_skills": [
+    "business-work",
+    "business-model-design",
+    "business-economics",
+    "process-to-product"
+  ],
+  "reused_capabilities": {
+    "required": false,
+    "skills": [
+      "market-research",
+      "research",
+      "nmt-market-research",
+      "nmt-analyze-interviews",
+      "nmt-craft-value-proposition",
+      "nmt-product-requirements",
+      "nmt-craft-go-to-market",
+      "marketing-skills",
+      "business-hypothesis-check",
+      "task-delivery",
+      "deployment",
+      "product-care",
+      "crm-implementation",
+      "agent-project-design"
+    ]
+  },
+  "default_market": "RU",
+  "foreign_market_evidence": "references-only-unless-target-market-explicitly-changed",
+  "update_owner": "canonical-repository-first",
+  "runtime_dependencies": [],
+  "external_candidates_installed": false,
+  "installation": {
+    "method": "existing-shared-skills-installer",
+    "general_installer_pack_option_supported": true
+  }
+}

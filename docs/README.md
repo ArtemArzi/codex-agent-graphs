@@ -31,6 +31,7 @@ README содержит обзор, выбор пака, примеры и ко�
 | Guide | Owner and scope / область |
 | --- | --- |
 | [Business Automation](../products/business-automation/README.md) | Business context, process improvement, product methods, adoption and effect |
+| [Business Model](../products/business-model/README.md) | Opportunity discovery, connected models, delivery economics and process productization; shared business-work entry |
 | [CRM Business Pack](../products/crm-business-pack/README.md) | Bitrix24/amoCRM configuration, integrations, launch and support |
 | [Agent Lifecycle](../products/agent-lifecycle/README.md) | Agent design, memory, outcome E2E, pilot and handover |
 

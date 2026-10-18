@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "business-automation",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoint": "business-work",
   "managed_skills": [
     "nmt-analyze-interviews",

@@ -37,6 +37,14 @@ creating a second task system or a scheduled monitor automatically.
 
 ## Business, CRM and agent ownership
 
+- **[Business Model](../products/business-model/README.md)** extends the existing
+  business-work entry with model design, delivery economics and process-to-product.
+  It accepts either opportunity search or recurring client work. Russia is its
+  default target when none is selected; foreign cases are references, not local
+  validation. Existing research, NMT, marketing, hypothesis checking and engineering
+  owners remain optional companions. A bounded technical experiment may precede
+  broader validation. Delivery/use/support observations return to the same model.
+
 - **[Business Automation](../products/business-automation/README.md)** owns the
   business context, process, selected improvement, adoption and effect. NMT
   companions cover segment, value proposition, requirements and go-to-market

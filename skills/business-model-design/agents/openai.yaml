@@ -1,0 +1,6 @@
+interface:
+  display_name: "Бизнес-модель"
+  short_description: "Покупатель, исполнение, деньги и следующий тест"
+  default_prompt: "Используй $business-model-design: сравни способы продавать и выполнять эту работу, покажи существенные предположения и следующий тест."
+policy:
+  allow_implicit_invocation: true

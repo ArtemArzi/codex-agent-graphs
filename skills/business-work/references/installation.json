@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "package_id": "business-automation",
-  "package_version": "1.0.0",
+  "package_version": "1.0.1",
   "baseline_package_version": "1.2",
   "canonical_repository": "https://github.com/ArtemArzi/codex-agent-graphs",
   "canonical_product_path": "products/business-automation",

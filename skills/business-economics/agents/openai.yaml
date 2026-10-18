@@ -1,0 +1,6 @@
+interface:
+  display_name: "Экономика бизнеса"
+  short_description: "Стоимость поставки, мощность и движение денег"
+  default_prompt: "Используй $business-economics: проверь экономику этой модели, включая мой труд, поддержку, привлечение, мощность и сроки оплаты."
+policy:
+  allow_implicit_invocation: true
