@@ -9,6 +9,15 @@ metadata:
 
 Use this skill for engineering workflows where AI agents perform most implementation work and humans enforce quality and risk controls.
 
+## Start from the actual project
+
+Read applicable project instructions, the documentation map, the existing task
+or accepted plan and the project's quality commands. Preserve settled scope and
+reuse still-valid evidence. Choose the smallest useful check for the affected
+behavior; the eval-first loop does not require a new benchmark suite for every
+small edit. If a check or required tool is unavailable, use a justified local
+alternative where possible and record the exact remaining gap.
+
 ## Operating Principles
 
 1. Define completion criteria before execution.
@@ -56,7 +65,7 @@ Do not waste review cycles on style-only disagreements when automated format/lin
 
 ## Cost Discipline
 
-Track per task:
+Track per task when observed or useful; mark estimates and unavailable values:
 - model
 - token estimate
 - retries
@@ -64,3 +73,10 @@ Track per task:
 - success/failure
 
 Resolve failed assumptions with new evidence. A failure does not authorize a model change; use configured host escalation rules.
+
+## Return the verified outcome
+
+Report what changed, which checks actually ran and what they established,
+remaining uncertainty, and the next responsible step. Save durable facts with
+the existing task owner. Local verification, deployment and observed user or
+business outcomes are separate claims; report only the layers actually checked.

@@ -15,4 +15,6 @@ This repository is the canonical source for the user's global Codex workflows.
 - Support both WSL CLI and Codex Desktop skill roots.
 - Subagents are leaf workers. Graph orchestration stays in the root agent.
 
+When creating or changing a skill, read `docs/SKILL_QUALITY.md` for the lightweight contract and scenario checks. Preserve sufficient existing guidance; no uniform scaffold is required.
+
 Before committing, run `python3 scripts/check_all.py`.

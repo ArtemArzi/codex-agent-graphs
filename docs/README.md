@@ -43,6 +43,7 @@ proof of live provider behavior or business effect.
 ## For contributors / для изменений
 
 - [Repository instructions](../AGENTS.md): invariants and required checks.
+- [Lightweight skill quality](SKILL_QUALITY.md): applicability, useful results, conditional wrappers and offline scenario preparation when changing skills.
 - [Model routing](../policies/model-routing.toml): canonical role/model settings.
 - [Installer](../scripts/install.py) and [shared-pack installer](../scripts/business_pack.py): current supported flags and behavior.
 - [Repository gate](../scripts/check_all.py) and [tests](../tests/): validation owners.

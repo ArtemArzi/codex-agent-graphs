@@ -8,8 +8,8 @@ description: >-
   detection, anti-pattern catalog, and plan mutation protocol.
   TRIGGER when: user requests a plan, blueprint, or roadmap for a
   complex multi-PR task, or describes work that needs multiple sessions.
-  DO NOT TRIGGER when: task is completable in a single PR or fewer
-  than 3 tool calls, or user says "just do it".
+  DO NOT TRIGGER for a small bounded task that already has a sufficient
+  accepted plan; use the existing implementation workflow instead.
 metadata:
   origin: community
 ---
@@ -32,7 +32,7 @@ Choose parallel work only when independent scopes repay handoff cost.
 - Coordinating parallel workstreams across sub-agents
 - Any task where context loss between sessions would cause rework
 
-**Do not use** for tasks completable in a single PR, fewer than 3 tool calls, or when the user says "just do it."
+Use the existing implementation workflow for a small bounded task with a sufficient accepted plan. A tool-call count is not a complexity test.
 
 ## How It Works
 
@@ -40,7 +40,7 @@ Blueprint runs a 5-phase pipeline:
 
 1. **Research** — Pre-flight checks (git, gh auth, remote, default branch), then reads project structure, existing plans, and memory files to gather context.
 2. **Design** — Breaks the objective into one-PR-sized steps (3–12 typical). Assigns dependency edges, parallel/serial ordering, configured host role where delegation is warranted, and rollback strategy per step.
-3. **Draft** — Writes a self-contained Markdown plan file to `plans/`. Every step includes a context brief, task list, verification commands, and exit criteria — so a fresh agent can execute any step without reading prior steps.
+3. **Draft** - Updates the existing owning plan. Create a new plan at the project-prescribed location only when no owner exists. Each step includes the context, work, verification and exit criteria needed to resume it.
 4. **Review** — Uses proportionate independent review under host policy (bounded reviewer for ordinary plans; whole-plan acceptor for complex engineering or material risk) against a checklist and anti-pattern catalog. Fixes all critical findings before finalizing.
 5. **Register** — Saves the plan in its existing project owner, updates memory only if the user explicitly requests it, and presents the step count and parallelism summary to the user.
 
@@ -54,7 +54,7 @@ Blueprint detects git/gh availability automatically. With git + GitHub CLI, it g
 /blueprint myapp "migrate database to PostgreSQL"
 ```
 
-Produces `plans/myapp-migrate-database-to-postgresql.md` with steps like:
+Updates the existing migration plan, or creates one at the project-prescribed path when absent, with steps like:
 - Step 1: Add PostgreSQL driver and connection config
 - Step 2: Create migration scripts for each table
 - Step 3: Update repository layer to use new driver
@@ -76,7 +76,7 @@ Produces a plan with parallel steps where possible (e.g., "implement Anthropic p
 - **Branch/PR/CI workflow** — Built into every step. Degrades gracefully to direct mode when git/gh is absent.
 - **Parallel step detection** — Dependency graph identifies steps with no shared files or output dependencies.
 - **Plan mutation protocol** — Steps can be split, inserted, skipped, reordered, or abandoned with formal protocols and audit trail.
-- **Zero runtime risk** — Pure Markdown skill. The entire repository contains only `.md` files — no hooks, no shell scripts, no executable code, no `package.json`, no build step. Nothing runs on install or invocation beyond Claude Code's native Markdown skill loader.
+- **Instruction-only planning** - This entrypoint describes a plan; it does not execute the planned migration or release. Inspect the actual target repository and its runtime risks. The containing skill repository may include scripts, hooks or other executable components.
 
 ## Installation
 
@@ -105,7 +105,7 @@ If you are vendoring only this skill outside the full ECC install, copy the revi
 
 ## Requirements
 
-- Claude Code (for `/blueprint` slash command)
+- A host that can load this skill: `$blueprint` in Codex or the supported skill invocation in Claude Code. Slash-command examples are illustrative; use the actual host catalog.
 - Git + GitHub CLI (optional — enables full branch/PR/CI workflow; Blueprint detects absence and auto-switches to direct mode)
 
 ## Source

@@ -7,7 +7,12 @@ metadata:
 
 # Configure Everything Claude Code (ECC)
 
-An interactive, step-by-step installation wizard for the Everything Claude Code project. Uses `AskUserQuestion` to guide users through selective installation of skills and rules, then verifies correctness and offers optimization.
+An installation guide for upstream Everything Claude Code components. Use the
+host's available question mechanism, or a short chat question when unavailable,
+only for consequential choices not already provided. Preserve earlier answers.
+This is not the installer for codex-agent-graphs; use that repository's
+installation guide and supported target paths for its own packs. Do not infer a
+Claude target directory for a Codex installation.
 
 ## When to Activate
 
@@ -38,13 +43,13 @@ Keep this exact `ECC_ROOT` for subsequent copies. Record the source commit and
 ownership. Never delete or overwrite a shared fixed `/tmp` checkout. On clone
 failure preserve staging evidence and use a supplied local source if available.
 
-If the clone fails (network issues, etc.), use `AskUserQuestion` to ask the user to provide a local path to an existing ECC clone.
+If the clone fails, use a supplied reviewed local source or ask for its location through the available host mechanism. Preserve the staging evidence.
 
 ---
 
 ## Step 1: Choose Installation Level
 
-Use `AskUserQuestion` to ask the user where to install:
+When the installation target is not already known, ask through the available host mechanism:
 
 ```
 Question: "Where should ECC components be installed?"
@@ -72,7 +77,7 @@ mkdir -p $TARGET/skills $TARGET/rules
 
 Default to **Core (recommended for new users)** — copy `.agents/skills/*` plus `skills/search-first/` for research-first workflows. This bundle covers engineering, evals, verification, security, strategic compaction, frontend design, and Anthropic cross-functional skills (article-writing, content-engine, market-research, frontend-slides).
 
-Use `AskUserQuestion` (single select):
+Use the host's available question mechanism (single select):
 ```
 Question: "Install core skills only, or include niche/framework packs?"
 Options:
@@ -86,7 +91,7 @@ If the user chooses niche or core + niche, continue to category selection below 
 
 ### 2b: Choose Skill Categories
 
-There are 7 selectable category groups below. The detailed confirmation lists that follow cover 45 skills across 8 categories, plus 1 standalone template. Use `AskUserQuestion` with `multiSelect: true`:
+There are 7 selectable category groups below. The detailed confirmation lists that follow cover 45 skills across 8 categories, plus 1 standalone template. Use the host question mechanism with multiple selections where supported, or a concise chat choice:
 
 ```
 Question: "Which skill categories do you want to install?"
@@ -103,7 +108,7 @@ Options:
 
 ### 2c: Confirm Individual Skills
 
-For each selected category, print the full list of skills below and ask the user to confirm or deselect specific ones. If the list exceeds 4 items, print the list as text and use `AskUserQuestion` with an "Install all listed" option plus "Other" for the user to paste specific names.
+For each selected category, print the full list of skills below and ask the user to confirm or deselect specific ones. If the list exceeds 4 items, print the list as text and use the host's available question mechanism with an "Install all listed" option plus "Other" for the user to paste specific names.
 
 **Category: Framework & Language (25 skills)**
 
@@ -201,20 +206,30 @@ For each selected category, print the full list of skills below and ask the user
 
 ### 2d: Execute Installation
 
-For each selected skill, copy the entire skill directory from the correct source root:
+First compare the selected source and target. An identical target is a no-op.
+Preserve local edits and resolve differences before replacement; a backup alone
+does not authorize overwriting drift. The copy examples below apply only to an
+absent target directory. Copy the entire skill, then verify exact membership and
+file hashes, including companion resources; a repeated unchanged install should
+make no changes.
+
+For each selected skill, use the correct source root:
 
 ```bash
 # Core skills live under .agents/skills/
-cp -R "$ECC_ROOT/.agents/skills/<skill-name>" "$TARGET/skills/"
+test ! -e "$TARGET/skills/<skill-name>" &&
+  cp -R "$ECC_ROOT/.agents/skills/<skill-name>" "$TARGET/skills/<skill-name>"
 
 # Niche skills live under skills/
-cp -R "$ECC_ROOT/skills/<skill-name>" "$TARGET/skills/"
+test ! -e "$TARGET/skills/<skill-name>" &&
+  cp -R "$ECC_ROOT/skills/<skill-name>" "$TARGET/skills/<skill-name>"
 ```
 
 When iterating over globbed source directories, never pass a trailing-slash source directly to `cp`. Use the directory path as the destination name explicitly:
 
 ```bash
-cp -R "${src%/}" "$TARGET/skills/$(basename "${src%/}")"
+target_skill="$TARGET/skills/$(basename "${src%/}")"
+test ! -e "$target_skill" && cp -R "${src%/}" "$target_skill"
 ```
 
 Note: `continuous-learning` and `continuous-learning-v2` have extra files (config.json, hooks, scripts) — ensure the entire directory is copied, not just SKILL.md.
@@ -223,7 +238,7 @@ Note: `continuous-learning` and `continuous-learning-v2` have extra files (confi
 
 ## Step 3: Select & Install Rules
 
-Use `AskUserQuestion` with `multiSelect: true`:
+Use the host question mechanism with multiple selections where supported, or a concise chat choice:
 
 ```
 Question: "Which rule sets do you want to install?"
@@ -234,15 +249,17 @@ Options:
   - "Go" — "Go patterns, table-driven tests, gofmt/staticcheck (5 files)"
 ```
 
-Execute installation:
+Apply the same absent-target/drift checks to each selected rules directory.
+For the nested layout of this reviewed source, an absent target can be copied as:
 ```bash
 # Common rules
-cp -r $ECC_ROOT/rules/common $TARGET/rules/common
+test ! -e "$TARGET/rules/common" &&
+  cp -R "$ECC_ROOT/rules/common" "$TARGET/rules/common"
 
 # Language-specific rules (preserve per-language directories)
-cp -r $ECC_ROOT/rules/typescript $TARGET/rules/typescript   # if selected
-cp -r $ECC_ROOT/rules/python $TARGET/rules/python            # if selected
-cp -r $ECC_ROOT/rules/golang $TARGET/rules/golang            # if selected
+# For each selected language, preserving its directory:
+test ! -e "$TARGET/rules/<language>" &&
+  cp -R "$ECC_ROOT/rules/<language>" "$TARGET/rules/<language>"
 ```
 
 **Important**: If the user selects any language-specific rules but NOT common rules, warn them:
@@ -303,7 +320,7 @@ For each issue found, report:
 
 ## Step 5: Optimize Installed Files (Optional)
 
-Use `AskUserQuestion`:
+Use the host's available question mechanism:
 
 ```
 Question: "Would you like to optimize the installed files for your project?"
@@ -373,8 +390,8 @@ Then print a summary report:
 - For project-level: check `.claude/skills/<skill-name>/SKILL.md` exists
 
 ### "Rules not working"
-- Rules are flat files, not in subdirectories: `$TARGET/rules/coding-style.md` (correct) vs `$TARGET/rules/common/coding-style.md` (incorrect for flat install)
-- Restart Claude Code after installing rules
+- Verify the loader and reviewed source layout. Step 3 preserves `rules/common/` and selected language directories; do not flatten or duplicate them to resolve a suspected loading problem.
+- Preserve `common/` references, inspect conflicting copies, and verify discovery in a fresh supported host session. Installed file hashes and actual rule loading are different checks.
 
 ### "Path reference errors after project-level install"
 - Some skills assume `~/.claude/` paths. Run Step 4 verification to find and fix these.

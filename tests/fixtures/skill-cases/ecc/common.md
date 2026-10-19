@@ -1,0 +1,2 @@
+# Common
+Synthetic common rules.

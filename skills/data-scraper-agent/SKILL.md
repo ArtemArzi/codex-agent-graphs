@@ -7,8 +7,9 @@ metadata:
 
 # Data Scraper Agent
 
-Build a production-ready, AI-powered data collection agent for any public data source.
-Runs on a schedule, enriches results with a free LLM, stores to a database, and improves over time.
+Build or adapt a data collector for the selected source and existing project.
+Use an explicitly configured enrichment model when needed, accepted storage and
+an authorized schedule. Production readiness and cost need actual evidence.
 
 **Example stack: Python · explicitly configured LLM · GitHub Actions · Notion / Sheets / Supabase. Availability and pricing must be checked for the actual account.**
 
@@ -35,16 +36,16 @@ schedule   summarises Sheets /
            & classifies Supabase
 ```
 
-### Free Stack
+### Example stack (account limits and costs apply)
 
 | Layer | Tool | Why |
 |---|---|---|
-| **Scraping** | `requests` + `BeautifulSoup` | No cost, covers 80% of public sites |
-| **JS-rendered sites** | `playwright` (free) | When HTML scraping fails |
+| **Scraping** | `requests` + `BeautifulSoup` | Static HTML; verify the actual source format and allowed use |
+| **JS-rendered sites** | `playwright` | Browser-rendered sources; verify runtime requirements and cost |
 | **AI enrichment** | Explicit configured model via REST API | Account/model quotas; no guaranteed free allowance |
-| **Storage** | Notion API | Free tier, great UI for review |
-| **Schedule** | GitHub Actions cron | Free for public repos |
-| **Learning** | JSON feedback file in repo | Zero infra, persists in git |
+| **Storage** | Notion API | Review UI; check actual account limits and project ownership |
+| **Schedule** | GitHub Actions cron | Check account billing, runner limits and permitted activation |
+| **Learning** | Existing feedback owner or JSON file | Preserve the project's storage and data permissions |
 
 ### AI Model Fallback Chain
 
@@ -59,7 +60,7 @@ using them. Checked 2026-10-06: [deprecations](https://ai.google.dev/gemini-api/
 
 ### Batch API Calls for Efficiency
 
-Never call the LLM once per item. Always batch:
+When the provider supports batch input, choose a tested batch size for its token, latency and quota limits. The numbers below illustrate fewer calls, not guaranteed cost or quota eligibility:
 
 ```python
 # BAD: 33 API calls for 33 items
@@ -68,7 +69,7 @@ for item in items:
 
 # GOOD: 7 API calls for 33 items (batch size 5)
 for batch in chunks(items, size=5):
-    results = call_ai(batch)  # 7 calls → stays within free tier
+    results = call_ai(batch)  # 7 calls; still subject to actual account limits
 ```
 
 ---
@@ -97,7 +98,11 @@ Common examples to prompt:
 
 ### Step 2: Design the Agent Architecture
 
-Generate this directory structure for the user:
+Read the existing collector, storage adapter, quality commands and state owner
+first. Extend their actual interfaces and paths; create new files only where the
+requested capability needs them. If no implementation exists, the tree below is
+an example to adapt, not a mandatory scaffold. The examples in this skill are
+starting points requiring verification, not a certified production application.
 
 ```
 my-agent/
@@ -700,14 +705,22 @@ notion-client   # if using Notion
 
 ## Quality Checklist
 
-Before marking the agent complete:
+Use applicable checks for the actual collector rather than requiring every
+example file. Before marking the requested scope complete, exercise a bounded
+permitted source-to-storage scenario and read back the saved record. Check a
+repeated input for duplicates, distinguish empty source results from fetch
+failure, and make storage failures visible rather than counting them as existing
+records. Use synthetic/stubbed inputs when live writes are not authorized and
+label that coverage. Configuration, schedule preparation and local tests do not
+prove a live scheduled delivery; missing access stays an explicit next step.
+
+Example configuration checks, adapted to the chosen implementation:
 
 - [ ] `config.yaml` controls all user-facing settings — no hardcoded values
 - [ ] `profile/context.md` holds user-specific context for AI matching
 - [ ] Deduplication by URL before every storage push
 - [ ] Explicit approved model; missing config, 429, 404 and network errors retain raw data without switching providers/models
-- [ ] Batch size ≤ 5 items per API call
-- [ ] `maxOutputTokens` ≥ 2048
+- [ ] Batch size and output-token budget tested against the configured provider and actual response size
 - [ ] `.env` is in `.gitignore`
 - [ ] `.env.example` provided for onboarding
 - [ ] `setup.py` creates DB schema on first run
@@ -734,6 +747,8 @@ Before marking the agent complete:
 
 ## Reference Implementation
 
-A complete working agent built with this exact architecture would scrape 4+ sources,
-batch Gemini calls, learn from Applied/Rejected decisions stored in Notion, and run
-100% free on GitHub Actions. Follow Steps 1–9 above to build your own.
+The example architecture illustrates collection, optional enrichment, storage
+and feedback. Verify the chosen implementation, provider limits and actual costs
+before enabling operation. Return changed paths, checks performed, observed
+source/storage results and unresolved gaps to the existing task owner; do not
+infer production readiness from the scaffold or this reference implementation.

@@ -1,0 +1,286 @@
+{
+  "baseline": "79753ad37b7e59b037abbeed1b5571fa08c0d019",
+  "coverage": "Semantic review of all 65 entrypoint contracts and decisive delegated references; large imports reviewed for integration/method/output/handoff, not every code example/canon assertion.",
+  "reviewer": "independent read-only explorer; root verified seven decisive gaps",
+  "skills": {
+    "agent-commercial-delivery": {
+      "disposition": "keep",
+      "entry_sha256": "3d4c9db35f2dbf955c273fe60af7619d2eae27409587eb7b18a65773dc0381c9"
+    },
+    "agent-graph-builder": {
+      "disposition": "keep",
+      "entry_sha256": "a1785ab08b13eca1f448975f3fab657db3dbe8d84b99c1eb488ec80dd5dd2bea"
+    },
+    "agent-introspection-debugging": {
+      "disposition": "keep",
+      "entry_sha256": "59e2ecab12cefcd0498941f09f4e219fe8200dacdd5bd85c3a66306bbf43ee34"
+    },
+    "agent-memory-lifecycle": {
+      "disposition": "keep",
+      "entry_sha256": "e62032a9d9958ae56099c76c199f7a6e0649aff1d7be3f146c6c007745954856"
+    },
+    "agent-outcome-e2e": {
+      "disposition": "keep",
+      "entry_sha256": "7d08250965517e23024a3593646be2a61d4403eed49cbad01996627b0751dfb9"
+    },
+    "agent-project-design": {
+      "disposition": "keep",
+      "entry_sha256": "72deeeeea545b2089bd1ee88939d286c90f1677c6bc5fcdf6c47fa060023c797"
+    },
+    "agentic-engineering": {
+      "disposition": "improve",
+      "entry_sha256": "08d9c85a12c9bd7ea8364cab59e2ba27f2be4cf05053ef69a6639ca067e26595",
+      "lines": "10-24,59-66",
+      "finding": "Нет явного входа через инструкции/принятый план/проверки проекта и итоговой записи фактических свидетельств."
+    },
+    "ai-regression-testing": {
+      "disposition": "keep",
+      "entry_sha256": "54e065e7e93bc5488e1c1fb954a1f7fbec261c20e9a336808681a8883dc6768f"
+    },
+    "blueprint": {
+      "disposition": "improve",
+      "entry_sha256": "7b75d2a688e4e4ce24f9d318b155d42fffe66e98317c09ff5cb00cf63899d139",
+      "lines": "23-25,43-45,79",
+      "finding": "Новая plans/ противоречит существующему владельцу; ложное обобщение про markdown-only репозиторий и zero runtime risk."
+    },
+    "business-economics": {
+      "disposition": "keep",
+      "entry_sha256": "8d633777ef5df04c927ca15b8efae766c2f335cca3253e2d7524cef9fc7e90ab"
+    },
+    "business-hypothesis-check": {
+      "disposition": "keep",
+      "entry_sha256": "8b25033066400c58d331886a73c27e4f18d38ecb6cec5be30d76e461c816ba3b"
+    },
+    "business-model-design": {
+      "disposition": "keep",
+      "entry_sha256": "e8d59d4b78ea5fea8db6afc90c04a168d2333e65659a6ce0d1dfa763df8d97e7"
+    },
+    "business-work": {
+      "disposition": "keep",
+      "entry_sha256": "d12148da5aff9906a1a5f3ba279fa26a42deaea117c389a7d8f889b9abc9b9b7"
+    },
+    "chat-coordination": {
+      "disposition": "keep",
+      "entry_sha256": "ed0c8663ee4ac69641986d6af0e681a5951771303c1c28aeefe8115581c3326e"
+    },
+    "codebase-design": {
+      "disposition": "improve",
+      "entry_sha256": "800ea78c3dfe17bf74e3bbbb7f7fdec9992894417f4c440f54e15bf880cf35d9",
+      "lines": "114; DESIGN-IT-TWICE.md:3,19-23",
+      "finding": "Входная ссылка предписывает параллельных агентов, справочник делает их условными."
+    },
+    "configure-ecc": {
+      "disposition": "improve",
+      "entry_sha256": "aa1ae22705f17437838ce3134e80894dd2f3419a35fb17f7674c768214ee5553",
+      "lines": "10,41,47,202-218,237-249,376",
+      "finding": "Привязка вопросов к отсутствующему host tool; неясное сохранение существующих целей; troubleshooting противоречит вложенному расположению rules."
+    },
+    "continuous-agent-loop": {
+      "disposition": "keep",
+      "entry_sha256": "1e3b2f13c75d4dcba3ec44cc3d868a05e31ca02c8eca2f7875f6186abfcd2ee9"
+    },
+    "continuous-improvement": {
+      "disposition": "keep",
+      "entry_sha256": "fc14864489b61f43262a92498704b0362914db3035955060e98810e0fa7dc823"
+    },
+    "crm-implementation": {
+      "disposition": "keep",
+      "entry_sha256": "7b3185ccd6f3a50450b28b5d3d412f814c10f67363350a2f8fa04ce1d4cd5f7e"
+    },
+    "data-scraper-agent": {
+      "disposition": "improve",
+      "entry_sha256": "d5f5aa288d15734abfc93da8a39b1ddbc5adb2cdf816734f33cb3999415c4b51",
+      "lines": "10-11,98-132,677-716,737-739",
+      "finding": "Обязательный новый scaffold и free/production обещания; проверка конфигурации вместо наблюдаемого пути source-to-store."
+    },
+    "deployment": {
+      "disposition": "keep",
+      "entry_sha256": "90442b9da09558559cabc36237cebf348b11cbeac765fbad96fbe552d2034b83"
+    },
+    "dev-policies": {
+      "disposition": "keep",
+      "entry_sha256": "8c4a616a3a1c957596cec9db8de238a059d4e4c3a184f2919a987c6fab83a3a2"
+    },
+    "development-recovery": {
+      "disposition": "keep",
+      "entry_sha256": "8718f54062f50c408b4ef3fefe06dc94bf070d72c6b684602acfc484517bd5d4"
+    },
+    "domain-modeling": {
+      "disposition": "keep",
+      "entry_sha256": "9f54bd6e872e33a79b30ae79d17c4f0022b06356a7dec70e7ef85019c78cc805"
+    },
+    "ecc-tools-cost-audit": {
+      "disposition": "keep",
+      "entry_sha256": "044e87c5cbb704108b9be969364c031b9f4472b4276be33dece98fff7ea98f50"
+    },
+    "grill-me": {
+      "disposition": "keep",
+      "entry_sha256": "aed8297c8a08bbcf1bd340ebd420a2e2dd5f26c3c80b6a6442ac6b2e14d9f705"
+    },
+    "grill-with-docs": {
+      "disposition": "keep",
+      "entry_sha256": "4c1933e565cdc6bc955094aad30c5e95958028d6ecc2180d1e518c57c3a9e7d8"
+    },
+    "grilling": {
+      "disposition": "keep",
+      "entry_sha256": "74afebe268799d362553b52d00b87283cf83f6d34d710caf94dd1c16d0b0720d"
+    },
+    "improve-codebase-architecture": {
+      "disposition": "keep",
+      "entry_sha256": "a60ff3fba2bb0218fa2fe359842fb69477c17cb5c3b5c29206e69325cc8ae79b"
+    },
+    "last30days": {
+      "disposition": "keep",
+      "entry_sha256": "ff432bf9fb6d180145ae06f7bac008fd30efc821c9fbbd9eac37e40cdb0beff0"
+    },
+    "market-research": {
+      "disposition": "keep",
+      "entry_sha256": "dd70ebafb6aedc3774f4171cace7c4661bd704de7e515442d6f557c8eeb9c18f"
+    },
+    "marketing-campaign": {
+      "disposition": "keep",
+      "entry_sha256": "85ac530dba1aa21630f0083f391a29c5bc81ea1f51eed0bcbaa9f5441598f901"
+    },
+    "marketing-lifecycle": {
+      "disposition": "keep",
+      "entry_sha256": "7b17b8004dc994b8fbbfa2388aff0b8ceb6e6293e9c061f130a8484bc72de70b"
+    },
+    "marketing-measurement": {
+      "disposition": "keep",
+      "entry_sha256": "f91debbcc8c870e65b728f46b11b07c6f1b3d7c2343395b8024b22f73a80c056"
+    },
+    "marketing-strategy": {
+      "disposition": "keep",
+      "entry_sha256": "af6ce9dcbb36ca046ae750d4d6584c304ec69b72bdc014635f092b83cc2188f1"
+    },
+    "marketing-work": {
+      "disposition": "keep",
+      "entry_sha256": "253c0fd387381e66d79232efe9fb075bc130059bd1181cc9f5a8cb58e7e90c20"
+    },
+    "nmt-analyze-interviews": {
+      "disposition": "keep",
+      "entry_sha256": "0c40e3dd070426461652a4f61d76084d497fafb1d74cd550c544d14d15cdb67d"
+    },
+    "nmt-chat": {
+      "disposition": "keep",
+      "entry_sha256": "390fdd27f0b33c944f4b7a16af82d37d468e919f67e98b6781d65bb10159664c"
+    },
+    "nmt-craft-go-to-market": {
+      "disposition": "keep",
+      "entry_sha256": "dcbd164bc09cebf4a01d9d956788f6548d3c1a85847ec164eb1ea9931bc2b3d5"
+    },
+    "nmt-craft-value-proposition": {
+      "disposition": "keep",
+      "entry_sha256": "a4609f3fdb098b5bd7a00ee4e3da4e69aed4b4235e2d53585726d7a3b22e5de2"
+    },
+    "nmt-diagnose": {
+      "disposition": "keep",
+      "entry_sha256": "6a0fb37426ee79476dbe89a40fe24ab1cd12903c88ac76724d1415178d726293"
+    },
+    "nmt-market-research": {
+      "disposition": "keep",
+      "entry_sha256": "15160c855305a677e9b682657b93714fdc0007c77a169da68c26d1561e85d170"
+    },
+    "nmt-product-requirements": {
+      "disposition": "keep",
+      "entry_sha256": "585018e23e741d50f9d795a7b605743b3796fee616366da6fb598a9886a9c2ec"
+    },
+    "nmt-update": {
+      "disposition": "keep",
+      "entry_sha256": "c01630b49885ac6b5837d9867d9c1900983ef94634589c442c086d5ea36e1c3e"
+    },
+    "playwright-interactive": {
+      "disposition": "keep",
+      "entry_sha256": "7649f0bd1b1df48eb835ac27e863768821cf2319ed2cd4b6f3996fde36ab9a14"
+    },
+    "pr": {
+      "disposition": "keep",
+      "entry_sha256": "2605eca06fe4f5d8dc8d3093303b7aead140dcc3da403e69518c336930f552dc"
+    },
+    "process-to-product": {
+      "disposition": "keep",
+      "entry_sha256": "763dd901ba02a3339e765c52e53c794dc290c1c401141676752e0a3c89daff92"
+    },
+    "product-care": {
+      "disposition": "keep",
+      "entry_sha256": "1ec3cfb666b0daf5d5e02a8561dd1e51cba3634b1a21abe06d0caeb173808024"
+    },
+    "production-audit": {
+      "disposition": "keep",
+      "entry_sha256": "07167cc49bb4fda9fb029dc1dd7ac3dcdbb6d01bf1a427d185ba247c0d52977a"
+    },
+    "project-start": {
+      "disposition": "keep",
+      "entry_sha256": "216720f48fde3656dc930bd1035fb58a77377016710508a2b9e3fdcda2b966c0"
+    },
+    "prompt-optimizer": {
+      "disposition": "improve",
+      "entry_sha256": "4e006699a296c9b98222fc84d94b55e56e51a2d085e9ba78f4ce646ae6cd2887",
+      "lines": "45-65,164-166,178-181,223-247",
+      "finding": "Вход без AGENTS; чтение контекста конфликтует с полным запретом commands; вопросы по количеству; неподтверждённые команды в результате."
+    },
+    "reliable-leads": {
+      "disposition": "keep",
+      "entry_sha256": "5bd665f6e6d70427ca1449b542d6d31027684a3c3e368814228e9b4ead3006c4"
+    },
+    "research": {
+      "disposition": "keep",
+      "entry_sha256": "37a8b8ecc669a4d3cd150e49fb9593ce241a992ca75217b5e0793fd932821d84"
+    },
+    "retro": {
+      "disposition": "keep",
+      "entry_sha256": "0c783a98b887c8fb2ee66bd532ea9c28a2e162a34adebc08b0eef9c5029107a3"
+    },
+    "security-scan": {
+      "disposition": "improve",
+      "entry_sha256": "be8971fedb868bc753f8a46ba8ec22e7720d2d8d4de3eee0002e86beeb51d5f8",
+      "lines": "30-43,141-161",
+      "finding": "Fallback при отсутствии scanner уже есть; не определён итоговый scoped/redacted report и граница завершения."
+    },
+    "seo": {
+      "disposition": "keep",
+      "entry_sha256": "2c7589a32f0e7c141712f86b6900268eb8f5316e4bf8cad7de96131d11dc6c91"
+    },
+    "skill-stocktake": {
+      "disposition": "keep",
+      "entry_sha256": "4ad3df5c962064b3f0318a644097747fe698463c2498e55a5bfa7ffbd0256375"
+    },
+    "software-factory": {
+      "disposition": "keep",
+      "entry_sha256": "e392aa4692c445655f7aa9c1e2b6b0319fcabbea5fd96c4d8ca7a72c277870c6"
+    },
+    "task-delivery": {
+      "disposition": "keep",
+      "entry_sha256": "0947bf8cc0e2a689e3d7c740b72d8560bb65258f1ebb5682e650612da1c02701"
+    },
+    "to-questionnaire": {
+      "disposition": "keep",
+      "entry_sha256": "73c5e693d1e016c6c4eab3357f27768d872e84cb755a8a6ef2d87a4c43efb5a5"
+    },
+    "token-budget-advisor": {
+      "disposition": "keep",
+      "entry_sha256": "a90b224d60c7dddd8315948620a8860f3d2b13bd35f075b7293912a5379a4740"
+    },
+    "verification-loop": {
+      "disposition": "keep",
+      "entry_sha256": "7545d8e0e15e1b8b9b3ab2246d7e4a2fbd7823b89ac74c4ed0f2ed14256a0572"
+    },
+    "web-measurement": {
+      "disposition": "keep",
+      "entry_sha256": "21c48327246c66a4c3f4fe955033705d384a39adc3568d324c08cdba7b2029e6"
+    },
+    "website-standards": {
+      "disposition": "keep",
+      "entry_sha256": "56bbf3e55d4d628cbf21f5bfea612365b556d492f63a73dc590bd8fe13b2c23d"
+    },
+    "writing-for-agents": {
+      "disposition": "keep",
+      "entry_sha256": "a4da2741fa80399b5f49f5821ac291657531d2134198ae3d8d2b474168bd1291"
+    }
+  },
+  "limits": [
+    "No active-host inventory or native loader selection claim",
+    "No runtime certification of upstream examples or live integrations",
+    "data-scraper-agent fetch at156-171 can mask non-200 as empty; sync at422-432 labels failed writes as skipped, main at509 calls total existing; static observations, retained as limitations outside the instruction-contract pass."
+  ]
+}

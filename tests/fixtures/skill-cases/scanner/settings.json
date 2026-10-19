@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)"
+    ]
+  },
+  "mcpServers": {
+    "example": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "example-fixture-package"
+      ],
+      "env": {
+        "API_KEY": "synthetic-fixture-only"
+      }
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "method": "One fresh native leaf actor, three distinct offline exercises, no rubric/expected answers supplied; root read all outputs and replayed synthetic collector checks.",
+  "actor_cases": {
+    "blueprint-existing-plan": "PASS:existing plan preserved and updated; Python/file runtime recognized; application unchanged",
+    "prompt-local-context": "PASS:context used, no questions/unsupported slash commands/execution; unknown budget/capacity preserved",
+    "collector-existing-project": "PASS:existing interfaces assessed; failures and source-to-memory-readback checked; no scaffold/schedule/free-production claim"
+  },
+  "root_replay": "PASS:500 masked as empty, storage False counted skipped, thrown exception visible, successful memory readback and duplicate repeat reproduced on fixture only",
+  "outputs": {
+    "blueprint-answer.md": "0330ba1c2fa0ecfa4893ae93c3cb5f630aa91e2dfe8c913af89166c27638df6a",
+    "blueprint-plan.md": "efdef860b2e8abbbcf7aaccc43883f3adcdfd252b2aa2445b8d5ebd13e21dc91",
+    "prompt-answer.md": "48d110175fc64c50c55a54a4352f484632c98cd7ed3abb9ff5ee5e2648e81174",
+    "collector-answer.md": "ec5146d546f3d18efcf9dae9be86e7676200e53f6f6260414cb36de75e934866"
+  },
+  "limits": [
+    "3 of 8 cases forward-executed; other five structurally prepared only",
+    "One actor; no independent repetitions or before/after quality measurement",
+    "All inputs synthetic; no live account/provider or native Desktop test",
+    "Embedded collector source implementation not rewritten or certified"
+  ]
+}

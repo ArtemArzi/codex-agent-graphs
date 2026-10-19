@@ -160,6 +160,19 @@ Add to your CI pipeline:
 - Missing descriptions on MCP servers
 - Prohibitive instructions correctly flagged as good practice
 
+## Return a scoped audit
+
+Record the inspected paths, host, scanner/version when available, checks actually
+run and exclusions. For each finding provide its location, observed evidence,
+impact and a proposed next action; redact credentials and sensitive values from
+reports and shared artifacts. Pattern hits and scanner grades require context
+before they become confirmed vulnerabilities. Missing scanner coverage remains
+unavailable, not clean.
+
+Complete when findings and remaining gaps are usable by the existing task owner.
+A scan does not authorize configuration changes or remediation; retain the
+read-only fallback when tools are unavailable.
+
 ## Links
 
 - **GitHub**: [github.com/affaan-m/agentshield](https://github.com/affaan-m/agentshield)

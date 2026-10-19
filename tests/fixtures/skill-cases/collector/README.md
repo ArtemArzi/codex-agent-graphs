@@ -1,0 +1,1 @@
+Existing Python collector is collector.py. It already has fetch and storage interfaces. Live accounts and schedule activation have not been checked. This task requests an assessment and verification plan only.

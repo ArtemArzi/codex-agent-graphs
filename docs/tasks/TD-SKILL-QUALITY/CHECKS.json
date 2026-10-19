@@ -1,0 +1,25 @@
+{
+  "scope": "local source candidate",
+  "focused_unit_tests": {
+    "count": 8,
+    "status": "PASS"
+  },
+  "repository_gate": {
+    "command": "python3 scripts/check_all.py",
+    "exit_code": 0,
+    "final_line": "All workflow checks passed.",
+    "log_sha256": "e1a7a575b48ac6eff7de5da0d2a4aed5f74bf7cc187dee104d177089d2ca96ca"
+  },
+  "diff_check": "PASS",
+  "authored_documentation_links": "PASS",
+  "baseline_audit": {
+    "entrypoints": 65,
+    "keep": 58,
+    "improve": 7
+  },
+  "forward_cases": "3 of 8 assessed PASS; one fresh actor; no before/after benchmark",
+  "embedded_examples": "14 parseable Python blocks AST-identical; remaining Python fragments unchanged",
+  "independent_review": "block_reviewer PASS",
+  "host_install": "not-run",
+  "public_delivery": "not-authorized; not-run"
+}
