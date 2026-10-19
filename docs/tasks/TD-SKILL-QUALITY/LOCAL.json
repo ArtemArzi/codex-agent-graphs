@@ -1,0 +1,17 @@
+{
+  "status": "local-complete",
+  "source_commit": "6bc64fb11bc4abe21ae02a06f6903f8ea5ed71ff",
+  "previous_head": "79753ad37b7e59b037abbeed1b5571fa08c0d019",
+  "protected_foreign_paths": {
+    "docs/CHAT_COORDINATION.ru.md": "71a152b63d07030cd231d54b11d034ab84a5db5adbacff67b9a65c63c8eb495e",
+    "skills/chat-coordination/SKILL.md": "7ee8a4f02ef9c6931e489757828c88d87602b21388b61f9ba89326ef37962288",
+    "skills/chat-coordination/agents/openai.yaml": "7399231d60d0a57e55744621852d9f699c07b2ca7723d7ec2eeee9b80f00e72f",
+    "skills/chat-coordination/references/scenarios.md": "0eed2b5dbdf9101a79a3bf9b3b53351f0d506a39ee9a015d45c0f522fd3deee0"
+  },
+  "foreign_bytes": "unchanged",
+  "external_push": "not-run",
+  "host_install": "not-run",
+  "canonical_smoke": "catalogue valid; marketing fixture prepared from canonical path",
+  "independent_review": "block_reviewer PASS",
+  "functional_source_unchanged_since_full_gate": true
+}
