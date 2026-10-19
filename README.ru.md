@@ -22,6 +22,7 @@
 
 | Ваша задача | Вход | Результат |
 | --- | --- | --- |
+| Вести маркетинг компании на российском рынке | [`$marketing-work`](products/marketing-cycle/README.md) | Исследование, стратегия, кампания, обработка, исполнение, повтор и решение по результатам |
 | Подготовить новый или старый проект | [`$project-start`](skills/project-start/SKILL.md) | Контекст, архитектура, инженерные правила и рабочий план |
 | Написать, исправить или выпустить код | [`$task-delivery`](skills/task-delivery/SKILL.md) | Изменение, применимые тесты, ревью и передача результата; выпуском владеет [`$deployment`](skills/deployment/SKILL.md) |
 | Разобраться в работе бизнеса и улучшить процесс | [`$business-work`](products/business-automation/README.md) | Текущая работа, выбранное улучшение, будущий процесс и проверка внедрения |
@@ -38,6 +39,7 @@
 
 | Область | Что внутри | Установка |
 | --- | --- | --- |
+| **[Маркетинг полного цикла](products/marketing-cycle/README.md)** | 5 навыков: ведение, стратегия, кампания, измерение и клиентский цикл; Россия и существующие владельцы компании | `--skills-only --pack marketing-cycle` |
 | **Инженерные процессы** | Project Start, Research, Task Delivery, Software Factory, Deployment, Product Care и вспомогательные скиллы | Общий установщик; `--skills-only` сохраняет настройки среды |
 | **[Бизнес и автоматизация](products/business-automation/README.md)** | 11 скиллов: бизнес-процесс, проверка гипотез, методы NMT и свежие внешние сигналы | `--skills-only --pack business-automation` |
 | **[Бизнес-модель](products/business-model/README.md)** | Общий business-work и 3 новых скилла: модель, экономика, процесс → продукт; российский рынок по умолчанию | `--skills-only --pack business-model` |

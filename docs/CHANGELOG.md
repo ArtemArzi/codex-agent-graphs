@@ -9,6 +9,20 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
+## 2026-10-20 - Marketing Cycle
+
+[Marketing Cycle 0.1.0](../products/marketing-cycle/README.md) adds five native skills
+for linked marketing decisions, strategy, campaigns, measurement and customer
+lifecycle in Russia. Existing channel/research/economics/company skills remain
+owners; no additional controller, scheduler, roles or provider dependencies.
+The shared skills-only installer selects the five members and rejects drift.
+[Validation](../products/marketing-cycle/VALIDATION.md) distinguishes source,
+synthetic use, installation and the still separate real client pilot.
+
+Россия закреплена исходным рынком. Зарубежные механизмы не подменяют проверку
+российского спроса, доступности канала и экономики. Клиентские данные и ядро
+Company Work System не входят в пакет.
+
 ## 2026-10-18 - Business Model
 
 [Business Model 0.1.0](../products/business-model/README.md) adds three original

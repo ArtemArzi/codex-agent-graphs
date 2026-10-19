@@ -22,6 +22,7 @@ distribution. An independent community project.
 
 | Your task | Start with | What you get |
 | --- | --- | --- |
+| Lead a business marketing cycle in Russia | [`$marketing-work`](products/marketing-cycle/README.md) | Research, strategy, campaigns, sales handoff, fulfilled orders, lifecycle and evidence-based decisions |
 | Prepare a new or inherited codebase | [`$project-start`](skills/project-start/SKILL.md) | Project context, architecture, engineering guidance and a usable plan |
 | Build, fix or release software | [`$task-delivery`](skills/task-delivery/SKILL.md) | A scoped change, appropriate tests, review and handoff; [`$deployment`](skills/deployment/SKILL.md) owns release |
 | Understand and improve a business process | [`$business-work`](products/business-automation/README.md) | Current work, a chosen improvement, a future process and checks for adoption |
@@ -38,6 +39,7 @@ distribution. An independent community project.
 
 | Area | Contents | Installation |
 | --- | --- | --- |
+| **[Marketing Cycle](products/marketing-cycle/README.md)** | 5 skills linking marketing decisions and service delivery; Russian market, existing specialist and company owners | `--skills-only --pack marketing-cycle` |
 | **Engineering workflows** | Project Start, Research, Task Delivery, Software Factory, Deployment, Product Care and supporting skills | Default installer; `--skills-only` preserves host settings |
 | **[Business Automation](products/business-automation/README.md)** | 11 skills: business workflow, hypothesis checks, NMT methods and recent external signals | `--skills-only --pack business-automation` |
 | **[Business Model](products/business-model/README.md)** | Shared business-work entry and 3 skills: model design, delivery economics and process productization; Russian market by default | `--skills-only --pack business-model` |

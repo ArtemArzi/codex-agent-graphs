@@ -30,6 +30,7 @@ README содержит обзор, выбор пака, примеры и ко�
 
 | Guide | Owner and scope / область |
 | --- | --- |
+| [Marketing Cycle](../products/marketing-cycle/README.md) | Russian-market marketing decisions, campaigns, sales/service handoffs, measurement and lifecycle; existing company state |
 | [Business Automation](../products/business-automation/README.md) | Business context, process improvement, product methods, adoption and effect |
 | [Business Model](../products/business-model/README.md) | Opportunity discovery, connected models, delivery economics and process productization; shared business-work entry |
 | [CRM Business Pack](../products/crm-business-pack/README.md) | Bitrix24/amoCRM configuration, integrations, launch and support |

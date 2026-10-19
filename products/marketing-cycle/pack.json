@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "id": "marketing-cycle",
+  "version": "0.1.0",
+  "entrypoint": "marketing-work",
+  "managed_skills": [
+    "marketing-work",
+    "marketing-strategy",
+    "marketing-campaign",
+    "marketing-measurement",
+    "marketing-lifecycle"
+  ],
+  "reused_capabilities": {
+    "required": false,
+    "management": "existing-owners-no-vendoring",
+    "skills": [
+      "marketing-skills",
+      "market-research",
+      "research",
+      "nmt-market-research",
+      "nmt-analyze-interviews",
+      "nmt-craft-value-proposition",
+      "nmt-craft-go-to-market",
+      "business-work",
+      "business-economics",
+      "business-model-design",
+      "business-hypothesis-check",
+      "content-strategy",
+      "social",
+      "seo",
+      "web-measurement",
+      "website-standards",
+      "reliable-leads",
+      "crm-implementation",
+      "task-delivery",
+      "deployment",
+      "company-marketing"
+    ]
+  },
+  "default_market": "RU",
+  "market_requirement": "owner-confirmed-2026-10-20",
+  "other_markets": "explicit-task-override-only",
+  "foreign_market_evidence": "mechanisms-not-russian-demand",
+  "update_owner": "canonical-repository-first",
+  "runtime_dependencies": [],
+  "external_candidates_installed": false,
+  "installation": {
+    "method": "existing-shared-skills-installer",
+    "general_installer_pack_option_supported": true
+  },
+  "validation": {
+    "structural": "see VALIDATION.md",
+    "instruction_scenarios": "see validation/SCENARIOS.md",
+    "live_client_pilot": "not-run"
+  }
+}

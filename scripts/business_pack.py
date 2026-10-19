@@ -12,7 +12,7 @@ from typing import Any
 
 
 PACK_ID = "business-automation"
-PACK_IDS = (PACK_ID, "agent-lifecycle", "business-model")
+PACK_IDS = (PACK_ID, "agent-lifecycle", "business-model", "marketing-cycle")
 
 
 def load_pack(repo: Path, pack_id: str = PACK_ID) -> dict[str, Any]:
@@ -29,6 +29,23 @@ def load_pack(repo: Path, pack_id: str = PACK_ID) -> dict[str, Any]:
                    for name in names)
             or len(names) != len(set(names)) or pack.get("entrypoint") not in names):
         raise ValueError("Invalid business pack identity, version or managed skill list")
+    if pack_id == "marketing-cycle":
+        reused = pack.get("reused_capabilities")
+        if (pack.get("update_owner") != "canonical-repository-first"
+                or pack.get("entrypoint") != "marketing-work"
+                or set(names) != {"marketing-work", "marketing-strategy", "marketing-campaign",
+                                     "marketing-measurement", "marketing-lifecycle"}
+                or pack.get("default_market") != "RU"
+                or pack.get("foreign_market_evidence") != "mechanisms-not-russian-demand"
+                or not isinstance(reused, dict) or reused.get("required") is not False
+                or not isinstance(reused.get("skills"), list)
+                or any(not isinstance(name, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name)
+                       for name in reused["skills"])
+                or len(reused["skills"]) != len(set(reused["skills"]))
+                or set(names).intersection(reused["skills"])
+                or pack.get("runtime_dependencies") != []):
+            raise ValueError("Invalid Marketing Cycle ownership, members, market or optional companions")
+        return pack
     if pack_id == "business-model":
         reused = pack.get("reused_capabilities")
         if (pack.get("update_owner") != "canonical-repository-first"
@@ -337,7 +354,7 @@ def run(action: str, homes: list[tuple[str, Path]], requested: Path | None, *, a
         return result
     if action != "install":
         raise ValueError(f"Unknown business pack action: {action}")
-    if pack_id in ("agent-lifecycle", "business-model") and any(item["status"] == "drift" for item in context["items"]):
+    if pack_id in ("agent-lifecycle", "business-model", "marketing-cycle") and any(item["status"] == "drift" for item in context["items"]):
         raise api.InstallError("Shared skill drift must be explicitly reconciled before installation; "
                                "preserve local changes and compare their source/version")
 
