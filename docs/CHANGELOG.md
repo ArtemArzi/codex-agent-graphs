@@ -9,15 +9,15 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
-## 2026-10-20 - Local skill quality candidate
+## 2026-10-20 - Skill quality
 
-Local-only instruction refinement of seven legacy entries, following a semantic
+Instruction refinement of seven legacy entries, following a semantic
 entrypoint review of all 65 skills. New contributor guidance keeps wrappers
 conditional. The stdlib skill_cases helper prepares isolated offline exercises
 and withholds assessment criteria; it does not call or grade models. No graph,
 installer, global policy, upstream canon or installed host files are changed.
-[Scope, audit and verification](tasks/TD-SKILL-QUALITY/PLAN.md). This candidate
-has not been published; source checks and scenario evidence have their own scope.
+[Scope, audit and verification](tasks/TD-SKILL-QUALITY/PLAN.md). Source published
+to GitHub main; scenario checks and installation evidence retain their own scope.
 
 ## 2026-10-20 - Marketing Cycle
 

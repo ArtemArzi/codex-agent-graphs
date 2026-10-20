@@ -21,5 +21,19 @@
   "embedded_examples": "14 parseable Python blocks AST-identical; remaining Python fragments unchanged",
   "independent_review": "block_reviewer PASS",
   "host_install": "not-run",
-  "public_delivery": "not-authorized; not-run"
+  "public_delivery": {
+    "status": "PASS",
+    "authorization": "User explicitly requested committing and publishing the completed updates to GitHub on 2026-10-20",
+    "repository": "https://github.com/ArtemArzi/codex-agent-graphs",
+    "branch": "main",
+    "verified_source_commit": "d52feecb55647d5a0e866b8dc1feea6634244510",
+    "verification": "normal push followed by independent git ls-remote readback; four protected dirty files unchanged; installed skills not updated",
+    "receipt_scope": "Source delivery confirmed before this documentation receipt; later documentation commits retain source ancestry.",
+    "pre_receipt_commit_gate": {
+      "command": "python3 scripts/check_all.py",
+      "exit_code": 0,
+      "final_line": "All workflow checks passed.",
+      "log_sha256": "e5795ea338a89e51f9d042d724c9009099a11a0faedce699a2d833de3107028e"
+    }
+  }
 }
