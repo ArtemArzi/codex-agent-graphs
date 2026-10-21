@@ -26,12 +26,74 @@
     "protected_files": 391,
     "local_drift_in_selected_skills": false
   },
-  "status": "source accepted; publication and installation pending",
+  "status": "complete: source published, two skills installed in both homes, source and delivery reviews passed",
   "independent_review": {
     "role": "block_reviewer",
     "agent": "/root/review_standards_result",
     "verdict": "PASS",
     "receipt": "NATIVE-BLOCK-TD-REVIEW-STANDARDS-20261021-7F62C9A1",
     "scope": "source and prepared delivery method; actual delivery pending"
+  },
+  "delivery": {
+    "source_commit": "2d918d334100340486762a5169608d53ffda607c",
+    "github_main_readback": "PASS",
+    "environments": [
+      {
+        "environment": "wsl",
+        "skills": {
+          "project-start": "installed",
+          "task-delivery": "installed"
+        },
+        "backup_directory": "backups/agent-graphs/20261021-234311-021532-251920"
+      },
+      {
+        "environment": "desktop",
+        "skills": {
+          "project-start": "installed",
+          "task-delivery": "installed"
+        },
+        "backup_directory": "backups/agent-graphs/20261021-234329-146402-251920"
+      }
+    ],
+    "installed_readback": "PASS",
+    "protected_records_unchanged": 391,
+    "backups_match_preimages": 4,
+    "repeat_install": [
+      {
+        "wsl": {
+          "project-start": "in-sync",
+          "task-delivery": "in-sync"
+        }
+      },
+      {
+        "desktop": {
+          "project-start": "in-sync",
+          "task-delivery": "in-sync"
+        }
+      }
+    ],
+    "canonical_source_integration": {
+      "status": "PASS",
+      "canonical_head": "2d918d334100340486762a5169608d53ffda607c",
+      "foreign_files_preserved": 4,
+      "owned_files_verified": 29,
+      "index": "clean"
+    },
+    "scope": "only project-start and task-delivery; no runtime/model/profile update",
+    "live_project_use": "not tested; new sessions required to load updated skills"
+  },
+  "delivery_review": {
+    "agent": "/root/review_standards_result",
+    "role": "block_reviewer",
+    "verdict": "PASS",
+    "receipt": "NATIVE-BLOCK-TD-DELIVERY-20261021-B94D31E6",
+    "independent_checks": [
+      "installed manifests",
+      "391 protected records",
+      "backup preimages",
+      "canonical bytes and foreign files",
+      "metadata-only delta"
+    ],
+    "remote_limit": "reviewer fresh ls-remote blocked by DNS; source publication uses observed root push/readback; root repeats remote readback for final record"
   }
 }
