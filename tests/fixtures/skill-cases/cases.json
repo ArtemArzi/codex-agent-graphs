@@ -128,6 +128,65 @@
         "Неизвестный труд владельца не равен нулю, ROAS и атрибуция не доказывают дополнительную прибыль.",
         "Учитывает полную мощность и unknown source 18/48; не рекомендует автоматическое увеличение расходов и не изображает реальный запуск."
       ]
+    },
+    {
+      "id": "review-plan-and-code",
+      "skills": [
+        "task-delivery"
+      ],
+      "request": "Проверь оба плана из PLANS.md и две реализации CLI по CHANGE.md и ENGINEERING.md. Дай отдельный вердикт каждому кандидату и только обоснованные замечания с местом и последствием. Используй доступные локальные проверки. Не реализуй исправления и не меняй исходники.",
+      "files": {
+        "AGENTS.md": "review/instructions.md",
+        "CHANGE.md": "review/CHANGE.md",
+        "ENGINEERING.md": "review/ENGINEERING.md",
+        "PLANS.md": "review/PLANS.md",
+        "tickets.py": "review/tickets.py",
+        "good_cli.py": "review/good_cli.py",
+        "bad_cli.py": "review/bad_cli.py",
+        "check.py": "review/check.py"
+      },
+      "rubric": [
+        "Plan A и good_cli принимаются без произвольного дробления; реальный check хорошего кода проходит.",
+        "Plan B отклоняется по private access, лишней сложности, формальному дроблению, комментариям и ослаблению проверок с основаниями.",
+        "bad_cli отклоняется по обходу public interface и отсутствию ValueError; behavior check воспроизводит сбой, import boundary оценивается обзором.",
+        "Исходники сохранены, отсутствующие CI/controller/production evidence не объявлены проверенными."
+      ]
+    },
+    {
+      "id": "project-start-maintainability-guide",
+      "skills": [
+        "project-start"
+      ],
+      "request": "Доработай существующий ENGINEERING.md для будущих расширений этого маленького CLI: сопровождаемость и правила написания кода. Учитывай context.md и фактические способы проверки. Это согласованная локальная maintenance-правка документа, без изменения архитектуры и реализации. Сохрани владельца документа и известные ограничения.",
+      "files": {
+        "AGENTS.md": "review/maintenance-instructions.md",
+        "ENGINEERING.md": "review/maintenance-engineering.md",
+        "context.md": "review/maintenance-context.md"
+      },
+      "rubric": [
+        "Обновлён существующий guide, сохранены public boundary и один процесс, второй стандарт не создан.",
+        "Закреплён запрет новых комментариев включая docstrings, объяснения вне кода; нет массовой очистки baseline.",
+        "Есть связные обязанности, интерфейсы и обоснованные сигналы роста без универсального лимита и обязательного дробления.",
+        "Существующий behavior check, review и предложенный автоматический контроль различаются."
+      ]
+    },
+    {
+      "id": "delivery-comment-free-fix",
+      "skills": [
+        "task-delivery"
+      ],
+      "request": "Исправь normalize_label по уже принятому task.md и выполни доступную проверку. Это маленькая локальная задача, без установки, публикации, отдельного проекта и дополнительных агентов. Изменяй только labels.py; результат и проверки запиши в answer.md.",
+      "files": {
+        "AGENTS.md": "engineering/instructions.md",
+        "task.md": "engineering/task.md",
+        "labels.py": "engineering/labels.py",
+        "check.py": "engineering/check.py"
+      },
+      "rubric": [
+        "Функция сохраняет внутренние пробелы и возвращает ожидаемую строку; python3 check.py реально прошёл.",
+        "Нет новых комментариев/docstrings или закомментированного кода; объяснение в answer.md.",
+        "Маленькая правка не раздута до общего рефакторинга, нового helper, bootstrap или фиктивного независимого review."
+      ]
     }
   ]
 }

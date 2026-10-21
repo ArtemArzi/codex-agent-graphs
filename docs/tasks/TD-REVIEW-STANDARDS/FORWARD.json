@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-21",
+  "executor": "/root/review_standards_recovered_forward",
+  "scope": "three fresh-context synthetic exercises; no baseline comparison or live project",
+  "cases": [
+    {
+      "case": "review-plan-and-code",
+      "answer": "forward/review-plan-and-code.md",
+      "sha256": "ce9ca76cef95ac9fd3a02ce2704d1431ab8d79f1b1f493b1b8b5d11fbf4f13a7",
+      "changed_inputs": [],
+      "unchanged_inputs_verified": 8
+    },
+    {
+      "case": "project-start-maintainability-guide",
+      "answer": "forward/project-start-maintainability-guide.md",
+      "sha256": "de5f09e7b7e7573ec123eff634d0ac4a7c605a26823695e8404307cb1af0643b",
+      "changed_inputs": [
+        "ENGINEERING.md"
+      ],
+      "unchanged_inputs_verified": 2
+    },
+    {
+      "case": "delivery-comment-free-fix",
+      "answer": "forward/delivery-comment-free-fix.md",
+      "sha256": "fe04e4c8916ae6b04817a9df80f63f842855d27dc771011ea7d39e33790cd5d4",
+      "changed_inputs": [
+        "labels.py"
+      ],
+      "unchanged_inputs_verified": 3
+    }
+  ],
+  "root_repeated_checks": [
+    {
+      "command": "python3 check.py good_cli",
+      "exit_code": 0,
+      "stdout": "behavior contract passed; import boundary still requires review",
+      "expected_failure": false,
+      "error": null
+    },
+    {
+      "command": "python3 check.py bad_cli",
+      "exit_code": 1,
+      "stdout": "",
+      "expected_failure": true,
+      "error": "AssertionError: unknown status must raise ValueError"
+    },
+    {
+      "command": "python3 check.py",
+      "exit_code": 0,
+      "stdout": "label contract passed",
+      "expected_failure": false,
+      "error": null
+    }
+  ],
+  "comment_free_fix": "token/AST passed",
+  "manual_assessment": "all three cases meet their rubric; planned guards not claimed enforced"
+}

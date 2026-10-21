@@ -22,7 +22,18 @@
 
 ## Code shape and growth
 
-<!-- PROJECT-START:REQUIRED Define evidence-backed file/module growth rules, extraction seams, YAGNI expectations, and the executable ratchets that enforce mature limits. -->
+<!-- PROJECT-START:REQUIRED Define cohesive responsibilities, public interfaces and ownership of state. Show where a normal change belongs and which parts can be tested separately. Name concrete extraction seams when unrelated responsibilities accumulate; splitting files alone is not evidence of better design. -->
+
+<!-- PROJECT-START:REQUIRED Choose file/function growth and complexity signals from this stack and baseline, not a universal line limit. Name applicable executable checks, their current enforcement and justified exceptions for generated/vendor code. For legacy hotspots, define a bounded no-worsening rule when useful; a local task does not authorize a whole-system rewrite. Avoid speculative abstractions, pass-through wrappers and generic shared modules without real callers. -->
+
+## Code without comments
+
+AI-authored code must not add comments: inline or block explanations,
+docstrings/JSDoc, TODO/FIXME notes or commented-out code. Express intent through
+names, types, contracts, small coherent functions and explicit control flow.
+Keep rationale and usage explanations in the owning documentation outside code.
+Preserve existing license notices and machine directives; do not mass-delete
+existing comments outside the assigned change.
 
 ## Errors, data, transactions and concurrency
 

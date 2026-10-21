@@ -1,0 +1,37 @@
+{
+  "full_gate": {
+    "command": "python3 scripts/check_all.py",
+    "exit_code": 0,
+    "last_line": "All workflow checks passed.",
+    "log_sha256": "ae8de44d1c50cec4e3715c3680d0b6f4aac0c2d1030f60bf88b51c41f220afd7"
+  },
+  "fixture_preparation_tests": {
+    "command": "python3 -m unittest discover -s tests -p test_skill_cases.py -v",
+    "passed": 8
+  },
+  "quick_validate": [
+    "project-start: valid",
+    "task-delivery: valid"
+  ],
+  "installation_prepared": {
+    "targets": 4,
+    "skills": [
+      "project-start",
+      "task-delivery"
+    ],
+    "homes": [
+      "WSL",
+      "Desktop"
+    ],
+    "protected_files": 391,
+    "local_drift_in_selected_skills": false
+  },
+  "status": "source accepted; publication and installation pending",
+  "independent_review": {
+    "role": "block_reviewer",
+    "agent": "/root/review_standards_result",
+    "verdict": "PASS",
+    "receipt": "NATIVE-BLOCK-TD-REVIEW-STANDARDS-20261021-7F62C9A1",
+    "scope": "source and prepared delivery method; actual delivery pending"
+  }
+}
