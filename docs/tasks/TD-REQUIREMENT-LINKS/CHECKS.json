@@ -1,0 +1,59 @@
+{
+  "source_base": "e29479a51977dedf00a83a4869f47952a95f577c",
+  "checks": [
+    {
+      "command": "python3 scripts/check_all.py",
+      "exit_code": 0,
+      "result": "All workflow checks passed.",
+      "log_sha256": "6075386a1c3463263929da3ce137e6b8ccb65c8036c85decf10197159e7a0682"
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p test_skill_cases.py -v",
+      "exit_code": 0,
+      "tests": 8
+    },
+    {
+      "command": "quick_validate.py skills/project-start; quick_validate.py skills/task-delivery; quick_validate.py skills/deployment",
+      "exit_code": 0,
+      "result": "Three skills valid"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    },
+    {
+      "check": "relative markdown link resolution in changed instructions",
+      "result": "PASS",
+      "links": 5
+    }
+  ],
+  "behavior": {
+    "case": "requirements-existing-plan",
+    "executor": "/root/requirement_links_result",
+    "provided_rubric_before_response": false,
+    "observed": [
+      "missing CSV work/check",
+      "unapproved dashboard scope",
+      "useful SQLite prerequisite retained",
+      "mock does not close delivery requirement",
+      "false completion rejected",
+      "existing document owners retained"
+    ],
+    "limits": "One synthetic read-only scenario; no model baseline comparison, real code execution or deployment."
+  },
+  "delivery": {
+    "status": "not-yet-executed",
+    "prepared_targets": 6,
+    "protected_records": 357
+  },
+  "source_review": {
+    "reviewer": "/root/requirement_links_result",
+    "verdict": "PASS",
+    "material_findings": 0,
+    "excludes": [
+      "publication",
+      "installation",
+      "real deployment"
+    ]
+  }
+}

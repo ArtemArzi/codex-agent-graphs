@@ -5,6 +5,16 @@ Separate a requirement, existence of a test and an observed run. Preserve native
 full suites and financial/security/migration gates. A profile cannot authorize
 skipping required work. Test labels are descriptive, not a fixed enum.
 
+Carry forward requirement references from the existing plan/quality/handoff and
+link them to applicable release checks, actual evidence and unresolved gaps.
+Reconcile both directions: each required release criterion has sufficient evidence
+or an explicit gap; each release action/check serves a criterion, risk or necessary
+prerequisite. A local aggregate PASS does not close an unobserved target/provider
+effect. Missing mandatory release evidence blocks the dependent release step under
+native policy; a documented deferral alone cannot authorize skipping it. Keep
+requirements with their existing owner and record release outcomes in the native
+handoff. This needs no specification file, second registry or new controller field.
+
 | Milestone | Typical work | Prerequisites |
 | --- | --- | --- |
 | Source | Unit/types/lint/contracts, source-based local-stack E2E, AI evals | Exact source/toolchain/fixtures; stack readiness when needed |
