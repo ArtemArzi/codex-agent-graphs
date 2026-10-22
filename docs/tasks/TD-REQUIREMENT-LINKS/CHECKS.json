@@ -42,9 +42,26 @@
     "limits": "One synthetic read-only scenario; no model baseline comparison, real code execution or deployment."
   },
   "delivery": {
-    "status": "not-yet-executed",
-    "prepared_targets": 6,
-    "protected_records": 357
+    "status": "verified",
+    "source_commit": "cb090f31e36bc52e501641b6b22fa0c34534d66d",
+    "remote_main_readback": "cb090f31e36bc52e501641b6b22fa0c34534d66d",
+    "canonical_owned_files_verified": 15,
+    "foreign_dirty_preimages_preserved": 4,
+    "installed_skills": [
+      "project-start",
+      "task-delivery",
+      "deployment"
+    ],
+    "homes": [
+      "/home/artem/.codex",
+      "/mnt/c/Users/artem/.codex"
+    ],
+    "installed_directories_verified": 6,
+    "protected_records_unchanged": 357,
+    "backups_verified_against_preimages": 6,
+    "repeat_installation": "6 in-sync; no new backups",
+    "native_ui_discovery": "not-checked",
+    "new_real_project_behavior": "not-checked"
   },
   "source_review": {
     "reviewer": "/root/requirement_links_result",
@@ -55,5 +72,19 @@
       "installation",
       "real deployment"
     ]
+  },
+  "delivery_review": {
+    "reviewer": "/root/requirement_links_result",
+    "verdict": "PASS",
+    "material_findings": 0,
+    "direct_checks": [
+      "canonical Gitblob and index",
+      "foreign preimages",
+      "six live skill manifests",
+      "six backup preimages",
+      "357 protected records",
+      "repeat no-op receipt"
+    ],
+    "remote_verification": "Root push and readback receipt; reviewer did not repeat network"
   }
 }
