@@ -172,7 +172,20 @@ rather than treating the entire collection as uniformly licensed.
 ## Website standards and the development pipeline
 
 [Website Standards](skills/website-standards/SKILL.md), [SEO](skills/seo/SKILL.md),
+[AI Search Visibility](skills/ai-search-visibility/SKILL.md),
+[Interface Clarity](skills/interface-clarity/SKILL.md),
 [Web Measurement](skills/web-measurement/SKILL.md) and
 [Reliable Leads](skills/reliable-leads/SKILL.md) ship with the engineering skills.
 See the [development pipeline](docs/DEVELOPMENT_PIPELINE.ru.md) for usage-first
 architecture, code simplicity, testing and release responsibilities.
+
+SEO covers indexing, error pages, editorial work, internal links and relevant
+local/external presence. AI Search Visibility covers discovery, factual accuracy
+and citations in the selected AI search products, reusing available SEO evidence.
+Each skill can be selected independently; neither creates a mandatory two-stage
+audit or promises rankings, citations or business results.
+
+Interface Clarity covers text, placement and visual hierarchy for the visitor's
+actual question and next action. It distinguishes expert observations from
+measured human comprehension and task success, while existing design skills
+retain broader visual implementation and review.

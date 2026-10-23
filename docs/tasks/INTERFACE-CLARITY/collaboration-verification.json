@@ -1,0 +1,115 @@
+{
+  "status": "PASS",
+  "version": "0.1.1",
+  "owned_source_files": [
+    "skills/interface-clarity/SKILL.md",
+    "skills/interface-clarity/agents/openai.yaml",
+    "skills/website-standards/SKILL.md",
+    "skills/interface-clarity/references/design-collaboration.md"
+  ],
+  "install": [
+    {
+      "status": "ok",
+      "environment": "wsl",
+      "scope": "skills-only",
+      "codex_home": "/home/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "website-standards",
+          "status": "installed",
+          "target": "/home/artem/.codex/skills/website-standards"
+        },
+        {
+          "kind": "skill",
+          "name": "interface-clarity",
+          "status": "installed",
+          "target": "/home/artem/.codex/skills/interface-clarity"
+        }
+      ],
+      "backup": "/home/artem/.codex/backups/agent-graphs/20261023-120249-161028-841889"
+    },
+    {
+      "status": "ok",
+      "environment": "desktop",
+      "scope": "skills-only",
+      "codex_home": "/mnt/c/Users/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "website-standards",
+          "status": "installed",
+          "target": "/mnt/c/Users/artem/.codex/skills/website-standards"
+        },
+        {
+          "kind": "skill",
+          "name": "interface-clarity",
+          "status": "installed",
+          "target": "/mnt/c/Users/artem/.codex/skills/interface-clarity"
+        }
+      ],
+      "backup": "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261023-120249-170869-841889"
+    }
+  ],
+  "repeat": [
+    {
+      "status": "ok",
+      "environment": "wsl",
+      "scope": "skills-only",
+      "codex_home": "/home/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "website-standards",
+          "status": "in-sync",
+          "target": "/home/artem/.codex/skills/website-standards"
+        },
+        {
+          "kind": "skill",
+          "name": "interface-clarity",
+          "status": "in-sync",
+          "target": "/home/artem/.codex/skills/interface-clarity"
+        }
+      ],
+      "backup": null
+    },
+    {
+      "status": "ok",
+      "environment": "desktop",
+      "scope": "skills-only",
+      "codex_home": "/mnt/c/Users/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "website-standards",
+          "status": "in-sync",
+          "target": "/mnt/c/Users/artem/.codex/skills/website-standards"
+        },
+        {
+          "kind": "skill",
+          "name": "interface-clarity",
+          "status": "in-sync",
+          "target": "/mnt/c/Users/artem/.codex/skills/interface-clarity"
+        }
+      ],
+      "backup": null
+    }
+  ],
+  "native_product_design_context": {
+    "preserved_prefix": true,
+    "one_convention_entry": true,
+    "preflight": "PASS",
+    "repeat": "in-sync",
+    "backup": "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261023-120249-170869-841889/product-design-user-context.md"
+  },
+  "protected_files_unchanged": {
+    "wsl": 22,
+    "desktop": 22
+  },
+  "independent_review": "PASS: interface_clarity_result_review, targeted same-outcome delta",
+  "limits": [
+    "instruction-level integration, not verified all-three runtime E2E",
+    "Impeccable plugin cache untouched",
+    "native Product Design state updated only where it already exists in Desktop"
+  ]
+}

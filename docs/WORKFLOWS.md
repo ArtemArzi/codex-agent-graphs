@@ -106,6 +106,9 @@ the implementation passed or that an unfinished controller completed.
 | [Grill with Docs](../skills/grill-with-docs/SKILL.md) | The same interview plus agreed terms and durable decisions in existing project documents |
 | [Improve Codebase Architecture](../skills/improve-codebase-architecture/SKILL.md) | On-demand survey of actual change friction, candidate tradeoffs and a scoped handoff |
 | [Website Standards](../skills/website-standards/SKILL.md) | Technical site quality, SEO, measurement and reliable leads through existing owners |
+| [SEO](../skills/seo/SKILL.md) | Technical/editorial SEO, useful 404 pages, internal links and relevant local/external search presence |
+| [AI Search Visibility](../skills/ai-search-visibility/SKILL.md) | Product-specific discovery, factual accuracy and citation evidence; reuse SEO without a mandatory second audit |
+| [Interface Clarity](../skills/interface-clarity/SKILL.md) | Text and placement supporting the visitor's next decision, with distinct expert, human-comprehension and behavioural evidence |
 | [Writing for Agents](../skills/writing-for-agents/SKILL.md), [Grilling](../skills/grilling/SKILL.md), [PR](../skills/pr/SKILL.md) and [Retro](../skills/retro/SKILL.md) | Conditional help with instructions, open decisions, change descriptions and learning |
 | Large-codebase discovery policy | Bounded read-only discovery using existing roles; no separate graph |
 

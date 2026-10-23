@@ -40,6 +40,8 @@ first mapping. Existing documents can supply it without a new configuration file
 | GSC/GA4/Webmaster/Metrika identity and signals | Available web-measurement |
 | Acceptance, repeats, delivery and recovery | Available reliable-leads |
 | CTA/navigation/forms/mobile/error behavior | [technical-surface.md](references/technical-surface.md) |
+| Requested text clarity, information order and comprehension checks | Available [Interface Clarity](../interface-clarity/SKILL.md); reuse the current surface and factual owner |
+| Combined clarity and visual-design request | [Design collaboration](../interface-clarity/references/design-collaboration.md); choose relevant Impeccable/Product Design help and reconcile the rendered result in the same task |
 | Release/readiness/incident decisions | Existing quality owner, Deployment, Production Audit or Product Care |
 
 Read [evidence.md](references/evidence.md) when selecting, reporting or reusing

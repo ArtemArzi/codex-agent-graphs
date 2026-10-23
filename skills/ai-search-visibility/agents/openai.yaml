@@ -1,0 +1,6 @@
+interface:
+  display_name: "AI Search Visibility"
+  short_description: "GEO: видимость, точность и цитирование в ответах ИИ"
+  default_prompt: "Используй $ai-search-visibility: проверь, как сайт находится и цитируется в нужных поисковых ИИ, отдели техническую доступность от реальных ответов и предложи проверяемые улучшения."
+policy:
+  allow_implicit_invocation: true

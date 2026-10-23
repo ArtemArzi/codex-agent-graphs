@@ -40,3 +40,30 @@ schema support requires provider-specific refresh, not assumed Google equivalenc
 Google CWV guidance at source review: LCP ≤2.5s, INP ≤200ms, CLS ≤0.1 using
 field assessment; one lab run is not field evidence. Treat targets/budgets as
 applicable engineering criteria, not promises of ranking or universal Yandex gates.
+
+## Error pages and removed routes
+
+Request a fresh nonexistent nested URL directly and inspect both the HTTP status
+and visible page. A page saying "not found" with `200` is a soft-404 candidate;
+a separate `/404` route does not prove the fallback works. Unknown routes normally
+return `404`; deliberately removed content without a replacement may use `410`.
+The error template should explain the situation in the site's language and offer
+ordinary working links to home and relevant sections. Check readability, keyboard
+access and narrow mobile layout when changing it. A correct error page supports
+navigation and indexing hygiene, not a promised ranking boost.
+
+For a moved page use the reviewed permanent redirect to its actual replacement.
+Do not blanket-redirect missing URLs to home or fabricate a canonical replacement.
+Remove broken internal links and error URLs from sitemap; retain historical URL
+evidence for the migration owner. Check the deployed fallback when release is
+authorised: a development-server response does not prove CDN/hosting behaviour.
+
+## CMS changes and freshness
+
+When CMS publication or a template is affected, check a representative draft,
+publication, correction and removal through the real project mechanism. Verify
+the resulting source/rendered facts, links, metadata and sitemap, including cache
+invalidation where applicable. Use an isolated test surface or already authorised
+test material; an audit is not permission to create public posts. Report repository,
+preview and live observations separately. Keep one source for shared prices and
+contacts; changing a database field alone does not prove every public copy updated.

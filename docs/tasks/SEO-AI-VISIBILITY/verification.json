@@ -1,0 +1,178 @@
+{
+  "date": "2026-10-23",
+  "source_base": "3608758c47097f4e5196abdfc7351c8a2dbd13dc",
+  "skills": {
+    "seo": "0.2.0",
+    "ai-search-visibility": "0.1.0"
+  },
+  "quick_validate": {
+    "seo": "PASS",
+    "ai-search-visibility": "PASS"
+  },
+  "repository_check_all": {
+    "status": "PASS",
+    "exit_code": 0,
+    "log_sha256": "fbc05208bfd806b49c92b77b5e1fa2a60ddbed5f2bfa726289d03e32d13162b7"
+  },
+  "independent_review": {
+    "role": "block_reviewer",
+    "name": "seo_ai_skills_result_review",
+    "verdict": "PASS",
+    "synthetic_scenarios": 2,
+    "independent_package_tests": "2/2 PASS"
+  },
+  "installation": [
+    {
+      "status": "ok",
+      "environment": "wsl",
+      "scope": "skills-only",
+      "codex_home": "/home/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "seo",
+          "status": "installed",
+          "target": "/home/artem/.codex/skills/seo"
+        },
+        {
+          "kind": "skill",
+          "name": "ai-search-visibility",
+          "status": "installed",
+          "target": "/home/artem/.codex/skills/ai-search-visibility"
+        }
+      ],
+      "backup": "/home/artem/.codex/backups/agent-graphs/20261023-090645-102205-274561"
+    },
+    {
+      "status": "ok",
+      "environment": "desktop",
+      "scope": "skills-only",
+      "codex_home": "/mnt/c/Users/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "seo",
+          "status": "installed",
+          "target": "/mnt/c/Users/artem/.codex/skills/seo"
+        },
+        {
+          "kind": "skill",
+          "name": "ai-search-visibility",
+          "status": "installed",
+          "target": "/mnt/c/Users/artem/.codex/skills/ai-search-visibility"
+        }
+      ],
+      "backup": "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261023-090645-115463-274561"
+    }
+  ],
+  "repeat_installation": [
+    {
+      "status": "ok",
+      "environment": "wsl",
+      "scope": "skills-only",
+      "codex_home": "/home/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "seo",
+          "status": "in-sync",
+          "target": "/home/artem/.codex/skills/seo"
+        },
+        {
+          "kind": "skill",
+          "name": "ai-search-visibility",
+          "status": "in-sync",
+          "target": "/home/artem/.codex/skills/ai-search-visibility"
+        }
+      ],
+      "backup": null
+    },
+    {
+      "status": "ok",
+      "environment": "desktop",
+      "scope": "skills-only",
+      "codex_home": "/mnt/c/Users/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "seo",
+          "status": "in-sync",
+          "target": "/mnt/c/Users/artem/.codex/skills/seo"
+        },
+        {
+          "kind": "skill",
+          "name": "ai-search-visibility",
+          "status": "in-sync",
+          "target": "/mnt/c/Users/artem/.codex/skills/ai-search-visibility"
+        }
+      ],
+      "backup": null
+    }
+  ],
+  "readback_and_preservation": {
+    "wsl": {
+      "exact_skill_readback": true,
+      "protected_files_unchanged": 22,
+      "unrelated_skills_unchanged": 60
+    },
+    "desktop": {
+      "exact_skill_readback": true,
+      "protected_files_unchanged": 22,
+      "unrelated_skills_unchanged": 185
+    }
+  },
+  "catalog": [
+    {
+      "environment": "wsl",
+      "status": "PASS",
+      "entries": [
+        {
+          "name": "ai-search-visibility",
+          "path": "/home/artem/.codex/skills/ai-search-visibility/SKILL.md",
+          "enabled": true,
+          "scope": "user",
+          "description": "Assess and improve discovery, factual accuracy and citations in AI search answers (GEO/AEO), including ChatGPT Search, Google AI Search, Alice, Claude and Perplexity. Use for AI visibility questions and repeatable citation comparisons; general indexing and internal-link audits belong to seo."
+        },
+        {
+          "name": "seo",
+          "path": "/home/artem/.codex/skills/seo/SKILL.md",
+          "enabled": true,
+          "scope": "user",
+          "description": "Audit or improve technical and editorial SEO for Google or Yandex, including indexing, migrations, 404 pages, internal linking and local or external search presence. Use for keyword mapping and search-related performance; AI-answer citation analysis belongs to ai-search-visibility."
+        }
+      ],
+      "errors": []
+    },
+    {
+      "environment": "desktop",
+      "status": "UNVERIFIED",
+      "reason": "native server ended"
+    }
+  ],
+  "desktop_catalog_limit": "A Linux native app-server using the Windows home exited while initializing its sqlite state runtime. No database workaround, config edit or active app restart was attempted. Installed Desktop skill bytes match the source.",
+  "unverified": [
+    "future automatic invocation",
+    "Desktop native UI visibility",
+    "real website/AI visibility effects",
+    "business outcomes"
+  ],
+  "owned_source_files": [
+    "README.md",
+    "docs/WORKFLOWS.md",
+    "docs/tasks/SEO-AI-VISIBILITY/HANDOFF.md",
+    "scripts/install.py",
+    "skills/ai-search-visibility/SKILL.md",
+    "skills/ai-search-visibility/agents/openai.yaml",
+    "skills/ai-search-visibility/references/evaluation.md",
+    "skills/ai-search-visibility/references/provider-profiles.md",
+    "skills/ai-search-visibility/references/sources.md",
+    "skills/seo/SKILL.md",
+    "skills/seo/agents/openai.yaml",
+    "skills/seo/references/editorial.md",
+    "skills/seo/references/links-and-local.md",
+    "skills/seo/references/sources.md",
+    "skills/seo/references/technical-profiles.md",
+    "tests/test_website_package.py"
+  ],
+  "source_preimage_backup": "/tmp/seo-ai-skills-evidence-20261023/source-preimages"
+}

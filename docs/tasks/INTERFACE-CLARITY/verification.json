@@ -1,0 +1,151 @@
+{
+  "date": "2026-10-23",
+  "version": "0.1.0",
+  "skill": "interface-clarity",
+  "quick_validate": "PASS",
+  "check_all": {
+    "status": "PASS",
+    "log_sha256": "66b0014175d0b61445b85d41f605ad38dff1c02afbf1631e2bd29872a070ca8d"
+  },
+  "independent_review": {
+    "role": "block_reviewer",
+    "agent": "interface_clarity_result_review",
+    "verdict": "PASS",
+    "synthetic_scenarios": 2,
+    "screenshots": [
+      "desktop 1440x1000",
+      "mobile 390x844"
+    ]
+  },
+  "install": [
+    {
+      "status": "ok",
+      "environment": "wsl",
+      "scope": "skills-only",
+      "codex_home": "/home/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "website-standards",
+          "status": "installed",
+          "target": "/home/artem/.codex/skills/website-standards"
+        },
+        {
+          "kind": "skill",
+          "name": "interface-clarity",
+          "status": "installed",
+          "target": "/home/artem/.codex/skills/interface-clarity"
+        }
+      ],
+      "backup": "/home/artem/.codex/backups/agent-graphs/20261023-115405-920775-816830"
+    },
+    {
+      "status": "ok",
+      "environment": "desktop",
+      "scope": "skills-only",
+      "codex_home": "/mnt/c/Users/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "website-standards",
+          "status": "installed",
+          "target": "/mnt/c/Users/artem/.codex/skills/website-standards"
+        },
+        {
+          "kind": "skill",
+          "name": "interface-clarity",
+          "status": "installed",
+          "target": "/mnt/c/Users/artem/.codex/skills/interface-clarity"
+        }
+      ],
+      "backup": "/mnt/c/Users/artem/.codex/backups/agent-graphs/20261023-115405-934728-816830"
+    }
+  ],
+  "repeat": [
+    {
+      "status": "ok",
+      "environment": "wsl",
+      "scope": "skills-only",
+      "codex_home": "/home/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "website-standards",
+          "status": "in-sync",
+          "target": "/home/artem/.codex/skills/website-standards"
+        },
+        {
+          "kind": "skill",
+          "name": "interface-clarity",
+          "status": "in-sync",
+          "target": "/home/artem/.codex/skills/interface-clarity"
+        }
+      ],
+      "backup": null
+    },
+    {
+      "status": "ok",
+      "environment": "desktop",
+      "scope": "skills-only",
+      "codex_home": "/mnt/c/Users/artem/.codex",
+      "changes": [
+        {
+          "kind": "skill",
+          "name": "website-standards",
+          "status": "in-sync",
+          "target": "/mnt/c/Users/artem/.codex/skills/website-standards"
+        },
+        {
+          "kind": "skill",
+          "name": "interface-clarity",
+          "status": "in-sync",
+          "target": "/mnt/c/Users/artem/.codex/skills/interface-clarity"
+        }
+      ],
+      "backup": null
+    }
+  ],
+  "readback": {
+    "wsl": {
+      "exact_readback": true,
+      "protected_files_preserved": 22,
+      "unrelated_skills_preserved": 61
+    },
+    "desktop": {
+      "exact_readback": true,
+      "protected_files_preserved": 22,
+      "unrelated_skills_preserved": 186
+    }
+  },
+  "foreign_source_files_preserved": 18,
+  "catalog": [
+    {
+      "environment": "wsl",
+      "status": "PASS",
+      "entries": [
+        {
+          "name": "interface-clarity",
+          "path": "/home/artem/.codex/skills/interface-clarity/SKILL.md",
+          "enabled": true,
+          "scope": "user",
+          "description": "Write or review website and app text together with its placement and visual hierarchy, so people can understand the offer or state and choose the next action. Use for unclear landing pages, headings, labels, CTA consequences and comprehension checks; broader visual redesign and SEO remain separate capabilities."
+        },
+        {
+          "name": "website-standards",
+          "path": "/home/artem/.codex/skills/website-standards/SKILL.md",
+          "enabled": true,
+          "scope": "user",
+          "description": "Use when building or changing a public website, establishing its technical standard, or auditing navigation, forms, search, measurement and publication readiness. Excludes visual redesign and unsolicited editorial planning."
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "desktop_catalog": "not rerun: previously observed Linux app-server state-runtime failure with Windows home; Desktop file equality verified; native UI visibility unverified",
+  "user_source_sha256": "33898deaa92bf6376833084b2e35c66d9d37ab335686db749afcadaef4a99d8c",
+  "limits": [
+    "synthetic observations are not real participants",
+    "automatic invocation in future chats unmeasured",
+    "real comprehension and conversion impact not measured"
+  ]
+}

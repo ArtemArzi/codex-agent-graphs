@@ -1,0 +1,6 @@
+interface:
+  display_name: "Понятность интерфейса"
+  short_description: "Тексты, акценты и проверка понятности экрана"
+  default_prompt: "Используй $interface-clarity: проверь понятность текста и следующего действия. Если нужна совместная работа с Impeccable или Product Design, передай им принятый смысл и макет, затем проверь результат без повторных аудитов."
+policy:
+  allow_implicit_invocation: true

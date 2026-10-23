@@ -1,0 +1,57 @@
+{
+  "request": "По этим синтетическим данным оцени понимание и выполнение задачи до/после. Можно ли утверждать рост конверсии? Выведи корректные числители/знаменатели и ограничения; новых участников и цифры не придумывай.",
+  "context": "Участники должны определить, означает ли кнопка подтверждённую запись, затем отправить заявку без помощи. Критерии до наблюдения: верно различить заявку и подтверждение; успешная задача = отправлена заявка без помощи.",
+  "before": [
+    {
+      "id": "A",
+      "understood_request_vs_booking": false,
+      "task": "success",
+      "seconds": 40
+    },
+    {
+      "id": "B",
+      "understood_request_vs_booking": true,
+      "task": "assisted",
+      "seconds": 92
+    },
+    {
+      "id": "C",
+      "understood_request_vs_booking": false,
+      "task": "abandoned",
+      "seconds": 65
+    },
+    {
+      "id": "D",
+      "understood_request_vs_booking": false,
+      "task": "failure",
+      "seconds": 90
+    }
+  ],
+  "after": [
+    {
+      "id": "A",
+      "understood_request_vs_booking": true,
+      "task": "success",
+      "seconds": 21
+    },
+    {
+      "id": "B",
+      "understood_request_vs_booking": true,
+      "task": "success",
+      "seconds": 25
+    },
+    {
+      "id": "C",
+      "understood_request_vs_booking": true,
+      "task": "success",
+      "seconds": 38
+    },
+    {
+      "id": "D",
+      "understood_request_vs_booking": false,
+      "task": "assisted",
+      "seconds": 51
+    }
+  ],
+  "conditions": "Same four participants saw before and then after, no counterbalancing; same device. No live site exposure, bookings, or analytics."
+}

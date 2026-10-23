@@ -13,7 +13,7 @@ SPEC = importlib.util.spec_from_file_location("website_installer", ROOT / "scrip
 assert SPEC and SPEC.loader
 installer = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(installer)
-SITE_SKILLS = ("website-standards", "web-measurement", "reliable-leads", "seo")
+SITE_SKILLS = ("website-standards", "web-measurement", "reliable-leads", "seo", "ai-search-visibility", "interface-clarity")
 
 
 class WebsitePackageTests(unittest.TestCase):

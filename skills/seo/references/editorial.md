@@ -16,11 +16,18 @@ the offer. Length estimates are editing aids, not search-engine acceptance
 conditions; snippets may be rewritten. Use meaningful heading hierarchy, not
 a rigid single-H1/character-count gate. Keep internal links useful to visitors,
 with descriptive text and actual working destinations.
+For an actual link-structure or local-presence task, use
+[links-and-local.md](links-and-local.md); a title edit needs no full crawl.
 
 Structured data reflects supported page types and visible facts. Organization/
 LocalBusiness, Article, Product/Offer or Breadcrumb types apply only when true.
 FAQ/Q&A content alone does not guarantee rich-result eligibility. Refresh
 current search-specific rules; never fabricate schema facts to pass a validator.
+
+Answer real questions with attributable facts and clear conditions. Use original
+examples, experience or data only when available; do not add invented statistics,
+credentials or quotes to look authoritative. Freshness means corrected facts and
+an honest modification date, not automatically rewriting every publication date.
 
 Return concrete page/theme→intent→proposed title/description/link changes with
 evidence and uncertainties. Do not expand a requested text pass into forms,
