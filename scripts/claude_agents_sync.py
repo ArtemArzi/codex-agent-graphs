@@ -32,8 +32,16 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Provider settings are explicit and independent in the routing manifest.
 # Changing Codex routing must not invent an equivalence to Claude models.
-EFFORT_MAP = {"high": "high", "xhigh": "xhigh", "max": "max"}
+EFFORT_MAP = {"medium": "medium", "high": "high", "xhigh": "xhigh", "max": "max"}
 DEFAULT_WEB = "disabled"  # web_search отсутствует в 2 из 13 toml — трактуем как disabled
+# Native Codex defaults that require an explicit Claude tool projection.
+# The default role inherits parent write authority in Codex; Claude still
+# requires an implementation assignment in its unchanged canonical prompt.
+CLAUDE_NATIVE_DEFAULTS = {
+    "default": {"sandbox_mode": "workspace-write"},
+    "researcher": {"web_search": "live"},
+    "vacancy_researcher": {"web_search": "live"},
+}
 
 KNOWN_TOML_KEYS = {
     "model",
@@ -41,6 +49,9 @@ KNOWN_TOML_KEYS = {
     "sandbox_mode",
     "web_search",
     "developer_instructions",
+    # Explicit Codex-only native metadata; Claude uses canonical role IDs and
+    # descriptions, but has no nickname_candidates frontmatter equivalent.
+    "name", "description", "nickname_candidates",
 }
 
 # Пиновый безопасный набор инструментов. Спавн-инструмент называется Agent
@@ -53,24 +64,6 @@ FORBIDDEN_TOOL_NAMES = {"Agent", "Task"}
 
 # Роли графов, у которых нет и не должно быть agents/*.toml.
 GRAPH_ROLE_EXEMPT = {"root"}  # root — сама корневая сессия, отдельный агент не нужен
-
-# Хост-generic роли, которых нет в канонe toml: проекция из шаблона ниже.
-EXPLORER_DESCRIPTION = (
-    "Optional read-only fan-out explorer for project-start and "
-    "continuous-improvement graphs. Reads an assigned scope and returns "
-    "evidence with exact file paths; never edits anything."
-)
-EXPLORER_BODY = """\
-You are an optional read-only exploration agent inside an agent-graph run.
-Receive an explicit scope (paths, questions, or a slice of a large repository)
-from the root agent. Stay strictly inside that scope. Read files, trace
-execution paths, and collect evidence; every claim you return must cite an
-exact file path (and line numbers where useful). Distinguish observation from
-inference. Return a dense, structured report — findings first, open questions
-last. Never modify files, never run commands that mutate state, never spawn
-other agents, never commit, and never expand your scope on your own.
-"""
-
 
 def _load_install_module():
     spec = importlib.util.spec_from_file_location("graph_install", ROOT / "scripts" / "install.py")
@@ -90,16 +83,26 @@ def role_descriptions() -> dict[str, str]:
 
 def canonical_roles() -> dict[str, dict]:
     roles: dict[str, dict] = {}
-    for path in sorted((ROOT / "agents").glob("*.toml")):
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    policy = _load_install_module().routing.load_policy()
+    for role, projection in sorted(policy["roles"].items()):
+        path = ROOT / projection["template"]
+        data = {**CLAUDE_NATIVE_DEFAULTS.get(role, {}),
+                **tomllib.loads(path.read_text(encoding="utf-8"))}
+        if "name" in data and data["name"] != role:
+            raise SystemExit(f"{path.name}: native role name differs from policy ID")
+        if "description" in data and (not isinstance(data["description"], str) or not data["description"].strip()):
+            raise SystemExit(f"{path.name}: invalid native description")
+        nicknames = data.get("nickname_candidates", [])
+        if not isinstance(nicknames, list) or any(not isinstance(item, str) for item in nicknames):
+            raise SystemExit(f"{path.name}: invalid Codex-only nickname metadata")
         unknown = set(data) - KNOWN_TOML_KEYS
         if unknown:
             raise SystemExit(f"{path.name}: неизвестные ключи toml {sorted(unknown)} — обнови маппинги генератора")
         routing = _load_install_module().routing
-        route = routing.role_route(path.stem)
+        route = routing.role_route(role)
         if "model" in data or "model_reasoning_effort" in data:
             raise SystemExit(f"{path.name}: модели должны находиться только в model-routing.toml")
-        roles[path.stem] = {**data, "model": route["model"], "model_reasoning_effort": route["effort"]}
+        roles[role] = {**data, "model": route["model"], "model_reasoning_effort": route["effort"]}
     return roles
 
 
@@ -138,13 +141,14 @@ def render_role(role: str, spec: dict, description: str) -> str:
     if (spec["model"], spec["model_reasoning_effort"]) != (route["model"], route["effort"]):
         raise SystemExit(f"{role}: модель/effort расходятся с model-routing.toml")
     model, effort = projection["claude_model"], projection["claude_effort"]
-    if model not in ("sonnet", "opus") or effort not in EFFORT_MAP:
+    if model not in ("sonnet", "opus", "inherit") or effort not in EFFORT_MAP:
         raise SystemExit(f"{role}: неизвестные настройки проекции Claude")
     tools, deny = _tools_for(spec["sandbox_mode"], spec.get("web_search", DEFAULT_WEB))
+    deny = list(dict.fromkeys([*deny, "Agent", "Task"]))
 
     lines = [
         "---",
-        f"# GENERATED FROM agents/{role}.toml — do not edit; regenerate: scripts/claude_agents_sync.py --write",
+        f"# GENERATED FROM {projection['template']} - regenerate: scripts/claude_agents_sync.py --write",
         f"# graph.json role id: {role}",
         f"name: {claude_name(role)}",
         f"description: {description}",
@@ -155,24 +159,17 @@ def render_role(role: str, spec: dict, description: str) -> str:
     if deny:
         lines.append(f"disallowedTools: {', '.join(deny)}")
     lines.append("---")
-    body = spec["developer_instructions"].strip()
+    body = (f"Claude Code projection of canonical role {role}. Use the provider model in "
+            "frontmatter. Sol/Astra/Codex model names in the shared instructions describe "
+            "the Codex policy, not your actual provider identity. Preserve their scope "
+            "and review thresholds; never claim to be a Sol/Astra reviewer.\n\n" +
+            spec["developer_instructions"].strip())
     return "\n".join(lines) + "\n\n" + body + "\n"
 
 
 def render_template_roles() -> dict[str, str]:
-    lines = [
-        "---",
-        "# TEMPLATE ROLE — host-generic, no agents/*.toml counterpart; source: claude_agents_sync.py",
-        "# graph.json role id: explorer",
-        "name: explorer",
-        f"description: {EXPLORER_DESCRIPTION}",
-        "model: sonnet",
-        "effort: high",
-        f"tools: {', '.join(READ_TOOLS)}",
-        f"disallowedTools: {', '.join(WRITE_DENY)}",
-        "---",
-    ]
-    return {"explorer": "\n".join(lines) + "\n\n" + EXPLORER_BODY}
+    """Legacy API; explorer is now projected from its canonical native template."""
+    return {}
 
 
 def render_all() -> dict[str, str]:
@@ -182,7 +179,7 @@ def render_all() -> dict[str, str]:
     for role, spec in canonical_roles().items():
         if role not in descriptions:
             raise SystemExit(f"{role}: нет описания в managed-блоке install.py")
-        rendered[claude_name(role)] = render_role(role, spec, descriptions[role])
+        rendered[claude_name(role)] = render_role(role, spec, spec.get("description", descriptions[role]))
     for role, text in render_template_roles().items():
         if role in rendered:
             raise SystemExit(f"Шаблонная роль {role} конфликтует с канонической")
@@ -216,9 +213,9 @@ def check_parity(rendered: dict[str, str]) -> list[str]:
     toml_roles = set(canonical_roles())
     template_roles = set(render_template_roles())
     install = _load_install_module()
-    if set(install.AGENT_ROLES) - install.NATIVE_ROLES != toml_roles:
+    if set(install.AGENT_ROLES) != toml_roles:
         errors.append(
-            f"install.py AGENT_ROLES != agents/*.toml: {sorted((set(install.AGENT_ROLES) - install.NATIVE_ROLES) ^ toml_roles)}"
+            f"install.py AGENT_ROLES != agents/*.toml: {sorted(set(install.AGENT_ROLES) ^ toml_roles)}"
         )
     for role in sorted(graph_roles() - GRAPH_ROLE_EXEMPT):
         if role not in toml_roles and role not in template_roles:

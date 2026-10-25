@@ -440,26 +440,21 @@ def resolve_receipt(root: Path, raw: str | None, trigger: str) -> dict[str, str]
     return validate_task_delivery_receipt(root, receipt) if trigger == "task-delivery" else receipt
 
 
-def claude_host_skill_roots(explicit_given: bool) -> list[Path]:
-    """Дополнительные корни навыков для запуска под Claude Code.
+def _cag_host_paths():
+    import importlib.util
+    for parent in Path(__file__).resolve().parents:
+        source = parent / "agent-graph-runtime" / "host_paths.py"
+        if source.is_file():
+            spec = importlib.util.spec_from_file_location("cag_host_paths", source)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+    raise RuntimeError("CAG host runtime missing; reinstall this skill and its sibling runtime")
 
-    Добавляются только когда (а) явного skills-root не передано и (б) процесс
-    запущен из Claude Code (маркеры CLAUDECODE / CLAUDE_PLUGIN_ROOT) либо
-    ~/.codex отсутствует вовсе. Приоритет существующих кандидатов не меняется:
-    добавка идёт строго в хвост списка.
-    """
-    if explicit_given:
-        return []
-    claude_marker = os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_PLUGIN_ROOT")
-    if not claude_marker and (Path.home() / ".codex").is_dir():
-        return []
-    roots: list[Path] = []
-    for ancestor in Path(__file__).resolve().parents:
-        if ancestor.name == "skills":
-            roots.append(ancestor)
-            break
-    roots.append(Path.home() / ".claude" / "skills")
-    return roots
+
+def claude_host_skill_roots(explicit_given: bool) -> list[Path]:
+    """Claude-only roots, selected before any default Codex profile."""
+    return [] if explicit_given else _cag_host_paths().claude_skill_roots(__file__)
 
 
 def skill_roots(explicit: str | None = None) -> list[Path]:
@@ -473,7 +468,9 @@ def skill_roots(explicit: str | None = None) -> list[Path]:
     desktop = Path("/mnt/c/Users")
     if desktop.is_dir():
         roots.extend(desktop.glob("*/.codex/skills"))
-    roots.extend(claude_host_skill_roots(explicit is not None))
+    claude_roots = claude_host_skill_roots(explicit is not None)
+    if claude_roots:
+        roots = claude_roots
     unique: list[Path] = []
     for root in roots:
         resolved = root.resolve()

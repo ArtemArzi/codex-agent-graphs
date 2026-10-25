@@ -39,14 +39,20 @@ effort = "high"
 [roles.block_reviewer]
 class = "auxiliary"
 template = "agents/native/block_reviewer.toml"
+claude_model = "inherit"
+claude_effort = "medium"
 
 [roles.default]
 class = "auxiliary"
 template = "agents/native/default.toml"
+claude_model = "inherit"
+claude_effort = "medium"
 
 [roles.explorer]
 class = "auxiliary"
 template = "agents/native/explorer.toml"
+claude_model = "sonnet"
+claude_effort = "high"
 
 [roles.improvement_verifier]
 class = "acceptance"
@@ -100,12 +106,16 @@ claude_effort = "max"
 [roles.researcher]
 class = "auxiliary"
 template = "agents/native/researcher.toml"
+claude_model = "inherit"
+claude_effort = "medium"
 
 [roles.deep_reviewer]
 class = "acceptance"
 model = "gpt-6-astra"
 effort = "medium"
 template = "agents/native/deep_reviewer.toml"
+claude_model = "inherit"
+claude_effort = "high"
 
 [roles.task_explorer]
 class = "auxiliary"
@@ -143,10 +153,14 @@ claude_effort = "xhigh"
 class = "auxiliary"
 effort = "high"
 template = "agents/native/worker.toml"
+claude_model = "inherit"
+claude_effort = "high"
 
 [roles.vacancy_researcher]
 class = "auxiliary"
 template = "agents/native/vacancy_researcher.toml"
+claude_model = "inherit"
+claude_effort = "medium"
 
 [retired_roles.reviewer]
 sha256 = "bcbbbb9e7b8a250dc34273659531350e650faa1c1b4bea29f1bd3133620e3d07"

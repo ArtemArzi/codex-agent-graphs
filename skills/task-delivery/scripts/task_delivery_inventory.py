@@ -34,7 +34,7 @@ def run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str] | None:
 
 
 def discover_instructions(root: Path) -> list[str]:
-    names = {"AGENTS.md", "CLAUDE.md", "CONTEXT.md"}
+    names = {"AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", "CONTEXT.md", ".claude/AGENTS.md", ".claude/CLAUDE.md"}
     found: set[Path] = set()
     current = root.resolve()
     while True:
@@ -97,30 +97,66 @@ def parse_safe_config(path: Path) -> dict[str, Any]:
     return _serializable(result)
 
 
+def parse_safe_claude_config(home: Path, root: Path) -> dict[str, Any]:
+    """Read metadata only. Never return JSON values, env, headers or commands."""
+    result = {"path": str(home), "mcp_servers": set(), "plugins": set(),
+              "feature_keys": set(), "agent_keys": set(), "hook_state_events": set()}
+    paths = [home / "settings.json", home / "settings.local.json", home / ".claude.json",
+             root / ".mcp.json", root / ".claude/settings.json", root / ".claude/settings.local.json"]
+    if home.name == ".claude":
+        paths.append(home.parent / ".claude.json")
+    for path in paths:
+        if not path.is_file() or path.is_symlink() or path.stat().st_size > 2 * 1024 * 1024:
+            continue
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(value, dict):
+            continue
+        servers = value.get("mcpServers", {})
+        if isinstance(servers, dict):
+            result["mcp_servers"].update(servers)
+        projects = value.get("projects", {})
+        project = projects.get(str(root.resolve()), {}) if isinstance(projects, dict) else {}
+        project_servers = project.get("mcpServers", {}) if isinstance(project, dict) else {}
+        if isinstance(project_servers, dict):
+            result["mcp_servers"].update(project_servers)
+        plugins = value.get("enabledPlugins", {})
+        if isinstance(plugins, dict):
+            result["plugins"].update(name for name, enabled in plugins.items() if enabled is True)
+        hooks = value.get("hooks", {})
+        if isinstance(hooks, dict):
+            result["hook_state_events"].update(hooks)
+    for directory in [home / "agents", root / ".claude/agents"]:
+        if directory.is_dir() and not directory.is_symlink():
+            for path in directory.rglob("*.md"):
+                if path.is_symlink() or path.stat().st_size > 128 * 1024:
+                    continue
+                match = re.search(r"(?m)^name: ([a-z][a-z0-9-]*)\s*$", path.read_text(encoding="utf-8"))
+                if match:
+                    result["agent_keys"].add(match.group(1))
+    return _serializable(result)
+
+
 def _serializable(result: dict[str, Any]) -> dict[str, Any]:
     return {key: sorted(value) if isinstance(value, set) else value for key, value in result.items()}
 
 
-def _claude_host_homes(explicit_given: bool) -> list[Path]:
-    """Дополнительные дома харнеса для запуска под Claude Code.
+def _cag_host_paths():
+    import importlib.util
+    for parent in Path(__file__).resolve().parents:
+        source = parent / "agent-graph-runtime" / "host_paths.py"
+        if source.is_file():
+            spec = importlib.util.spec_from_file_location("cag_host_paths", source)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+    raise RuntimeError("CAG host runtime missing; reinstall this skill and its sibling runtime")
 
-    Добавляются только когда (а) явных --codex-home не передано и (б) процесс
-    запущен из Claude Code (маркеры CLAUDECODE / CLAUDE_PLUGIN_ROOT) либо
-    ~/.codex отсутствует вовсе. Безусловное добавление подмешивало бы
-    поверхности ~/.claude в инвентарь Codex-ранов на машине с двумя CLI.
-    """
-    if explicit_given:
-        return []
-    claude_marker = os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_PLUGIN_ROOT")
-    if not claude_marker and (Path.home() / ".codex").is_dir():
-        return []
-    homes: list[Path] = []
-    for ancestor in Path(__file__).resolve().parents:
-        if ancestor.name == "skills":
-            homes.append(ancestor.parent)
-            break
-    homes.append(Path.home() / ".claude")
-    return homes
+
+def _claude_host_homes(explicit_given: bool) -> list[Path]:
+    return [] if explicit_given else _cag_host_paths().claude_homes(__file__)
 
 
 def codex_homes(explicit: Iterable[str]) -> list[Path]:
@@ -130,7 +166,9 @@ def codex_homes(explicit: Iterable[str]) -> list[Path]:
         candidates.append(Path(os.environ["CODEX_HOME"]))
     candidates.append(Path.home() / ".codex")
     candidates.extend(explicit_paths)
-    candidates.extend(_claude_host_homes(bool(explicit_paths)))
+    claude_candidates = _claude_host_homes(bool(explicit_paths))
+    if claude_candidates:
+        candidates = claude_candidates
     unique: list[Path] = []
     seen: set[str] = set()
     for candidate in candidates:
@@ -149,9 +187,10 @@ def _matches(names: Iterable[str], terms: list[str]) -> list[str]:
 
 
 def discover_skills(root: Path, homes: list[Path], terms: list[str]) -> dict[str, dict[str, Any]]:
-    locations = [root / ".agents" / "skills", root / ".codex" / "skills"]
+    is_claude = _cag_host_paths().claude_active(__file__)
+    locations = [root / ".claude" / "skills"] if is_claude else [root / ".agents" / "skills", root / ".codex" / "skills"]
     for home in homes:
-        locations.extend([home / "skills", home / ".agents" / "skills"])
+        locations.extend([home / "skills"] if is_claude else [home / "skills", home / ".agents" / "skills"])
     result: dict[str, dict[str, Any]] = {}
     for location in locations:
         if not location.is_dir():
@@ -164,6 +203,9 @@ def discover_skills(root: Path, homes: list[Path], terms: list[str]) -> dict[str
 
 def discover_hook_events(root: Path, homes: list[Path]) -> list[dict[str, Any]]:
     candidates = [root / ".codex" / "hooks.json"]
+    if _cag_host_paths().claude_active(__file__):
+        candidates = [root / ".claude/settings.json", root / ".claude/settings.local.json"]
+        candidates.extend(home / "settings.json" for home in homes)
     for home in homes:
         candidates.extend(home.glob("plugins/cache/*/*/*/hooks/*.json"))
     result: list[dict[str, Any]] = []
@@ -190,7 +232,8 @@ def build_inventory(root: Path, explicit_homes: list[str], terms: list[str]) -> 
     markers = [".project-start", ".planning", ".gsd", "docs/tasks", ".github", ".codex/hooks.json"]
     configs = []
     for home in homes:
-        parsed = parse_safe_config(home / "config.toml")
+        parsed = (parse_safe_claude_config(home, root) if _cag_host_paths().claude_active(__file__)
+                  else parse_safe_config(home / "config.toml"))
         configs.append(
             {
                 "path": parsed["path"],
@@ -209,7 +252,9 @@ def build_inventory(root: Path, explicit_homes: list[str], terms: list[str]) -> 
         "dirty_entry_count": dirty_count,
         "instruction_files": discover_instructions(root),
         "workflow_markers": [marker for marker in markers if (root / marker).exists()],
-        "codex_homes": [str(home) for home in homes],
+        "codex_homes": [str(home) for home in homes],  # retained legacy field
+        "harness_homes": [str(home) for home in homes],
+        "provider": "claude" if _cag_host_paths().claude_active(__file__) else "codex",
         "match_terms": terms,
         "filesystem_skill_candidates": discover_skills(root, homes, terms),
         "config_candidates": configs,

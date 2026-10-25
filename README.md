@@ -15,7 +15,7 @@ context through implementation and verification. The same repository connects
 business goals, software delivery, CRM configuration and the agent lifecycle.
 Start at the stage you need and preserve decisions already made in the project.
 
-Built for **Codex CLI and Codex Desktop**, with a separate **Claude Code plugin**
+Built for **Codex CLI and Codex Desktop**, with an explicit **native Claude Code installer** and a separate **Claude Code plugin**
 distribution. An independent community project.
 
 ## Choose your starting point

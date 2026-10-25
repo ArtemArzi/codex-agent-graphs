@@ -59,7 +59,7 @@ raise the review threshold. Nested skills reuse valid same-scope evidence.
 ## Mandatory dependency
 
 1. Invoke `$skill-creator` and read its complete `SKILL.md` before creating or restructuring a graph skill.
-2. Use its `init_skill.py`, frontmatter rules, progressive-disclosure guidance, `agents/openai.yaml` generator and `quick_validate.py` for the generic skill layer.
+2. Use its `init_skill.py`, frontmatter rules, progressive-disclosure guidance and `quick_validate.py` for the generic skill layer. Codex UI metadata uses `agents/openai.yaml` and its generator; a Claude-native skill uses its supported SKILL.md frontmatter and does not require OpenAI UI metadata.
 3. Apply this skill only to the graph-specific layer: `graph.json`, controller, durable artifacts, agent routing and graph tests.
 4. If `$skill-creator` is unavailable, stop before scaffolding and report the missing dependency. Do not recreate it from memory.
 
@@ -79,7 +79,7 @@ Do not create one graph per task. Prefer a small stable family of graphs with mo
 
 1. Inspect the target repository, nearest `AGENTS.md`, existing skills, controllers, tests and installer. Preserve dirty user work and active-run compatibility.
 2. Write the behavioral contract before controller code: trigger, modes, artifacts, evidence, stop decisions, verification conditions, completion truth, adaptive `execution_policy` and the bounded `work_policy`.
-3. For a new skill, initialize the generic folder with `$skill-creator`, replace every generated TODO and generate the final `agents/openai.yaml`. Only then optionally run:
+3. For a new skill, initialize the generic folder with `$skill-creator` and replace every generated TODO. Generate final `agents/openai.yaml` only for a Codex target; a Claude-only target uses native SKILL.md frontmatter. Respect the requested output location or the current provider's personal skills directory. Only then optionally run:
 
 ```bash
 python3 scripts/graph_contract.py scaffold \
