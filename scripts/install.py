@@ -1128,7 +1128,7 @@ def parser() -> argparse.ArgumentParser:
     scopes.add_argument("--routing-only", action="store_true", help="Update model routing without skills or root model changes")
     scopes.add_argument("--skills-only", action="store_true", help="Update maintained skills/runtime only; preserve profiles, models, config, roles, policies and credentials")
     scopes.add_argument("--storage-only", action="store_true", help="Apply only reviewed disk lifecycle file changes and the orchestration block")
-    command.add_argument("--pack", choices=("business-automation", "agent-lifecycle", "business-model", "marketing-cycle"), help="Select one shared skill pack (requires --skills-only)")
+    command.add_argument("--pack", choices=("business-automation", "agent-lifecycle", "business-model", "marketing-cycle", "interface-design"), help="Select one shared skill pack (requires --skills-only)")
     command.add_argument("--business-root", "--skill-root", dest="business_root", type=Path, help="Shared modern skill root for --pack; --business-root remains compatible")
     command.add_argument("--wsl", action="store_true", help="Target WSL only")
     command.add_argument("--desktop", action="store_true", help="Target Desktop only")

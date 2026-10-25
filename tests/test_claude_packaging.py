@@ -52,6 +52,18 @@ class ClaudePackagingTests(unittest.TestCase):
     def setUp(self) -> None:
         self.rendered = sync.render_all()
 
+    def test_all_policy_roles_are_projected_without_legacy_template(self) -> None:
+        policy = sync._load_install_module().routing.load_policy()
+        self.assertEqual(set(sync.canonical_roles()), set(policy["roles"]))
+        self.assertEqual(sync.render_template_roles(), {})
+        for role in ["block_reviewer", "default", "researcher", "deep_reviewer", "worker", "vacancy_researcher"]:
+            fields = frontmatter_fields(self.rendered[sync.claude_name(role)])
+            self.assertEqual(fields["model"], "inherit")
+            self.assertIn("Agent", fields["disallowedTools"])
+            self.assertIn("Task", fields["disallowedTools"])
+        explorer = frontmatter_fields(self.rendered["explorer"])
+        self.assertEqual((explorer["model"], explorer["effort"]), ("sonnet", "high"))
+
     def test_projection_is_deterministic(self) -> None:
         self.assertEqual(self.rendered, sync.render_all())
 
@@ -113,7 +125,7 @@ class ClaudePackagingTests(unittest.TestCase):
                 self.assertIn(tool, allowed, f"{name}: инструмент {tool} вне пинового набора")
                 self.assertNotIn(tool, sync.FORBIDDEN_TOOL_NAMES, f"{name}: спавн-инструмент запрещён")
             self.assertEqual(fields["name"], name)
-            self.assertIn(fields["model"], {"sonnet", "opus"})
+            self.assertIn(fields["model"], {"sonnet", "opus", "inherit"})
             self.assertIn(fields["effort"], set(sync.EFFORT_MAP.values()))
 
     def test_read_only_roles_deny_write_tools(self) -> None:
@@ -123,7 +135,7 @@ class ClaudePackagingTests(unittest.TestCase):
             fields = frontmatter_fields(self.rendered[sync.claude_name(role)])
             self.assertEqual(
                 fields.get("disallowedTools"),
-                ", ".join(sync.WRITE_DENY),
+                ", ".join([*sync.WRITE_DENY, "Agent", "Task"]),
                 f"{role}: read-only роль обязана запрещать запись",
             )
             self.assertNotIn("Edit", fields["tools"])

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Поток: заявки</title><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css"></head>
+<body>
+<a class="skip" href="#workspace">К заявкам</a>
+<div class="demo-notice">Локальный прототип. Учебные данные, действия ничего не отправляют.</div>
+<div class="app">
+  <header class="topbar"><a class="brand" href="index.html">Поток<span>Рабочее пространство</span></a><div class="operator"><span class="avatar" aria-hidden="true">АК</span><span>Алексей Котов<small>Оператор</small></span></div></header>
+  <main id="workspace" tabindex="-1">
+    <div class="page-title"><div><p class="location">Рабочее пространство / Заявки</p><h1>Входящие заявки</h1><p class="intro">Выберите заявку и договоритесь, кто возьмёт её в работу.</p></div><p class="today">25 октября 2026<small>Учебный рабочий день</small></p></div>
+    <div class="workspace"><section class="queue" aria-labelledby="queue-title"><div class="queue-head"><h2 id="queue-title">Очередь</h2><span id="queue-count"></span></div><div id="filters" class="filters" role="group" aria-label="Фильтр заявок"></div><label class="search-label" for="search">Поиск по заявкам</label><div class="search"><input id="search" type="search" placeholder="Тема, автор или номер" autocomplete="off"><button id="clear-search" class="text-button" hidden>Сбросить</button></div><div id="list"></div><p class="list-hint">Откройте заявку, чтобы посмотреть детали и назначить исполнителя.</p></section><section id="detail" class="detail" aria-live="polite" aria-atomic="false" aria-label="Выбранная заявка"></section></div>
+  </main>
+  <footer class="app-footer"><span>Поток / Учебное пространство</span><span>Данные сохраняются до перезагрузки страницы</span></footer>
+</div>
+<aside class="demo-controls" aria-label="Управление демонстрацией"><div><strong>Попробуйте весь путь</strong><p>Выберите заявку, назначьте исполнителя, проверьте ошибку и повторите сохранение.</p></div><div class="demo-actions"><button id="simulate-error" class="secondary" aria-pressed="false">Включить ошибку сохранения</button><button id="reset-demo" class="text-button">Начать заново</button></div><p id="demo-status" role="status"></p></aside>
+<script src="app.js"></script>
+</body></html>

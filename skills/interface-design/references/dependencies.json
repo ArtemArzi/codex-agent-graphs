@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "availability": "Resolve current catalog and effective configuration at use time; disabled wins. This file is not an installation or availability claim.",
+  "required_methods": ["design-policy.md", "methods.md"],
+  "excluded_tools": ["ui_ux_pro"],
+  "optional_capabilities": [
+    {"names": ["interface-clarity"], "need": "content and comprehension"},
+    {"names": ["impeccable:impeccable", "impeccable"], "need": "visual craft; one owner"},
+    {"names": ["product-design:audit"], "need": "existing multi-step audit"},
+    {"names": ["product-design:ideate"], "need": "visual alternatives"},
+    {"names": ["product-design:image-to-code", "build-web-apps:frontend-app-builder"], "need": "accepted concept implementation; choose one"},
+    {"names": ["build-web-apps:shadcn"], "need": "project uses shadcn"},
+    {"names": ["build-web-apps:frontend-testing-debugging"], "need": "rendered frontend validation"},
+    {"names": ["interface-performance"], "need": "measured performance"}
+  ],
+  "paid_dependencies": [],
+  "automatic_install_or_enable": false
+}

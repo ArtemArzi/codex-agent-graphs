@@ -97,7 +97,7 @@ routing policy; full setup can still change the root model and managed defaults.
 
 ## 5. Install a product pack
 
-The default engineering installation contains 39 maintained skills, including
+The default engineering installation contains 41 maintained skills, including
 Grill Me, Grill with Docs and Improve Codebase Architecture. Their native
 metadata allows automatic selection when the task fits. Open a new conversation
 after installation and check fresh native `skills/list` in each host; matching
@@ -273,6 +273,67 @@ per-home root effort and platform-specific settings under its own contract.
 Close Desktop before applying a full portable snapshot to avoid app writes.
 See [workflow and routing ownership](WORKFLOWS.md).
 
+## Native Claude Code installation
+
+Adapted native skills are a separate supported target, not a Codex home passed
+through `--wsl-home`. Use this route when ordinary personal skills are needed,
+including preparation for Desktop WSL where plugin availability differs:
+
+```bash
+python3 scripts/install_claude.py plan --claude-home ~/.claude \
+  --skill-creator /path/to/reviewed/skill-creator
+python3 scripts/install_claude.py install --claude-home ~/.claude \
+  --skill-creator /path/to/reviewed/skill-creator
+python3 scripts/install_claude.py verify --claude-home ~/.claude
+```
+
+The default is the maintained engineering set in `install.SKILLS`, its required
+skill-creator dependency, the shared runtime and all canonical Claude roles.
+This does not install every product pack or every source directory. An explicit
+`--skill NAME` selection must be repeated when updating or verifying it.
+
+The supplied skill-creator source is copied with its support files and licence;
+Claude does not need a Codex installation at runtime. Supply this source on a
+fresh installation. Later verification can use the managed installed dependency.
+
+Inspect the plan before adopting a name that already exists. Unknown or private
+drift stops installation; `--adopt research`, for example, authorizes adoption of
+that one inspected skill after backup. Future private edits remain conflicts.
+The installer never replaces the whole personal skills/agents directories.
+
+Native calls use `/research` or `/task-delivery`, without a plugin prefix.
+Generated roles live in `agents/cag/` with `cag-` frontmatter names, avoiding
+private generic agents. `agent-graph-runtime/claude-native.json` maps canonical
+role IDs to native and plugin aliases. Keep graph artifact IDs and released
+state paths unchanged; provider model identity must stay truthful. Existing
+Claude model mappings are preserved; previously unmapped roles explicitly
+inherit the user's selected Claude model, rather than guessing a GPT equivalent.
+
+The native installer preserves AGENTS.md, settings, permissions, models, auth,
+MCP definitions, plugin registry and Codex profiles. It creates no CLAUDE.md.
+Do not keep an outdated CAG plugin active alongside a different native source;
+choose one delivery channel for the same workflow. Disabling that exact plugin
+is a separate local profile decision, not an installer side effect.
+
+Transactions reuse source/target preimage checks, a shared install lock, hash
+readback and conflict-preserving rollback. Owned staging is capped at 128 MiB;
+native backup history is capped at 256 MiB under `backups/agent-graphs-native`.
+Reaching a cap stops admission; unknown or useful backups are not auto-deleted.
+Backups are private. Keep their exact ownership and restoration obligation in
+the installing task. Plan/verify do not change the target profile.
+
+Claude-context discovery selects its installed/source Claude roots, not default
+Codex copies. An explicit legacy root override retains its contract. Capability
+inventory reports Claude JSON MCP/plugin/hook/agent metadata without credential
+values; a configured server remains a candidate until checked through a safe
+live call. Native helper commands work from a project CWD without plugin vars.
+
+Offline checks establish packaging, helper execution, isolation and preservation.
+They do not establish actual model behavior or Desktop session discovery. In
+Claude 2.1.289, `claude agents --json` lists active/background sessions, not the
+configured subagent types, so it cannot validate discovery. Use the documented
+recursive personal-agent contract and verify actual selection in a session.
+
 ## Claude Code distribution
 
 The repository contains `.claude-plugin/` metadata and uses the shared `skills/`
@@ -308,3 +369,32 @@ its Codex-native validation boundary.
 To uninstall this plugin, use `/plugin uninstall cag` and
 `claude plugin marketplace remove codex-agent-graphs`. Those commands do not
 uninstall Codex's independent copies.
+## Interface Design Pack on Codex and Claude Code
+
+The [UX pack](../products/interface-design/README.md) owns only interface-design
+and interface-performance. It is separate from the maintained engineering skill
+selection. Optional visual plugins are resolved from the current host catalog;
+installation never enables them or changes profile settings.
+
+```sh
+python3 scripts/install.py plan --skills-only --pack interface-design --wsl
+python3 scripts/install.py install --skills-only --pack interface-design --wsl
+python3 scripts/install.py verify --skills-only --pack interface-design --wsl
+python3 scripts/install_claude.py plan --pack interface-design
+python3 scripts/install_claude.py install --pack interface-design
+python3 scripts/install_claude.py verify --pack interface-design
+```
+
+Codex uses its existing WSL/Desktop selectors and shared root rules. Claude
+defaults to `<claude-home>/skills`; `--claude-home PATH` selects the profile and
+`--skill-root PATH` selects an explicit native discovery root. Pack selection
+cannot be combined with engineering `--skill`, `--skill-creator` or `--adopt`.
+Drift requires explicit reconciliation; this route has no force overwrite.
+Codex skill copies are not treated as Claude duplicates. A duplicate name in the
+selected host's known native roots stops the operation before writes.
+
+The cag plugin also discovers the pack. Choose plugin or native delivery, since
+the native installer does not automatically inventory all enabled plugin caches.
+File installation and structural plugin discovery do not prove actual Claude
+session activation or real model execution. Existing native-engineering ownership,
+roles, runtime, settings and instructions are preserved by pack-only installation.

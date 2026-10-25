@@ -75,18 +75,32 @@ class ClaudeHostDiscoveryTests(unittest.TestCase):
         self.assertEqual(homes[0], override)
         self.assertEqual(roots[0], override / "skills")
 
-    # --- Claude-режим: добавки строго в хвост -------------------------------
+    # --- Claude selects its own roots, not Codex copies -------------------
 
-    def test_claude_marker_appends_extras_after_codex_candidates(self) -> None:
+    def test_claude_marker_selects_own_roots_without_codex_candidates(self) -> None:
         with mock.patch.dict(os.environ, self._env(CLAUDECODE="1"), clear=True):
             homes = inventory.codex_homes([])
             roots = maintenance.skill_roots(None)
-        self.assertEqual(homes[0], self.home / ".codex")
+        self.assertEqual(homes[0], REPO)
         self.assertIn(self.home / ".claude", homes)
-        self.assertGreater(homes.index(self.home / ".claude"), homes.index(self.home / ".codex"))
-        self.assertEqual(roots[0], self.home / ".codex" / "skills")
+        self.assertNotIn(self.home / ".codex", homes)
+        self.assertEqual(roots[0], REPO / "skills")
+        self.assertNotIn(self.home / ".codex" / "skills", roots)
         self.assertIn(self.home / ".claude" / "skills", roots)
         self.assertIn(REPO / "skills", roots)  # self-located корень репо/кэша плагина
+
+    def test_claude_marker_does_not_import_codex_home_override(self) -> None:
+        foreign = self.home / "foreign-codex"
+        (foreign / "skills").mkdir(parents=True)
+        configured = self.home / "claude-custom"
+        (configured / "skills").mkdir(parents=True)
+        with mock.patch.dict(os.environ, self._env(CLAUDECODE="1", CODEX_HOME=str(foreign), CLAUDE_CONFIG_DIR=str(configured)), clear=True):
+            homes = inventory.codex_homes([])
+            roots = maintenance.skill_roots(None)
+        self.assertIn(configured, homes)
+        self.assertNotIn(foreign, homes)
+        self.assertIn(configured / "skills", roots)
+        self.assertNotIn(foreign / "skills", roots)
 
     def test_plugin_root_marker_works_too(self) -> None:
         with mock.patch.dict(os.environ, self._env(CLAUDE_PLUGIN_ROOT="/x"), clear=True):

@@ -533,26 +533,21 @@ def reject_legacy_mutation_of_v3(state: dict[str, Any]) -> None:
         raise ValueError("Состоянием владеет Project Start v3; используй project_graph.py, а не legacy-команду.")
 
 
-def claude_host_skill_roots(explicit_given: bool) -> list[Path]:
-    """Дополнительные корни навыков для запуска под Claude Code.
+def _cag_host_paths():
+    import importlib.util
+    for parent in Path(__file__).resolve().parents:
+        source = parent / "agent-graph-runtime" / "host_paths.py"
+        if source.is_file():
+            spec = importlib.util.spec_from_file_location("cag_host_paths", source)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+    raise RuntimeError("CAG host runtime missing; reinstall this skill and its sibling runtime")
 
-    Добавляются только когда (а) явного --skills-root не передано и (б) процесс
-    запущен из Claude Code (маркеры CLAUDECODE / CLAUDE_PLUGIN_ROOT) либо
-    ~/.codex отсутствует вовсе. Приоритет существующих кандидатов не меняется:
-    добавка идёт строго в хвост списка.
-    """
-    if explicit_given:
-        return []
-    claude_marker = os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_PLUGIN_ROOT")
-    if not claude_marker and (Path.home() / ".codex").is_dir():
-        return []
-    roots: list[Path] = []
-    for ancestor in Path(__file__).resolve().parents:
-        if ancestor.name == "skills":
-            roots.append(ancestor)
-            break
-    roots.append(Path.home() / ".claude" / "skills")
-    return roots
+
+def claude_host_skill_roots(explicit_given: bool) -> list[Path]:
+    """Claude-only roots, selected before any default Codex profile."""
+    return [] if explicit_given else _cag_host_paths().claude_skill_roots(__file__)
 
 
 def cmd_dependencies(args: argparse.Namespace) -> int:
@@ -563,7 +558,9 @@ def cmd_dependencies(args: argparse.Namespace) -> int:
     if codex_home:
         roots.append(Path(codex_home).expanduser() / "skills")
     roots.append(Path.home() / ".codex" / "skills")
-    roots.extend(claude_host_skill_roots(bool(args.skills_root)))
+    claude_roots = claude_host_skill_roots(bool(args.skills_root))
+    if claude_roots:
+        roots = claude_roots
 
     unique_roots: list[Path] = []
     for item in roots:
