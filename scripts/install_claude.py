@@ -123,8 +123,20 @@ def main():
     parser.add_argument("--skill", action="append", default=[])
     parser.add_argument("--skill-creator", type=Path)
     parser.add_argument("--adopt", action="append", default=[], help="Explicitly adopt only this inspected existing skill")
+    parser.add_argument("--pack", choices=["interface-design"], help="Install only this ordinary skill pack; preserve engineering ownership and profile")
+    parser.add_argument("--skill-root", type=Path, help="Explicit native discovery root for --pack; default: <claude-home>/skills")
     args = parser.parse_args()
+    if args.pack and (args.skill or args.skill_creator or args.adopt):
+        parser.error("--pack cannot be combined with --skill, --skill-creator or --adopt")
+    if args.skill_root and not args.pack:
+        parser.error("--skill-root requires --pack")
     try:
+        if args.pack:
+            packs = projection.load("claude_shared_packs", shared.REPO_ROOT / "scripts/business_pack.py")
+            summary = packs.run(args.action, [("claude", args.claude_home)], args.skill_root,
+                                api=shared, pack_id=args.pack, provider="claude")
+            print(json.dumps(summary, indent=2))
+            return 0 if summary["status"] == "ok" else 1
         home, units, record, rows, total = prepare(args.claude_home, names=args.skill or None, creator=args.skill_creator, adopt=args.adopt)
         summary = {"status": "ok", "provider": "claude", "home": str(home), "bytes": total, "roles": len(record["roles"]), "items": [{key: row[key] for key in ["name", "status"]} for row in rows]}
         if args.action == "install":

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "interface-design",
+  "version": "0.1.0",
+  "entrypoint": "interface-design",
+  "managed_skills": ["interface-design", "interface-performance"],
+  "update_owner": "canonical-repository-first",
+  "runtime_dependencies": [],
+  "reused_capabilities": {
+    "required": false,
+    "automatic_install_or_enable": false,
+    "management": "current-host-catalog-and-effective-policy",
+    "skills": [
+      "interface-clarity", "impeccable:impeccable", "product-design:audit",
+      "product-design:ideate", "product-design:image-to-code",
+      "build-web-apps:frontend-app-builder", "build-web-apps:shadcn",
+      "build-web-apps:frontend-testing-debugging", "build-web-apps:react-best-practices"
+    ]
+  },
+  "hosts": ["codex", "claude"],
+  "excluded_tools": ["ui_ux_pro"],
+  "upstream_library": "../../skills/interface-design/references/sources.lock.json",
+  "installation": {
+    "codex": "scripts/install.py --skills-only --pack interface-design",
+    "claude_native": "scripts/install_claude.py --pack interface-design",
+    "claude_plugin": "existing cag plugin root skills discovery; choose native OR plugin"
+  }
+}

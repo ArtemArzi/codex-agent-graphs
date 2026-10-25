@@ -1,0 +1,297 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-25",
+  "admission_bytes": 4194304,
+  "execution": "none; source data only",
+  "sources": [
+    {
+      "id": "product-ux",
+      "repository": "https://github.com/magnus919/agent-skills",
+      "commit": "7f446e60055b335dd26831371a027fa6b59da3e2",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE.md",
+      "files": [
+        {
+          "source_path": "product-design-and-ux/SKILL.md",
+          "stored_path": "upstream/product-ux/product-design-and-ux/UPSTREAM.md",
+          "sha256": "f4d93ad4389b76929922a1a652eefb4f9bac388884b1d85c23c74e1f71821573",
+          "bytes": 8604,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/product-design-and-ux/SKILL.md"
+        },
+        {
+          "source_path": "product-design-and-ux/references/task-flows-and-state-models.md",
+          "stored_path": "upstream/product-ux/product-design-and-ux/references/task-flows-and-state-models.md",
+          "sha256": "eb1c2b550b6e781283237341508de7f21a594df45cbc27d8b33e44607def789b",
+          "bytes": 2265,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/product-design-and-ux/references/task-flows-and-state-models.md"
+        },
+        {
+          "source_path": "product-design-and-ux/references/information-architecture.md",
+          "stored_path": "upstream/product-ux/product-design-and-ux/references/information-architecture.md",
+          "sha256": "94d5362a8d0238fcc5c1fbe55c33d8686859f483f60890d3b7a2bb1322912bb5",
+          "bytes": 3325,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/product-design-and-ux/references/information-architecture.md"
+        },
+        {
+          "source_path": "product-design-and-ux/references/content-and-cognitive-demand.md",
+          "stored_path": "upstream/product-ux/product-design-and-ux/references/content-and-cognitive-demand.md",
+          "sha256": "fdb66bef3d51600c98feb00d7f5fc9c0d681b25a911716d9976f5a04faf7b5b7",
+          "bytes": 4170,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/product-design-and-ux/references/content-and-cognitive-demand.md"
+        },
+        {
+          "source_path": "product-design-and-ux/references/interface-contracts-and-responsive-behavior.md",
+          "stored_path": "upstream/product-ux/product-design-and-ux/references/interface-contracts-and-responsive-behavior.md",
+          "sha256": "4b371dd551e6ea7b92436b84d70d8a271d269b31b30379735cba658da73a055d",
+          "bytes": 3829,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/product-design-and-ux/references/interface-contracts-and-responsive-behavior.md"
+        },
+        {
+          "source_path": "product-design-and-ux/references/usability-testing-and-privacy.md",
+          "stored_path": "upstream/product-ux/product-design-and-ux/references/usability-testing-and-privacy.md",
+          "sha256": "78a564d19c9623f04792880f7fdc7d3f51aca819097ab2c8bae5db1b818cc6ce",
+          "bytes": 4580,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/product-design-and-ux/references/usability-testing-and-privacy.md"
+        },
+        {
+          "source_path": "product-design-and-ux/templates/task-flow-state-model.md",
+          "stored_path": "upstream/product-ux/product-design-and-ux/templates/task-flow-state-model.md",
+          "sha256": "973cb7e04ef27098219f94a13e0ee0f9dc05fba204037329053a8de6cebbe00e",
+          "bytes": 737,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/product-design-and-ux/templates/task-flow-state-model.md"
+        },
+        {
+          "source_path": "product-design-and-ux/templates/interface-contract.md",
+          "stored_path": "upstream/product-ux/product-design-and-ux/templates/interface-contract.md",
+          "sha256": "afc5bf713ffc04730d04af87ad16b4b78374958d17a31d8af376d9ee6aab537f",
+          "bytes": 703,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/product-design-and-ux/templates/interface-contract.md"
+        },
+        {
+          "source_path": "LICENSE.md",
+          "stored_path": "upstream/product-ux/LICENSE.md",
+          "sha256": "22fa3b1ec405fe440e86d0d293ce21de0c637ebc37f263dbe3032ee47215cfe2",
+          "bytes": 1072,
+          "url": "https://raw.githubusercontent.com/magnus919/agent-skills/7f446e60055b335dd26831371a027fa6b59da3e2/LICENSE.md"
+        }
+      ]
+    },
+    {
+      "id": "refero",
+      "repository": "https://github.com/referodesign/refero_skill",
+      "commit": "2382e518f90096df607196b9a635da2d1bc142f9",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "skills/refero-design/SKILL.md",
+          "stored_path": "upstream/refero/skills/refero-design/UPSTREAM.md",
+          "sha256": "4a4a7a0b72a2fa0a454903debe6e872ada79a724cb452fe2113d266c2f0c6978",
+          "bytes": 21189,
+          "url": "https://raw.githubusercontent.com/referodesign/refero_skill/2382e518f90096df607196b9a635da2d1bc142f9/skills/refero-design/SKILL.md"
+        },
+        {
+          "source_path": "skills/refero-design/references/visual-workflow.md",
+          "stored_path": "upstream/refero/skills/refero-design/references/visual-workflow.md",
+          "sha256": "0647bfdfeb503649263a81f3dbc23ffd6f257a5d41ca5fb8921ed9bf1fdfde5a",
+          "bytes": 4798,
+          "url": "https://raw.githubusercontent.com/referodesign/refero_skill/2382e518f90096df607196b9a635da2d1bc142f9/skills/refero-design/references/visual-workflow.md"
+        },
+        {
+          "source_path": "skills/refero-design/references/anti-ai-slop.md",
+          "stored_path": "upstream/refero/skills/refero-design/references/anti-ai-slop.md",
+          "sha256": "433b5639b17ceec877ce827799c2c2e1ca3dbc05a00540e87db3ad95e78f914e",
+          "bytes": 13318,
+          "url": "https://raw.githubusercontent.com/referodesign/refero_skill/2382e518f90096df607196b9a635da2d1bc142f9/skills/refero-design/references/anti-ai-slop.md"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/refero/LICENSE",
+          "sha256": "7b5d57a0e210289fa900a0e2ab0513442e439e9d20b96f0cf5cba0e1b31b665e",
+          "bytes": 1063,
+          "url": "https://raw.githubusercontent.com/referodesign/refero_skill/2382e518f90096df607196b9a635da2d1bc142f9/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "taste",
+      "repository": "https://github.com/Leonxlnx/taste-skill",
+      "commit": "12af471f627f866411b4bd785b19646d3672784c",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "skills/taste-skill/SKILL.md",
+          "stored_path": "upstream/taste/skills/taste-skill/UPSTREAM.md",
+          "sha256": "3435ed963b15a1b6447746ec8844ab2cd38d8d2e8ead3451937f42df01e408c4",
+          "bytes": 39537,
+          "url": "https://raw.githubusercontent.com/Leonxlnx/taste-skill/12af471f627f866411b4bd785b19646d3672784c/skills/taste-skill/SKILL.md"
+        },
+        {
+          "source_path": "skills/taste-skill/references/app-screens.md",
+          "stored_path": "upstream/taste/skills/taste-skill/references/app-screens.md",
+          "sha256": "55e937ec30de605b53a11310b446f328a3ce7403de24fff008920a00be1a5ed4",
+          "bytes": 85358,
+          "url": "https://raw.githubusercontent.com/Leonxlnx/taste-skill/12af471f627f866411b4bd785b19646d3672784c/skills/taste-skill/references/app-screens.md"
+        },
+        {
+          "source_path": "skills/taste-skill/references/copy.md",
+          "stored_path": "upstream/taste/skills/taste-skill/references/copy.md",
+          "sha256": "676edbe75d5f3cfd8a793010ea9f730525ae074b231a674c2426264d3398262e",
+          "bytes": 9436,
+          "url": "https://raw.githubusercontent.com/Leonxlnx/taste-skill/12af471f627f866411b4bd785b19646d3672784c/skills/taste-skill/references/copy.md"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/taste/LICENSE",
+          "sha256": "4575a543ab88dad12ccea7d97e563d0bce5b448b06072e65d3264497dad326df",
+          "bytes": 1065,
+          "url": "https://raw.githubusercontent.com/Leonxlnx/taste-skill/12af471f627f866411b4bd785b19646d3672784c/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "flow-audit",
+      "repository": "https://github.com/Aboudjem/ui-ux-suite",
+      "commit": "05af4943e61409656de93895f7b4966d6bf105e8",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "skills/flow-audit/SKILL.md",
+          "stored_path": "upstream/flow-audit/skills/flow-audit/UPSTREAM.md",
+          "sha256": "df0ba58c85444dccba7b4e4f0f9a5d333e492ac814d15231c42b73596b5bcc33",
+          "bytes": 815,
+          "url": "https://raw.githubusercontent.com/Aboudjem/ui-ux-suite/05af4943e61409656de93895f7b4966d6bf105e8/skills/flow-audit/SKILL.md"
+        },
+        {
+          "source_path": "agents/ux-flow-analyst.md",
+          "stored_path": "upstream/flow-audit/agents/ux-flow-analyst.md",
+          "sha256": "7691fddd21eed3f10032b616dd904c3692908d4dd9cc8054c10027551859afb4",
+          "bytes": 3166,
+          "url": "https://raw.githubusercontent.com/Aboudjem/ui-ux-suite/05af4943e61409656de93895f7b4966d6bf105e8/agents/ux-flow-analyst.md"
+        },
+        {
+          "source_path": "knowledge/ux-flows.md",
+          "stored_path": "upstream/flow-audit/knowledge/ux-flows.md",
+          "sha256": "265cb5ccd5549629c61ede6dd0460d26bc4c20bb7b8559ba3c8d728a318565c4",
+          "bytes": 5841,
+          "url": "https://raw.githubusercontent.com/Aboudjem/ui-ux-suite/05af4943e61409656de93895f7b4966d6bf105e8/knowledge/ux-flows.md"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/flow-audit/LICENSE",
+          "sha256": "192fce177e861e3b0e6888edbd74fcd42b6e05da542d55c62f1cf8070af81528",
+          "bytes": 1071,
+          "url": "https://raw.githubusercontent.com/Aboudjem/ui-ux-suite/05af4943e61409656de93895f7b4966d6bf105e8/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "motion",
+      "repository": "https://github.com/emilkowalski/skills",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "skills/animate/SKILL.md",
+          "stored_path": "upstream/motion/skills/animate/UPSTREAM.md",
+          "sha256": "b8ede161270458e6ae2e45e8a1985373515d4c63de5568ddb0f9012d7634356c",
+          "bytes": 11860,
+          "url": "https://raw.githubusercontent.com/emilkowalski/skills/2d228630ba1446365f614a108cb8252f1feda202/skills/animate/SKILL.md"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/motion/LICENSE",
+          "sha256": "4ff5bdb7887ec1435c9cab0e8d1a7caee704d894d65c2a008ccc68b1cc2f260b",
+          "bytes": 1070,
+          "url": "https://raw.githubusercontent.com/emilkowalski/skills/2d228630ba1446365f614a108cb8252f1feda202/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "web-guidelines",
+      "repository": "https://github.com/vercel-labs/web-interface-guidelines",
+      "commit": "434b7f91364665f2f733b310ec54809bf8f37937",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "README.md",
+          "stored_path": "upstream/web-guidelines/README.md",
+          "sha256": "eda7dfa9998215267c7f920475d1773ea4129cb08ed088276ca598dd45d20aa5",
+          "bytes": 19239,
+          "url": "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/434b7f91364665f2f733b310ec54809bf8f37937/README.md"
+        },
+        {
+          "source_path": "command.md",
+          "stored_path": "upstream/web-guidelines/command.md",
+          "sha256": "d246b026f4f29b5823a9cc857f9edf3d2507002e055e32040cadeaf3b38e0234",
+          "bytes": 8055,
+          "url": "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/434b7f91364665f2f733b310ec54809bf8f37937/command.md"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/web-guidelines/LICENSE",
+          "sha256": "6cd1609c9c12233507cdd2ce0d32e9a721e3c27494951be06b90090deeeb7af2",
+          "bytes": 1068,
+          "url": "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/434b7f91364665f2f733b310ec54809bf8f37937/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "art-direction",
+      "repository": "https://github.com/nraford7/art-direct",
+      "commit": "2b2c4506abbe9839c36a52728f1a0f9a98c0b5f9",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "SKILL.md",
+          "stored_path": "upstream/art-direction/UPSTREAM.md",
+          "sha256": "338184b965f3f212b3cb1b8da94d2e002f3682876cbaa6551efe25982782a20e",
+          "bytes": 19888,
+          "url": "https://raw.githubusercontent.com/nraford7/art-direct/2b2c4506abbe9839c36a52728f1a0f9a98c0b5f9/SKILL.md"
+        },
+        {
+          "source_path": "styles/editorial-warmth.yaml",
+          "stored_path": "upstream/art-direction/styles/editorial-warmth.yaml",
+          "sha256": "32fb4cee7565f6e97045f1021dc4f846203719d48df9e9fc7d45a2c62bab14a3",
+          "bytes": 2343,
+          "url": "https://raw.githubusercontent.com/nraford7/art-direct/2b2c4506abbe9839c36a52728f1a0f9a98c0b5f9/styles/editorial-warmth.yaml"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/art-direction/LICENSE",
+          "sha256": "1302bc0d3c14817f0ccb16aaaef0d708748363a346b3fbd8d962f4140aebcb79",
+          "bytes": 1068,
+          "url": "https://raw.githubusercontent.com/nraford7/art-direct/2b2c4506abbe9839c36a52728f1a0f9a98c0b5f9/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "showcase",
+      "repository": "https://github.com/jezweb/claude-skills",
+      "commit": "1260fa7439b36b18dbf16648ccc7fb44783f6c23",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "plugins/frontend/skills/product-showcase/SKILL.md",
+          "stored_path": "upstream/showcase/plugins/frontend/skills/product-showcase/UPSTREAM.md",
+          "sha256": "f815f7392056625fe15b5b158e60e7bb1816a05721dfa343fff731d4068778d0",
+          "bytes": 20238,
+          "url": "https://raw.githubusercontent.com/jezweb/claude-skills/1260fa7439b36b18dbf16648ccc7fb44783f6c23/plugins/frontend/skills/product-showcase/SKILL.md"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/showcase/LICENSE",
+          "sha256": "4530f92f44fe545e18773c7bbe0c312b0f04b78c161bdb784ff24f0ace9a5592",
+          "bytes": 1078,
+          "url": "https://raw.githubusercontent.com/jezweb/claude-skills/1260fa7439b36b18dbf16648ccc7fb44783f6c23/LICENSE"
+        }
+      ]
+    }
+  ]
+}

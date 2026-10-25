@@ -369,3 +369,32 @@ its Codex-native validation boundary.
 To uninstall this plugin, use `/plugin uninstall cag` and
 `claude plugin marketplace remove codex-agent-graphs`. Those commands do not
 uninstall Codex's independent copies.
+## Interface Design Pack on Codex and Claude Code
+
+The [UX pack](../products/interface-design/README.md) owns only interface-design
+and interface-performance. It is separate from the maintained engineering skill
+selection. Optional visual plugins are resolved from the current host catalog;
+installation never enables them or changes profile settings.
+
+```sh
+python3 scripts/install.py plan --skills-only --pack interface-design --wsl
+python3 scripts/install.py install --skills-only --pack interface-design --wsl
+python3 scripts/install.py verify --skills-only --pack interface-design --wsl
+python3 scripts/install_claude.py plan --pack interface-design
+python3 scripts/install_claude.py install --pack interface-design
+python3 scripts/install_claude.py verify --pack interface-design
+```
+
+Codex uses its existing WSL/Desktop selectors and shared root rules. Claude
+defaults to `<claude-home>/skills`; `--claude-home PATH` selects the profile and
+`--skill-root PATH` selects an explicit native discovery root. Pack selection
+cannot be combined with engineering `--skill`, `--skill-creator` or `--adopt`.
+Drift requires explicit reconciliation; this route has no force overwrite.
+Codex skill copies are not treated as Claude duplicates. A duplicate name in the
+selected host's known native roots stops the operation before writes.
+
+The cag plugin also discovers the pack. Choose plugin or native delivery, since
+the native installer does not automatically inventory all enabled plugin caches.
+File installation and structural plugin discovery do not prove actual Claude
+session activation or real model execution. Existing native-engineering ownership,
+roles, runtime, settings and instructions are preserved by pack-only installation.

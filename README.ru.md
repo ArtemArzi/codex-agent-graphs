@@ -178,3 +178,15 @@ git diff --check
 [Reliable Leads](skills/reliable-leads/SKILL.md) входят в инженерный комплект.
 [Карта цикла разработки](docs/DEVELOPMENT_PIPELINE.ru.md) связывает проектирование
 через использование, простоту кода, тесты и обязанности при выпуске.
+
+## Пак понятного интерфейса
+
+[Interface Design Pack](products/interface-design/README.md) связывает flow,
+текст, визуальное решение и проверку результата. Отдельный interface-performance
+измеряет узкое место и проверяет ускорение на той же нагрузке. В комплекте
+закреплённая библиотека методов и frontend-only демо «Поток».
+
+Для Codex: `python3 scripts/install.py plan --skills-only --pack interface-design --wsl`.
+Для Claude Code: `python3 scripts/install_claude.py plan --pack interface-design`.
+Существующий плагин `cag` тоже включает эти навыки. Выбрать один способ доставки;
+команды install/verify, границы зависимостей и проверки описаны в README пака.

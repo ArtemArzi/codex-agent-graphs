@@ -12,7 +12,7 @@ from typing import Any
 
 
 PACK_ID = "business-automation"
-PACK_IDS = (PACK_ID, "agent-lifecycle", "business-model", "marketing-cycle")
+PACK_IDS = (PACK_ID, "agent-lifecycle", "business-model", "marketing-cycle", "interface-design")
 
 
 def load_pack(repo: Path, pack_id: str = PACK_ID) -> dict[str, Any]:
@@ -29,6 +29,21 @@ def load_pack(repo: Path, pack_id: str = PACK_ID) -> dict[str, Any]:
                    for name in names)
             or len(names) != len(set(names)) or pack.get("entrypoint") not in names):
         raise ValueError("Invalid business pack identity, version or managed skill list")
+    if pack_id == "interface-design":
+        reused = pack.get("reused_capabilities")
+        if (pack.get("update_owner") != "canonical-repository-first"
+                or pack.get("entrypoint") != "interface-design"
+                or set(names) != {"interface-design", "interface-performance"}
+                or pack.get("runtime_dependencies") != []
+                or not isinstance(reused, dict) or reused.get("required") is not False
+                or reused.get("automatic_install_or_enable") is not False
+                or not isinstance(reused.get("skills"), list)
+                or any(not isinstance(name, str) or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?", name)
+                       for name in reused["skills"])
+                or len(reused["skills"]) != len(set(reused["skills"]))
+                or set(names).intersection(reused["skills"])):
+            raise ValueError("Invalid Interface Design pack ownership, members or optional companions")
+        return pack
     if pack_id == "marketing-cycle":
         reused = pack.get("reused_capabilities")
         if (pack.get("update_owner") != "canonical-repository-first"
@@ -108,10 +123,14 @@ def root_identity(path: Path, api: Any) -> tuple[Path, tuple[int, int] | None]:
     return resolved, (stat.st_dev, stat.st_ino) if stat else None
 
 
-def resolve(homes: list[tuple[str, Path]], requested: Path | None, api: Any) -> dict[str, Any]:
+def resolve(homes: list[tuple[str, Path]], requested: Path | None, api: Any,
+            *, provider: str = "codex") -> dict[str, Any]:
     if not homes:
         raise api.InstallError("Select at least one environment")
-    modern = {label: [absolute(home / ".agents/skills"), absolute(home.parent / ".agents/skills")]
+    if provider not in {"codex", "claude"}:
+        raise api.InstallError(f"Unsupported skill provider: {provider}")
+    modern = {label: ([absolute(home / "skills")] if provider == "claude" else
+                      [absolute(home / ".agents/skills"), absolute(home.parent / ".agents/skills")])
               for label, home in homes}
     known = {path for paths in modern.values() for path in paths}
     known.update(absolute(home / "skills") for _, home in homes)
@@ -123,7 +142,7 @@ def resolve(homes: list[tuple[str, Path]], requested: Path | None, api: Any) -> 
         existing = [{identities[path][0] for path in modern[label] if identities[path][1] is not None}
                     for label, _ in homes]
         if len(homes) == 1 and not existing[0]:
-            selected = modern[homes[0][0]][1]
+            selected = modern[homes[0][0]][-1]
         elif all(len(roots) == 1 for roots in existing) and len(set.union(*existing)) == 1:
             physical = next(iter(existing[0]))
             selected = next(path for path in modern[homes[0][0]] if identities[path][0] == physical)
@@ -140,7 +159,7 @@ def resolve(homes: list[tuple[str, Path]], requested: Path | None, api: Any) -> 
     sources = api.SKILLS_ROOT.resolve()
     if resolved == sources or resolved.is_relative_to(sources) or sources.is_relative_to(resolved):
         raise api.InstallError("Business target must be separate from canonical skill sources")
-    return {"selected": selected, "root": resolved, "identities": identities,
+    return {"provider": provider, "selected": selected, "root": resolved, "identities": identities,
             "requested": explicit, "homes": homes,
             "physical_identity": root_identity(resolved, api)}
 
@@ -271,9 +290,11 @@ def inspect_duplicates(context: dict[str, Any], names: list[str], api: Any) -> N
 
 
 def prepare(homes: list[tuple[str, Path]], requested: Path | None, api: Any,
-            *, pack_id: str = PACK_ID) -> dict[str, Any]:
+            *, pack_id: str = PACK_ID, provider: str = "codex") -> dict[str, Any]:
+    if provider == "claude" and pack_id != "interface-design":
+        raise api.InstallError("Claude skills-only pack selection supports interface-design only")
     pack = load_pack(api.REPO_ROOT, pack_id)
-    context = resolve(homes, requested, api)
+    context = resolve(homes, requested, api, provider=provider)
     context["pack"] = pack
     context["pack_bytes"] = (api.REPO_ROOT / "products" / pack_id / "pack.json").read_bytes()
     inspect_duplicates(context, pack["managed_skills"], api)
@@ -332,8 +353,10 @@ def validate_storage(context: dict[str, Any], api: Any) -> None:
 
 def payload(context: dict[str, Any]) -> dict[str, Any]:
     return {"status": "ok", "scope": "skills-only", "pack": context["pack"]["id"],
+            "provider": context["provider"],
             "version": context["pack"]["version"],
-            "environments": [{"environment": label, "codex_home": str(home)} for label, home in context["homes"]],
+            "environments": [{"environment": label, context["provider"] + "_home": str(home)}
+                             for label, home in context["homes"]],
             "requested_root": str(context["requested"]) if context["requested"] is not None else None,
             "selected_root": str(context["selected"]), "resolved_root": str(context["root"]),
             "items": [{"kind": item["kind"], "name": item["name"], "status": item["status"],
@@ -342,8 +365,8 @@ def payload(context: dict[str, Any]) -> dict[str, Any]:
 
 
 def run(action: str, homes: list[tuple[str, Path]], requested: Path | None, *, api: Any,
-        pack_id: str = PACK_ID) -> dict[str, Any]:
-    context = prepare(homes, requested, api, pack_id=pack_id)
+        pack_id: str = PACK_ID, provider: str = "codex") -> dict[str, Any]:
+    context = prepare(homes, requested, api, pack_id=pack_id, provider=provider)
     result = payload(context)
     if action == "plan":
         return result
@@ -354,7 +377,7 @@ def run(action: str, homes: list[tuple[str, Path]], requested: Path | None, *, a
         return result
     if action != "install":
         raise ValueError(f"Unknown business pack action: {action}")
-    if pack_id in ("agent-lifecycle", "business-model", "marketing-cycle") and any(item["status"] == "drift" for item in context["items"]):
+    if pack_id in ("agent-lifecycle", "business-model", "marketing-cycle", "interface-design") and any(item["status"] == "drift" for item in context["items"]):
         raise api.InstallError("Shared skill drift must be explicitly reconciled before installation; "
                                "preserve local changes and compare their source/version")
 

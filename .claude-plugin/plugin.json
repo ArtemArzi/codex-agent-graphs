@@ -1,7 +1,7 @@
 {
   "name": "cag",
-  "version": "0.1.2",
-  "description": "Codex Agent Graphs, natively packaged for Claude Code: project-start, task-delivery, research, continuous-improvement, development-recovery and agent-graph-builder skills sharing one canonical source tree with the Codex install. Stage 3 adds generated subagents.",
+  "version": "0.1.3",
+  "description": "Codex Agent Graphs for Codex and Claude Code: shared engineering workflows, native Claude adaptation and the Interface Design Pack.",
   "author": {
     "name": "ArtemArzi"
   },

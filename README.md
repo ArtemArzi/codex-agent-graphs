@@ -189,3 +189,16 @@ Interface Clarity covers text, placement and visual hierarchy for the visitor's
 actual question and next action. It distinguishes expert observations from
 measured human comprehension and task success, while existing design skills
 retain broader visual implementation and review.
+
+## Interface Design Pack
+
+[Interface Design Pack](products/interface-design/README.md) adds one entry for
+task flow, content, visual craft and frontend verification, plus a separate
+measured-performance skill. It reuses enabled design capabilities on demand and
+includes a pinned reference library and a frontend-only demo.
+
+Codex: `python3 scripts/install.py plan --skills-only --pack interface-design --wsl`.
+Claude native: `python3 scripts/install_claude.py plan --pack interface-design`.
+The existing `cag` plugin also discovers both skills under root `skills/`; choose
+native or plugin delivery for this pack. See its README for install/verify,
+profile preservation, optional dependencies and activation limits.
