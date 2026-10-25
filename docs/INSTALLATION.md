@@ -30,6 +30,7 @@ than proof that the skill is installed or automatically discovered.
 | `--skills-only --pack agent-lifecycle` | Only the 4 skills in the agent manifest | Preserved; shared modern skill root |
 | `--skills-only --pack business-model` | Shared business-work and 3 Business Model skills | Preserved; shared modern skill root |
 | `--skills-only --pack marketing-cycle` | Only the 5 Marketing Cycle skills; Russian-market methods | Preserved; shared modern skill root |
+| `--storage-only` | Reviewed disk lifecycle file deltas, maintained overlays and the orchestration policy block | Settings, roles, other skill files and plugin availability preserved |
 | `--routing-only` | Managed role files, routing block, subagent defaults and usage hint | Selected root model/effort and unrelated settings preserved |
 | No scope flag | Engineering skills/runtime, supplied roles, managed host policies and configuration | Applies the configured root defaults and managed registrations |
 
@@ -203,6 +204,49 @@ every mode rejects every kind of drift.
 
 Publishing source on GitHub does not update installed files. There is no
 background updater. Keep backups containing private configuration local.
+
+## Selective disk lifecycle update
+
+Use this narrow mode to deliver the reviewed storage fixes to existing skills:
+
+```bash
+python3 scripts/install.py plan --storage-only --all
+python3 scripts/install.py install --storage-only --all
+python3 scripts/install.py verify --storage-only --all
+```
+
+Supply the same explicit home overrides when needed. Both homes are checked
+before the first target change. Only fixed paths in `policies/storage-files.json`,
+exact text overlays in `policies/storage-overlays/manifest.json` and the existing
+orchestration managed block are eligible. Unknown source/target drift is a
+conflict. Absent skills stay absent; plugin caches, enablement and model settings
+are not installation targets. The exact lifecycle overlay preserves existing
+Design/remote guidance in Software Factory.
+
+Original files remain outside skill discovery in private recovery capsules.
+Before capture the installer syncs intent and every ancestor through the home.
+It retains the actual displaced inode, then publishes a complete staged file
+with an exclusive hard link. Unknown captured bytes/types and recreated targets
+are preserved and reported. Rollback uses the same no-clobber method and an
+independent restored copy. Late writes through old file descriptors remain in
+the retained inode and cause refusal when detected during readback.
+
+Publication, restoration, backup writes and installer locks use verified open
+POSIX directory descriptors. Parent substitution cannot redirect these writes;
+changed directory identities reject the update while recovery remains bound to
+the original directory. This backend requires Linux/WSL with `/proc/self/fd`;
+a native Windows execution backend is not certified.
+
+The target may briefly be absent between capture and publication; readers should
+retry during installation. This is not atomic compare-and-swap or isolation from
+non-cooperating writers. Unsupported filesystems refuse before target changes;
+there is no overwrite fallback. A crash requires reconciliation from the saved
+capsule mapping. Repeating an unchanged install creates no backup.
+
+Review manifest pre/postimage hashes when maintaining these fixes; edited source
+does not silently become a new approved update. New sessions load the policy;
+file readback alone does not prove UI discovery or provider execution. This mode
+does not clean existing workspaces or old backups.
 
 ## Optional routing and full Desktop synchronization
 

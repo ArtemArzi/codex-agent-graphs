@@ -360,12 +360,30 @@ def agents_policy_status(codex_home: Path) -> str:
 
 def atomic_write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", dir=path.parent, delete=False, prefix=f".{path.name}."
-    ) as handle:
-        handle.write(content)
-        temporary = Path(handle.name)
-    os.replace(temporary, path)
+    temporary = None
+    identity = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, delete=False, prefix=f".{path.name}."
+        ) as handle:
+            temporary = Path(handle.name)
+            stat = os.fstat(handle.fileno())
+            identity = (stat.st_dev, stat.st_ino)
+            handle.write(content)
+        os.replace(temporary, path)
+    except BaseException as failure:
+        if temporary is not None:
+            try:
+                stat = temporary.lstat()
+                if not temporary.is_symlink() and (stat.st_dev, stat.st_ino) == identity:
+                    temporary.unlink()
+                else:
+                    failure.add_note(f"Retained changed temporary path: {temporary}")
+            except FileNotFoundError:
+                pass
+            except OSError as cleanup_error:
+                failure.add_note(f"Retained temporary path {temporary}: {cleanup_error}")
+        raise
 
 
 def backup_root(codex_home: Path) -> Path:
@@ -385,7 +403,7 @@ def replace_directory(source: Path, target: Path, backup: Path, *,
         raise InstallError(f"Staging path already exists: {staged}")
     prior_moved = False
     try:
-        shutil.copytree(source, staged)
+        shutil.copytree(source, staged, ignore=shutil.ignore_patterns(*EXCLUDED_NAMES))
         if manifest(source) != manifest(staged):
             raise InstallError(f"Staged copy failed verification: {source}")
         if validate_staged is not None:
@@ -1109,6 +1127,7 @@ def parser() -> argparse.ArgumentParser:
     scopes = command.add_mutually_exclusive_group()
     scopes.add_argument("--routing-only", action="store_true", help="Update model routing without skills or root model changes")
     scopes.add_argument("--skills-only", action="store_true", help="Update maintained skills/runtime only; preserve profiles, models, config, roles, policies and credentials")
+    scopes.add_argument("--storage-only", action="store_true", help="Apply only reviewed disk lifecycle file changes and the orchestration block")
     command.add_argument("--pack", choices=("business-automation", "agent-lifecycle", "business-model", "marketing-cycle"), help="Select one shared skill pack (requires --skills-only)")
     command.add_argument("--business-root", "--skill-root", dest="business_root", type=Path, help="Shared modern skill root for --pack; --business-root remains compatible")
     command.add_argument("--wsl", action="store_true", help="Target WSL only")
@@ -1126,7 +1145,18 @@ def main(argv: list[str] | None = None) -> int:
             raise InstallError("--pack requires --skills-only")
         if args.business_root is not None and not args.pack:
             raise InstallError("--business-root/--skill-root requires --pack")
-        homes = selected_homes(args, preserve_aliases=bool(args.pack))
+        homes = selected_homes(args, preserve_aliases=bool(args.pack or args.storage_only))
+        if args.storage_only:
+            spec = importlib.util.spec_from_file_location("codex_storage_install", REPO_ROOT / "scripts/storage_install.py")
+            assert spec and spec.loader
+            storage = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(storage)
+            class StoragePrimitives:
+                def __getattr__(self, name):
+                    return globals()[name]
+            payload = storage.run(args.action, homes, root=REPO_ROOT, api=StoragePrimitives())
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+            return 1 if payload["status"] == "failed" else 0
         if args.pack:
             spec = importlib.util.spec_from_file_location("codex_business_pack", REPO_ROOT / "scripts/business_pack.py")
             assert spec and spec.loader
@@ -1179,6 +1209,7 @@ def main(argv: list[str] | None = None) -> int:
         response = {
             "status": "failed",
             "summary": str(exc),
+            "details": getattr(exc, "__notes__", []),
             "next_actions": ["Fix the reported install condition and retry"],
             "artifacts": [str(REPO_ROOT)],
             "data": {"environments": environments, "partial_install": getattr(exc, "partial_install", None)},

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "source": "skills/software-factory/scripts/factory.py",
+      "target": "skills/software-factory/scripts/factory.py",
+      "before_sha256": [
+        "e2cd5cacde079689a3dd142ff18c2a6d6d340e1c413ae0edde52b07b3ee7ceb1"
+      ],
+      "after_sha256": "01a2f5047a3c61141c17a52e5b44ee5d8617b0f97619fe015891f9a798e76623"
+    },
+    {
+      "source": "skills/software-factory/scripts/factory_storage.py",
+      "target": "skills/software-factory/scripts/factory_storage.py",
+      "before_sha256": [
+        null
+      ],
+      "after_sha256": "f8b27524d52778ab437aa1b78b001fa23236aa6e00fdf429b55adf5cdf750644"
+    },
+    {
+      "source": "skills/software-factory/references/helper-usage.md",
+      "target": "skills/software-factory/references/helper-usage.md",
+      "before_sha256": [
+        "0307382696a716dbcb9391370a9a731bb8c0a4fdf5dd9de9f61f983a4cff91e3"
+      ],
+      "after_sha256": "84f7d90bcb43c010b8a22673c6b3c20653f5cc9ad7529213e677c21473a5f2da"
+    },
+    {
+      "source": "skills/research/scripts/research_graph.py",
+      "target": "skills/research/scripts/research_graph.py",
+      "before_sha256": [
+        "3be987e9325b267d70fca857544e4cfe74dc56fd192a7ed3fe7e11024dff4832"
+      ],
+      "after_sha256": "fcd293c59839d436a7f25532e834099722d6ace3323d68ad0589cb5fe8a8ce71"
+    },
+    {
+      "source": "skills/project-start/scripts/project_maintenance.py",
+      "target": "skills/project-start/scripts/project_maintenance.py",
+      "before_sha256": [
+        "672be4f1b2e32fd7cada3434ab0fef3180e3ef37e6183907c4ebd2cfe4f67980"
+      ],
+      "after_sha256": "b213719792e447b6ba88858ad8f0ea394f3ce7fff9c899d718a7b3d142e6d6ee"
+    },
+    {
+      "source": "skills/skill-stocktake/scripts/inventory.py",
+      "target": "skills/skill-stocktake/scripts/inventory.py",
+      "before_sha256": [
+        "0f3c6af2a47cbdfb84ae03d17b03fd836f52683408dc9b1e8dff051b0c178af3"
+      ],
+      "after_sha256": "e2ebe20ba22e2d013379c9928638ba700697fa7acf0b7b03a570ae4e270f6641"
+    },
+    {
+      "source": "skills/task-delivery/references/code-simplicity.md",
+      "target": "skills/task-delivery/references/code-simplicity.md",
+      "before_sha256": [
+        "3bc365eed8d559f5678d94e697307b5ed4564fc3117a31ff5df3739486f377d1"
+      ],
+      "after_sha256": "fd35dc0f42f9ac3085c2cf21bed1af38ddf118b33a0e67d12492c6eed724774e"
+    }
+  ],
+  "policy_before_sha256": [
+    "72f101f319fb3d737cec25ccb61b73f9bd6d86112d3b05d9f5c4b5ef784e6912"
+  ],
+  "policy_after_sha256": "bb36da531b77dba00c7e2bd42fff73a92038aa57558939cad6d3b637eae35ec5"
+}

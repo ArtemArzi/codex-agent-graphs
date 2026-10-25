@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "overlays": [
+    {
+      "id": "ui-demo",
+      "target": "skills/ui-demo/SKILL.md",
+      "provenance": "Current-host installed-root skills/ui-demo/SKILL.md; exact preimage recorded below",
+      "before_sha256": "b5b2bac1adbd3ffc0b34f589ff26b06ececc7d9f896c5a305b89aa834b0bb254",
+      "after_sha256": "a026e461de38ac9885e9432850df92b3f4cfc2947195cd82136824968bc01825",
+      "edits": [
+        [
+          "    await context.close();\n    const video = page.video();\n    if (video) {\n      const src = await video.path();\n      const dest = path.join(VIDEO_DIR, OUTPUT_NAME);\n      try {\n        fs.copyFileSync(src, dest);\n        console.log('Video saved:', dest);\n      } catch (e) {\n        console.error('ERROR: Failed to copy video:', e.message);\n        console.error('  Source:', src);\n        console.error('  Destination:', dest);\n      }\n    }\n    await browser.close();",
+          "    try {\n      await context.close();\n      const video = page.video();\n      if (video) {\n        const src = await video.path();\n        const dest = path.join(VIDEO_DIR, OUTPUT_NAME);\n        try {\n          fs.copyFileSync(src, dest, fs.constants.COPYFILE_EXCL);\n          const digestFile = (filename) => {\n            const hash = require('crypto').createHash('sha256');\n            const fd = fs.openSync(filename, 'r');\n            try {\n              const buffer = Buffer.alloc(1024 * 1024);\n              let size;\n              while ((size = fs.readSync(fd, buffer, 0, buffer.length, null)) > 0) {\n                hash.update(buffer.subarray(0, size));\n              }\n            } finally {\n              fs.closeSync(fd);\n            }\n            return hash.digest('hex');\n          };\n          if (!fs.statSync(src).size || digestFile(src) !== digestFile(dest)) {\n            throw new Error('Saved video readback differs from raw recording');\n          }\n          console.log('Video saved and verified:', dest);\n          await video.delete();\n        } catch (e) {\n          process.exitCode = 1;\n          console.error('Video save/closure failed; inspect retained files:', e.message);\n          console.error('  Raw:', src);\n          console.error('  Destination:', dest);\n        }\n      }\n    } finally {\n      await browser.close();\n    }"
+        ]
+      ]
+    },
+    {
+      "id": "cache-pattern",
+      "target": "skills/content-hash-cache-pattern/SKILL.md",
+      "provenance": "Current-host installed-root skills/content-hash-cache-pattern/SKILL.md; exact preimage recorded below",
+      "before_sha256": "cdef26f0fc59be4320d3b8acc75a1084c06d7f8b58d635de51cd98e1d4343dbc",
+      "after_sha256": "3237780f714a2af55e6b60a64262f927cc4350d787767d23922f066227cb800b",
+      "edits": [
+        [
+          "## Core Pattern\n",
+          "## Disk lifecycle\n\nA content hash invalidates lookup; it does not remove older hash files. Before\nusing the sample as an application cache, choose a caller-owned namespace and\nbyte/entry budget with admission and retention rules. Serialize writers and\neviction at that owner; never evict another task's shared `.cache`. Keep source\nand requested results outside the disposable cache. If safe eviction is not\navailable or an entry exceeds the budget, regenerate without caching or report\nthe limit. Publish entries atomically and clean only the exact failed temp.\nThe snippets below illustrate hashing and lookup, not a complete bounded cache.\n\n## Core Pattern\n"
+        ]
+      ]
+    },
+    {
+      "id": "screenshot",
+      "target": "skills/screenshot/SKILL.md",
+      "provenance": "Current-host installed-root skills/screenshot/SKILL.md; exact preimage recorded below",
+      "before_sha256": "081935a6a163277537d46365f49d6b4a3cb40b4748347e7e88759c5927fa8cf5",
+      "after_sha256": "49f0713c2adf210eba0fa5b57154a250f19cfd8ed7394b16c258e2fb706d5cbc",
+      "edits": [
+        [
+          "## Tool priority\n",
+          "## Inspection resource completion\n\nUse an exact task-owned temporary path for inspection captures. Record that\npath, inspect/read the image before releasing it, and close it after its final\nconsumer. Retain requested screenshots and needed failure/QA evidence at the\nexisting task owner with readback first. Do not remove the temp directory,\nother screenshots or the shared Swift module cache. On interruption reconcile\nthe known capture path; a timestamp or filename alone is not ownership proof.\n\n## Tool priority\n"
+        ]
+      ]
+    },
+    {
+      "id": "videodb-guidance",
+      "target": "skills/videodb/SKILL.md",
+      "provenance": "Current-host installed-root skills/videodb/SKILL.md; exact preimage recorded below",
+      "before_sha256": "85e9391e62346721a6248c952ff196e966f2907991a56e98b7d760585893b263",
+      "after_sha256": "7ffbfc0cf7b20f014268cb5689057c048085cbbc8f86a11740df7189e44a9a55",
+      "edits": [
+        [
+          "1. **Choose state dir**: `STATE_DIR=\"${VIDEODB_EVENTS_DIR:-$HOME/.local/state/videodb}\"`\n2. **Start listener**: `VIDEODB_EVENTS_DIR=\"$STATE_DIR\" python scripts/ws_listener.py --clear \"$STATE_DIR\" &`\n3. **Get WebSocket ID**: `cat \"$STATE_DIR/videodb_ws_id\"`\n4. **Run capture code** (see reference/capture.md for the full workflow)\n5. **Events written to**: `$STATE_DIR/videodb_events.jsonl`\n\nUse `--clear` whenever you start a fresh capture run so stale transcript and visual events do not leak into the new session.\n",
+          "1. **Choose a new task-owned state dir** under the existing task owner and set `STATE_DIR` to its exact path. Export `VIDEODB_EVENTS_DIR=\"$STATE_DIR\"` for the capture and query processes. Reuse that directory on resumption; never allocate a new directory to bypass a reached budget.\n2. **Start listener**: `VIDEODB_MAX_EVENT_BYTES=33554432 python scripts/ws_listener.py \"$STATE_DIR\" &`\n3. **Get WebSocket ID**: `cat \"$STATE_DIR/videodb_ws_id\"`\n4. **Run capture code** (see reference/capture.md for the full workflow).\n5. **Events written to**: `$STATE_DIR/videodb_events.jsonl`. The default journal cap is 32 MiB; a positive `VIDEODB_MAX_EVENT_BYTES` sets the explicit technical limit.\n\nThe helper requires an explicit task output directory (argument or\n`VIDEODB_EVENTS_DIR`) and one listener owns it at a time. Reconcile an existing\nPID before resuming; do not unlink an uncertain owner. `--clear` refuses to erase\nnonempty events. The journal stops before an over-budget record, preserves all\nprevious events and raises a visible partial-capture error without reconnecting.\nTreat this as partial/blocked, not completion; reconcile the capture and budget.\nAfter capture and readback/handoff, stop only the task's listener. This does not\nstop provider capture: confirm that separately through the capture API. Retain\nrequested media/events and needed evidence; no provider media cleanup is implied.\n"
+        ],
+        [
+          "events_dir = Path(os.environ.get(\"VIDEODB_EVENTS_DIR\", Path.home() / \".local\" / \"state\" / \"videodb\"))",
+          "events_dir = Path(os.environ[\"VIDEODB_EVENTS_DIR\"])"
+        ]
+      ]
+    },
+    {
+      "id": "videodb-listener",
+      "target": "skills/videodb/scripts/ws_listener.py",
+      "provenance": "Current-host installed-root skills/videodb/scripts/ws_listener.py; exact preimage recorded below",
+      "before_sha256": "1b8867e19cca1509993a9136554e3330b4a0d7942bf1b01c3b9469bfe5da06cd",
+      "after_sha256": "34dcbc9644dadfc24194f92e3f5b15ce38d2b041f20048bb5462f4d2987136a7",
+      "edits": [
+        [
+          "import contextlib\n",
+          "import contextlib\nimport stat\n"
+        ],
+        [
+          "        return clear, ensure_private_dir(default_output_dir())",
+          "        raise SystemExit(\"Pass a task-owned output_dir or VIDEODB_EVENTS_DIR; reuse it on resume\")"
+        ],
+        [
+          "PID_FILE = OUTPUT_DIR / \"videodb_ws_pid\"\n",
+          "PID_FILE = OUTPUT_DIR / \"videodb_ws_pid\"\ntry:\n    MAX_EVENT_BYTES = int(os.environ.get(\"VIDEODB_MAX_EVENT_BYTES\", \"33554432\"))\nexcept ValueError as exc:\n    raise SystemExit(\"VIDEODB_MAX_EVENT_BYTES must be a positive integer\") from exc\nif MAX_EVENT_BYTES <= 0:\n    raise SystemExit(\"VIDEODB_MAX_EVENT_BYTES must be a positive integer\")\nif CLEAR_EVENTS and (EVENTS_FILE.is_symlink() or\n                     (EVENTS_FILE.exists() and EVENTS_FILE.stat().st_size)):\n    raise SystemExit(\"--clear refuses existing nonempty/linked events; retain and reconcile them\")\n_pid_identity = None\n\n\nclass EventBudgetExceeded(RuntimeError):\n    pass\n"
+        ],
+        [
+          "    with EVENTS_FILE.open(\"a\", encoding=\"utf-8\") as f:\n        f.write(json.dumps(event) + \"\\n\")\n\n\ndef write_pid():\n    \"\"\"Write PID file for easy process management.\"\"\"\n    OUTPUT_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)\n    PID_FILE.write_text(str(os.getpid()))\n\n\ndef cleanup_pid():\n    \"\"\"Remove PID file on exit.\"\"\"\n    try:\n        PID_FILE.unlink(missing_ok=True)\n    except OSError as exc:\n        LOGGER.debug(\"Failed to remove PID file %s: %s\", PID_FILE, exc)\n",
+          "    if _pid_identity is None or not _owns_pid():\n        raise RuntimeError(\"Listener does not hold the task journal ownership token\")\n    record = (json.dumps(event, ensure_ascii=False) + \"\\n\").encode(\"utf-8\")\n    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, \"O_NOFOLLOW\", 0)\n    fd = os.open(EVENTS_FILE, flags, 0o600)\n    with os.fdopen(fd, \"ab\") as handle:\n        info = os.fstat(handle.fileno())\n        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:\n            raise RuntimeError(\"Journal must be a regular task-owned file\")\n        if info.st_size + len(record) > MAX_EVENT_BYTES:\n            raise EventBudgetExceeded(\n                f\"PARTIAL capture: journal byte limit {MAX_EVENT_BYTES} reached at \"\n                f\"{EVENTS_FILE}; prior events retained; reconcile provider capture separately\"\n            )\n        handle.write(record)\n\n\ndef write_pid():\n    global _pid_identity\n    fd = os.open(PID_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)\n    with os.fdopen(fd, \"w\") as handle:\n        info = os.fstat(handle.fileno())\n        _pid_identity = (info.st_dev, info.st_ino)\n        handle.write(str(os.getpid()))\n\n\ndef _owns_pid():\n    try:\n        info = PID_FILE.lstat()\n        return (stat.S_ISREG(info.st_mode) and (info.st_dev, info.st_ino) == _pid_identity\n                and PID_FILE.read_text() == str(os.getpid()))\n    except OSError:\n        return False\n\n\ndef cleanup_pid():\n    if _owns_pid():\n        PID_FILE.unlink()\n"
+        ],
+        [
+          "            EVENTS_FILE.unlink(missing_ok=True)\n            log(\"Cleared events file\")",
+          "            if EVENTS_FILE.exists() and EVENTS_FILE.stat().st_size:\n                raise RuntimeError(\"Events appeared after --clear preflight; preserve them\")\n            log(\"Fresh empty events journal\")"
+        ],
+        [
+          "output_dir  Directory for output files (default: XDG_STATE_HOME/videodb or ~/.local/state/videodb)",
+          "output_dir  Explicit task-owned output directory (or VIDEODB_EVENTS_DIR); reuse on resume"
+        ],
+        [
+          "  --clear     Clear the events file before starting (use when starting a new session)",
+          "  --clear     Require an empty/new events journal; never erase existing events"
+        ]
+      ]
+    },
+    {
+      "id": "software-factory-lifecycle",
+      "target": "skills/software-factory/SKILL.md",
+      "provenance": "Existing owned Software Factory lifecycle paragraph; preserves already-installed Design/remote guidance",
+      "before_sha256": "4ed2afa812f81fd952658274f2c339b2472d75042e1a601b8a312248650fe6c7",
+      "after_sha256": "249de9e5b88b1e129848edc0a532fe858c8d09eb0918a1bedde18e03de2e9654",
+      "edits": [
+        [
+          "Keep branches, worktrees and evidence until the user authorizes integration or\ncleanup. Installation, push, main integration and deployment follow the actual\ntask authorization; the helper never performs them. Preserve existing defaults\nand do not clean up automatically.\n",
+          "Use the helper's storage lifecycle for new task-owned disposable workspaces:\nprepare with the task authority, owner token and explicit `--lifecycle ephemeral`;\nrecord these in the existing task. Default `retain` preserves legacy callers.\nJoin every writer before `verify --writers-joined` or finishing a resource.\nRepeated unchanged verification reuses its candidate and runs a fresh check;\nat capacity inspect `storage` and its retained reasons instead of allocating\nanother directory. A caller flag declares coordination and existing authority;\nit grants neither permission nor proof that unknown writers have stopped.\nAfter saving/readback of results and evidence, `finish` then inspect `close`\ndry-run and apply only eligible owned resources through the helper. Branch refs\nand receipts remain outside the checkout. Preserve dirty/ignored/admin data,\nunfinished or changed resources, legacy copies and useful recovery state.\nInstallation, push, main integration, destructive shell and deployment retain\nthe actual task/host authorization. Never force, prune or delete branches to\nmake closure pass. See helper-usage.md for exact commands and limitations.\n"
+        ]
+      ]
+    }
+  ]
+}

@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 def metadata(text: str) -> dict[str, str]:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     if not text.startswith("---\n"):
         return {}
     front = text.split("\n---", 1)[0].splitlines()[1:]
@@ -28,6 +30,25 @@ def metadata(text: str) -> dict[str, str]:
                 continuation.append(following.strip())
             value = " ".join(continuation)
         result[key] = value.strip("\"'")
+    return result
+
+
+def resource_manifest(root: Path, skill_file: Path) -> dict[str, str]:
+    result = {}
+    for path in sorted(root.rglob("*")):
+        if path == skill_file or any(part in {"__pycache__", ".pytest_cache", ".DS_Store"}
+                                     for part in path.relative_to(root).parts):
+            continue
+        if path.is_symlink():
+            digest = hashlib.sha256(b"symlink:" + os.fsencode(os.readlink(path)))
+        elif path.is_file():
+            digest = hashlib.sha256()
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+        else:
+            continue
+        result[str(path.relative_to(root))] = digest.hexdigest()
     return result
 
 
@@ -51,20 +72,25 @@ def inventory(roots: list[Path], files: list[Path]) -> dict:
         selected.add(file)
     items = []
     groups: dict[str, list[str]] = {}
+    packages: dict[str, list[str]] = {}
     for file in sorted(selected):
         raw = file.read_bytes()
         sha = hashlib.sha256(raw).hexdigest()
         text = raw.decode("utf-8")
         info = metadata(text)
-        resources = sorted(str(p.relative_to(file.parent)) for p in file.parent.rglob("*")
-                           if p.is_file() and "__pycache__" not in p.parts and p != file)
+        resources = resource_manifest(file.parent, file)
+        package_sha = hashlib.sha256(json.dumps({"body": sha, "resources": resources},
+                                               sort_keys=True).encode()).hexdigest()
         items.append({"path": str(file), **info, "sha256": sha, "bytes": len(raw),
-                      "lines": len(text.splitlines()), "resources": resources,
+                      "lines": len(text.splitlines()), "resources": sorted(resources),
+                      "resource_sha256": resources, "package_sha256": package_sha,
                       "enabled": "unknown", "usage": "unknown"})
         groups.setdefault(sha, []).append(str(file))
+        packages.setdefault(package_sha, []).append(str(file))
     return {"schema_version": 1, "evaluated_at": datetime.now(timezone.utc).isoformat(),
             "coverage": "static-inventory", "roots": scope,
-            "copies": len(items), "distinct_bodies": len(groups), "skills": items,
+            "copies": len(items), "distinct_bodies": len(groups),
+            "distinct_packages": len(packages), "skills": items,
             "duplicates": [paths for paths in groups.values() if len(paths) > 1]}
 
 

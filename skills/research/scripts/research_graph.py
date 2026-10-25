@@ -59,26 +59,43 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+def _write_atomic(path: Path, writer: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", dir=path.parent, delete=False, prefix=f".{path.name}."
-    ) as handle:
+    temporary = None
+    identity = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, delete=False, prefix=f".{path.name}."
+        ) as handle:
+            temporary = Path(handle.name)
+            stat = os.fstat(handle.fileno())
+            identity = (stat.st_dev, stat.st_ino)
+            writer(handle)
+        os.replace(temporary, path)
+    except BaseException as failure:
+        if temporary is not None:
+            try:
+                stat = temporary.lstat()
+                if not temporary.is_symlink() and (stat.st_dev, stat.st_ino) == identity:
+                    temporary.unlink()
+                else:
+                    failure.add_note(f"Retained changed temporary path: {temporary}")
+            except FileNotFoundError:
+                pass
+            except OSError as cleanup_error:
+                failure.add_note(f"Retained temporary path {temporary}: {cleanup_error}")
+        raise
+
+
+def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    def write(handle: Any) -> None:
         json.dump(value, handle, ensure_ascii=False, indent=2, sort_keys=True)
         handle.write("\n")
-        temporary = Path(handle.name)
-    os.replace(temporary, path)
+    _write_atomic(path, write)
 
 
 def write_text_atomic(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", dir=path.parent, delete=False, prefix=f".{path.name}."
-    ) as handle:
-        handle.write(content)
-        temporary = Path(handle.name)
-    os.replace(temporary, path)
-
+    _write_atomic(path, lambda handle: handle.write(content))
 
 def ensure_within(path: Path, root: Path, label: str) -> Path:
     resolved_path = path.resolve()

@@ -111,7 +111,18 @@ sibling receipt into main. Reconcile main's own document snapshot after merging
 canonical documentation. The retained native experiment demonstrates quick delivery only;
 tracked TD/PS needs its own end-to-end validation.
 
-Keep branches, worktrees and evidence until the user authorizes integration or
-cleanup. Installation, push, main integration and deployment follow the actual
-task authorization; the helper never performs them. Preserve existing defaults
-and do not clean up automatically.
+Use the helper's storage lifecycle for new task-owned disposable workspaces:
+prepare with the task authority, owner token and explicit `--lifecycle ephemeral`;
+record these in the existing task. Default `retain` preserves legacy callers.
+Join every writer before `verify --writers-joined` or finishing a resource.
+Repeated unchanged verification reuses its candidate and runs a fresh check;
+at capacity inspect `storage` and its retained reasons instead of allocating
+another directory. A caller flag declares coordination and existing authority;
+it grants neither permission nor proof that unknown writers have stopped.
+After saving/readback of results and evidence, `finish` then inspect `close`
+dry-run and apply only eligible owned resources through the helper. Branch refs
+and receipts remain outside the checkout. Preserve dirty/ignored/admin data,
+unfinished or changed resources, legacy copies and useful recovery state.
+Installation, push, main integration, destructive shell and deployment retain
+the actual task/host authorization. Never force, prune or delete branches to
+make closure pass. See helper-usage.md for exact commands and limitations.
