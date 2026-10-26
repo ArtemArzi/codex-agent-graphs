@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "products/interface-design/demo-landing/index.html"
+        ],
+        "createdAt": "2026-10-26T13:40:37.597Z",
+        "reason": "agent decided: rendered1440 and390 confirm row vertical insets36/35px and23px, closing horizontal gutters59px and22px. Detector misses child padding and CSS custom properties; same accepted blocks."
+      },
+      {
+        "rule": "wide-tracking",
+        "value": "*",
+        "files": [
+          "products/interface-design/reference-gallery/index.html"
+        ],
+        "createdAt": "2026-10-26T13:40:37.616Z",
+        "reason": "agent decided: only tracked text is the short uppercase label VYBOR VIZUALNOGO YAZYKA,12px font with1px spacing. Reading prose has normal tracking. Desktop/mobile rendered and computed styles verified."
+      },
+      {
+        "rule": "extreme-negative-tracking",
+        "value": "*",
+        "files": [
+          "products/interface-design/reference-gallery/index.html"
+        ],
+        "createdAt": "2026-10-26T13:40:37.633Z",
+        "reason": "agent decided: reported main heading uses100px font/-2px tracking desktop and52px/-1px mobile, ratios-0.02/-0.019em. Static detector misreads clamp as28px. Rendered glyphs and wrapping verified."
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "products/interface-design/reference-gallery/index.html"
+        ],
+        "createdAt": "2026-10-26T13:40:37.650Z",
+        "reason": "agent decided: gallery samples intentionally bleed imagery; text uses absolute offsets or child insets. All text bounds measured on1440 and390, minimum8px at SVG caption and14px poster bottom. No text touches frame."
+      }
+    ]
+  }
+}

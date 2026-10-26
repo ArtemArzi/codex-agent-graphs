@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-26T12:08:52.562185+00:00",
-  "title": "Design System: \u0417\u0430 \u041a\u0440\u0430\u0439",
+  "generatedAt": "2026-10-26T13:40:41.136009+00:00",
+  "title": "Design System: За Край",
   "extensions": {
     "colorMeta": {
       "ink": {
@@ -20,7 +20,7 @@
     "typographyMeta": {
       "display": {
         "displayName": "Monumental field poster",
-        "purpose": "Hero and section hierarchy"
+        "purpose": "Section hierarchy; the separate kinetic role owns the campaign hero"
       },
       "body": {
         "displayName": "Golos Text",
@@ -45,8 +45,16 @@
         "value": "700px"
       },
       {
+        "name": "narrow-desktop-plates",
+        "value": "900px"
+      },
+      {
         "name": "tablet",
         "value": "1000px"
+      },
+      {
+        "name": "compact-desktop-controls",
+        "value": "1100px"
       },
       {
         "name": "small-mobile",
@@ -60,7 +68,7 @@
       "kind": "button",
       "refersTo": "button-primary",
       "description": "Primary visitor action",
-      "html": "<button class=\"ds-primary\">\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043c\u0430\u0440\u0448\u0440\u0443\u0442 \u2197</button>",
+      "html": "<button class=\"ds-primary\">Выбрать маршрут ↗</button>",
       "css": ".ds-primary{height:55px;padding:0 24px;background:#b83c23;color:#f1f2eb;border:1px solid transparent;border-radius:2px;font:500 13px \"Golos Text\",Arial,sans-serif}.ds-primary:hover{background:#96301d}.ds-primary:focus-visible{outline:3px solid #174e8b;outline-offset:5px}"
     },
     {
@@ -68,29 +76,43 @@
       "kind": "button",
       "refersTo": "button-secondary",
       "description": "Save or download supported local result",
-      "html": "<button class=\"ds-secondary\">\u0421\u043a\u0430\u0447\u0430\u0442\u044c \u043f\u0430\u043c\u044f\u0442\u043a\u0443 \u2193</button>",
+      "html": "<button class=\"ds-secondary\">Скачать памятку ↓</button>",
       "css": ".ds-secondary{height:55px;padding:0 24px;background:#1c3027;color:#f1f2eb;border:0;border-radius:2px;font:500 13px \"Golos Text\",Arial,sans-serif}"
     },
     {
       "name": "Route choice",
       "kind": "input",
       "description": "Explicit selected route",
-      "html": "<label class=\"ds-route\"><input type=\"radio\" name=\"route\" checked>\u041a\u0430\u043c\u0435\u043d\u043d\u044b\u0439 \u0431\u0435\u0440\u0435\u0433</label>",
+      "html": "<label class=\"ds-route\"><input type=\"radio\" name=\"route\" checked>Каменный берег</label>",
       "css": ".ds-route{display:flex;gap:13px;padding:15px 13px;border:1px solid #1c3027;background:#e2e7db;color:#1c3027;font:13px \"Golos Text\",Arial,sans-serif}.ds-route input{accent-color:#1c3027}"
     },
     {
       "name": "Pace choice",
       "kind": "input",
       "description": "Preserved preference",
-      "html": "<label class=\"ds-pace\"><input type=\"radio\" name=\"pace\" checked>\u0411\u0435\u0437 \u0441\u043f\u0435\u0448\u043a\u0438</label>",
+      "html": "<label class=\"ds-pace\"><input type=\"radio\" name=\"pace\" checked>Без спешки</label>",
       "css": ".ds-pace{display:flex;gap:8px;padding:10px 2px;border-bottom:1px solid #b6bfb2;color:#1c3027;font:12px \"Golos Text\",Arial,sans-serif}.ds-pace input{accent-color:#1c3027}"
     },
     {
       "name": "Navigation",
       "kind": "nav",
       "description": "Quiet primary anchors",
-      "html": "<nav class=\"ds-nav\"><a href=\"#routes\">\u041c\u0430\u0440\u0448\u0440\u0443\u0442\u044b</a><a href=\"#approach\">\u041d\u0430\u0448 \u043f\u043e\u0434\u0445\u043e\u0434</a></nav>",
+      "html": "<nav class=\"ds-nav\"><a href=\"#routes\">Маршруты</a><a href=\"#approach\">Наш подход</a></nav>",
       "css": ".ds-nav{display:flex;gap:36px;font:13px \"Golos Text\",Arial,sans-serif}.ds-nav a{color:#1c3027;text-decoration:none;border-bottom:1px solid transparent;padding:5px 0}.ds-nav a:hover{border-color:#1c3027}"
     }
-  ]
+  ],
+  "narrative": {
+    "northStar": "An expedition poster with a usable field guide",
+    "overview": "The mineral landscape, a moving original cloth sculpture and layered Unbounded Cyrillic type carry the identity. The headline sits on two depth planes around a smaller cloth shape. Side rods, the concept badge and the decorative note were removed on user feedback; the cloth now has open space around its edges. The explicit request for an extraordinary first screen authorizes monumental type in this fictional campaign. Supporting information has a clear reading order, useful route\nidentifiers and calm physical controls. The user delegated this new fictional\nconcept; it does not replace an existing client's identity.\n\nThe six-direction reference gallery is a separate comparison artifact. Its\ndeliberate variations do not establish six competing worlds on this landing.",
+    "rules": [],
+    "dos": [
+      "Do preserve the relationship between the image, monumental type and useful annotation.",
+      "Do keep main actions visible and route information consistent.",
+      "Do mark the fictional project and local-save boundary clearly."
+    ],
+    "donts": [
+      "Do not import the reference brands' claims, identities, imagery or whole layouts.",
+      "Do not turn this expedition palette into the default for every future project."
+    ]
+  }
 }
