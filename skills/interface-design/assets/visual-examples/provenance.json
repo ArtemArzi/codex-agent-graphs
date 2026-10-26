@@ -1,0 +1,50 @@
+[
+  {
+    "file": "poster.png",
+    "kind": "original-code-render",
+    "origin": "Original code-native visual example rendered from products/interface-design/reference-gallery/index.html, sample poster. This is an independent miniature, not a screenshot of a third-party brand. Any scenery uses the original generated fictional landscape documented in products/interface-design/demo-landing/assets/image-provenance.json.",
+    "browser": "148.0.7778.96",
+    "sha256": "1e1fbb50bd89929376e63d2e1befa98e93b0bff434fc0691bab3fb918c49947c",
+    "bytes": 327799
+  },
+  {
+    "file": "field.png",
+    "kind": "original-code-render",
+    "origin": "Original code-native visual example rendered from products/interface-design/reference-gallery/index.html, sample field. This is an independent miniature, not a screenshot of a third-party brand. Any scenery uses the original generated fictional landscape documented in products/interface-design/demo-landing/assets/image-provenance.json.",
+    "browser": "148.0.7778.96",
+    "sha256": "6b2ef25fbbbaed229ed2e2a0ab8ff7cf5c30c491a1b621bae30a2f72f6d7944d",
+    "bytes": 19967
+  },
+  {
+    "file": "object.png",
+    "kind": "original-code-render",
+    "origin": "Original code-native visual example rendered from products/interface-design/reference-gallery/index.html, sample object. This is an independent miniature, not a screenshot of a third-party brand. Any scenery uses the original generated fictional landscape documented in products/interface-design/demo-landing/assets/image-provenance.json.",
+    "browser": "148.0.7778.96",
+    "sha256": "e86bd744c29fefbb7582d0e0d27c4af44843ce56b3dbcd7bee505b2ff8bb5cc5",
+    "bytes": 16224
+  },
+  {
+    "file": "spatial.png",
+    "kind": "original-code-render",
+    "origin": "Original code-native visual example rendered from products/interface-design/reference-gallery/index.html, sample spatial. This is an independent miniature, not a screenshot of a third-party brand. Any scenery uses the original generated fictional landscape documented in products/interface-design/demo-landing/assets/image-provenance.json.",
+    "browser": "148.0.7778.96",
+    "sha256": "8af4f22acca2ae889d635b3e5f66fdd8ad5d2a87401649b2c41b715c4c7da7ae",
+    "bytes": 219173
+  },
+  {
+    "file": "direct.png",
+    "kind": "original-code-render",
+    "origin": "Original code-native visual example rendered from products/interface-design/reference-gallery/index.html, sample direct. This is an independent miniature, not a screenshot of a third-party brand. Any scenery uses the original generated fictional landscape documented in products/interface-design/demo-landing/assets/image-provenance.json.",
+    "browser": "148.0.7778.96",
+    "sha256": "e3a3103c3aaaa50226f80516aacb308a4a32c3e869669d412c1ffb402a5b44f8",
+    "bytes": 17407
+  },
+  {
+    "file": "archive.png",
+    "kind": "original-code-render",
+    "origin": "Original code-native visual example rendered from products/interface-design/reference-gallery/index.html, sample archive. This is an independent miniature, not a screenshot of a third-party brand. Any scenery uses the original generated fictional landscape documented in products/interface-design/demo-landing/assets/image-provenance.json.",
+    "browser": "148.0.7778.96",
+    "sha256": "7432f51e0c0f245c9ac8509238242820af5e588ac157e5eb9e11aa2d899a9ac1",
+    "bytes": 18694
+  }
+]

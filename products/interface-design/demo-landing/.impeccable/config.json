@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-10-26T12:14:17.315Z",
+        "reason": "agent decided: route rows have 36px vertical padding and closing section has 48px vertical plus CSS gutter22-72px; static detector misses child padding/custom properties; desktop and mobile rendered evidence reviewed"
+      }
+    ]
+  }
+}

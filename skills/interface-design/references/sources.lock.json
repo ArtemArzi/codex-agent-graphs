@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "reviewed_on": "2026-10-25",
+  "reviewed_on": "2026-10-26",
   "admission_bytes": 4194304,
   "execution": "none; source data only",
   "sources": [
@@ -292,6 +292,75 @@
           "url": "https://raw.githubusercontent.com/jezweb/claude-skills/1260fa7439b36b18dbf16648ccc7fb44783f6c23/LICENSE"
         }
       ]
+    },
+    {
+      "id": "elaya-design",
+      "repository": "https://github.com/elayadesign/ai-design-skills",
+      "commit": "a2735a3eaf092eaaffb6dc17df25de33ef3bd048",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "skills/landing-page-design/SKILL.md",
+          "stored_path": "upstream/elaya-design/skills/landing-page-design/UPSTREAM.md",
+          "sha256": "203569792660ab6d71dcb2e4fa673c0c7a0df7c99801d04ab419a4cb08aceb2c",
+          "bytes": 18801,
+          "url": "https://raw.githubusercontent.com/elayadesign/ai-design-skills/a2735a3eaf092eaaffb6dc17df25de33ef3bd048/skills/landing-page-design/SKILL.md"
+        },
+        {
+          "source_path": "skills/design-to-motion/SKILL.md",
+          "stored_path": "upstream/elaya-design/skills/design-to-motion/UPSTREAM.md",
+          "sha256": "12240f8065147f3623424cf38bc198a94857441446736bb449429451d87a3d55",
+          "bytes": 39109,
+          "url": "https://raw.githubusercontent.com/elayadesign/ai-design-skills/a2735a3eaf092eaaffb6dc17df25de33ef3bd048/skills/design-to-motion/SKILL.md"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/elaya-design/LICENSE",
+          "sha256": "5f9af6ce7083838497676a8dfa651ad8e2559fdabd4586afc73587beec476b0e",
+          "bytes": 1062,
+          "url": "https://raw.githubusercontent.com/elayadesign/ai-design-skills/a2735a3eaf092eaaffb6dc17df25de33ef3bd048/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "meshcode-design",
+      "repository": "https://github.com/meshcode-ai/skills-design",
+      "commit": "7ef61f90e9e9905457435f7468a35bc39179d940",
+      "mode": "selected-text-snapshot-not-executable-skill",
+      "license_path": "LICENSE",
+      "files": [
+        {
+          "source_path": "design-homepage/SKILL.md",
+          "stored_path": "upstream/meshcode-design/design-homepage/UPSTREAM.md",
+          "sha256": "a25521297aab449153f41ca3c901d5cf39396c3e6d8225116245213db9168c31",
+          "bytes": 3133,
+          "url": "https://raw.githubusercontent.com/meshcode-ai/skills-design/7ef61f90e9e9905457435f7468a35bc39179d940/design-homepage/SKILL.md"
+        },
+        {
+          "source_path": "design-design-system/SKILL.md",
+          "stored_path": "upstream/meshcode-design/design-design-system/UPSTREAM.md",
+          "sha256": "666a848227de758367307b0c5a398d3ef9b68f0a79e69183fc39f2fa79984f3c",
+          "bytes": 2659,
+          "url": "https://raw.githubusercontent.com/meshcode-ai/skills-design/7ef61f90e9e9905457435f7468a35bc39179d940/design-design-system/SKILL.md"
+        },
+        {
+          "source_path": "LICENSE",
+          "stored_path": "upstream/meshcode-design/LICENSE",
+          "sha256": "0afbc470594d4d402812da46069db300de0d75c366825431b5b950b8bdf35c3d",
+          "bytes": 691,
+          "url": "https://raw.githubusercontent.com/meshcode-ai/skills-design/7ef61f90e9e9905457435f7468a35bc39179d940/LICENSE"
+        }
+      ]
+    }
+  ],
+  "additional_notices": [
+    {
+      "stored_path": "upstream/meshcode-design/APACHE-2.0.txt",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358,
+      "reason": "Retain the license text for Apache-2.0 source lineage declared in Meshcode frontmatter; this is an additional notice, not an original Meshcode source file."
     }
   ]
 }

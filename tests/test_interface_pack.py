@@ -31,15 +31,30 @@ def file_hash(path):
 
 
 class InterfaceSourceTests(unittest.TestCase):
+    def test_original_visual_examples_match_provenance(self):
+        import struct
+        directory = ROOT / "skills/interface-design/assets/visual-examples"
+        records = json.loads((directory / "provenance.json").read_text())
+        self.assertEqual({item["file"] for item in records},
+                         {name + ".png" for name in ["poster", "field", "object", "spatial", "direct", "archive"]})
+        for item in records:
+            path = directory / item["file"]
+            self.assertEqual(file_hash(path), item["sha256"])
+            self.assertEqual(path.stat().st_size, item["bytes"])
+            self.assertEqual(path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+            width, height = struct.unpack(">II", path.read_bytes()[16:24])
+            self.assertGreater(width, 200)
+            self.assertGreater(height, 100)
+
     def test_manifest_and_pinned_library(self):
         pack = packs.load_pack(ROOT, "interface-design")
         self.assertEqual(pack["managed_skills"], ["interface-design", "interface-performance"])
         self.assertFalse(set(pack["managed_skills"]) & set(api.SKILLS))
         reference = ROOT / "skills/interface-design/references"
         lock = json.loads((reference / "sources.lock.json").read_text())
-        self.assertEqual(len(lock["sources"]), 8)
+        self.assertEqual(len(lock["sources"]), 10)
         files = [item for source in lock["sources"] for item in source["files"]]
-        self.assertEqual(len(files), 31)
+        self.assertEqual(len(files), 37)
         for source in lock["sources"]:
             self.assertRegex(source["commit"], r"^[0-9a-f]{40}$")
             license_file = next(item for item in source["files"]
@@ -50,6 +65,11 @@ class InterfaceSourceTests(unittest.TestCase):
                 self.assertEqual(file_hash(path), item["sha256"])
                 self.assertEqual(path.stat().st_size, item["bytes"])
                 self.assertNotEqual(path.name, "SKILL.md")
+        for notice in lock.get("additional_notices", []):
+            path = reference / notice["stored_path"]
+            self.assertEqual(file_hash(path), notice["sha256"])
+            self.assertEqual(path.stat().st_size, notice["bytes"])
+            self.assertIn("Apache License", path.read_text())
 
     def test_portable_authored_resources_and_plugin_channel(self):
         docs = list((ROOT / "products/interface-design").rglob("*.md"))

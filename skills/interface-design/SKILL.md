@@ -2,7 +2,7 @@
 name: interface-design
 description: Plan, build or improve understandable websites and product interfaces by choosing the relevant flow, content, visual and frontend capabilities. Use for a new UI, a confusing journey, a redesign or a scoped interface audit; keep backend-only work with its owner.
 metadata:
-  version: "0.1.1"
+  version: "0.2.0"
 ---
 
 # Interface Design
@@ -30,12 +30,16 @@ working screen may need different profiles in the same assignment.
 
 | Actual gap | Method or available capability |
 |---|---|
+| A landing page's audience, traffic, offer, proof and next action | [Landing-page profile](references/landing-pages.md) |
+| An open visual choice that needs concrete examples | [Visual directions and reference menu](references/visual-directions.md) |
+| Several selected tools must preserve the same visual decisions | [Shared visual contract](references/visual-contract.md) |
 | Steps, navigation, next action, back/cancel, permissions or recovery | [Flow method](references/methods.md#flow) |
 | Wording, conditions, information placement and comprehension | Available interface-clarity |
 | Visual implementation, hierarchy, type, spacing, responsive refinement | Available impeccable:impeccable; choose the relevant operation |
 | Explore visual directions or audit an existing multi-screen journey | Available Product Design focused skill |
 | Build faithfully from an accepted visual concept | Available frontend-app-builder or image-to-code, with their native contracts |
 | References, imagery, product demonstration | [Reference method](references/methods.md#references) |
+| An actual product sample, recording or staged motion demonstration | [Product demonstration](references/product-demonstration.md) |
 | Slow loading, delayed input, rerenders, scrolling or heavy effects | interface-performance |
 | Components or frontend verification | Available shadcn / frontend-testing-debugging / project-native tools |
 
