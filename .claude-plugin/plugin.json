@@ -1,6 +1,6 @@
 {
   "name": "cag",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Codex Agent Graphs for Codex and Claude Code: shared engineering workflows, native Claude adaptation and the Interface Design Pack.",
   "author": {
     "name": "ArtemArzi"

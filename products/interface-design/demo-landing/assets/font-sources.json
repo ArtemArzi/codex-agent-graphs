@@ -1,0 +1,38 @@
+[
+  {
+    "file": "oswald.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/Oswald%5Bwght%5D.ttf",
+    "bytes": 172088,
+    "sha256": "5b38c246e255a12f5712d640d56bcced0472466fc68983d2d0410ec0457c2817"
+  },
+  {
+    "file": "oswald-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/OFL.txt",
+    "bytes": 4483,
+    "sha256": "0fd731a904b729a4e02eaf5e8ebd06783edd9abe400e8882760160230675b652"
+  },
+  {
+    "file": "golos-text.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/golostext/GolosText%5Bwght%5D.ttf",
+    "bytes": 184292,
+    "sha256": "17bb58fb69aec2dfb047a2ebf52534023e9b688c97a6b7ac795b0a72912c2063"
+  },
+  {
+    "file": "golos-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/golostext/OFL.txt",
+    "bytes": 4394,
+    "sha256": "ff532f9e8789f09a9fdffc3c0954eedfb0a48be77b2e2eb90f5f82e4f347f50c"
+  },
+  {
+    "file": "unbounded.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/unbounded/Unbounded%5Bwght%5D.ttf",
+    "bytes": 778272,
+    "sha256": "323b511be380c8d474ef030686b71aedde501f8d9cd46da558b7c40454372c3f"
+  },
+  {
+    "file": "unbounded-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/unbounded/OFL.txt",
+    "bytes": 4392,
+    "sha256": "31e5d4e83955e7103c34570dd49b0570ef490800bd65b42923c0dd02445263b3"
+  }
+]

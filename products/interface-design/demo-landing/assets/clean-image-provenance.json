@@ -1,0 +1,10 @@
+{
+  "kind": "generated-original-background-edit",
+  "tool": "built-in image_gen",
+  "generation_id": "exec-9869429b-2bb0-48ce-96c2-04316bb40d2b",
+  "file": "hero-clean.png",
+  "source_image": "hero.png",
+  "fictional_location": true,
+  "prompt": "Edit this exact landscape photograph to create a clean background plate for a website with a separately rendered 3D object. Remove the large orange fabric sail completely. Remove BOTH thin metal poles completely. Remove the lone person completely. Reconstruct the limestone cliffs, clear still lake, pale fog-gray sky and stone foreground naturally in the removed areas. Preserve the existing scene, composition, perspective, rock geometry, water line, natural late-afternoon lighting, colors, detail, grain and panoramic aspect ratio as closely as possible. Do not add anything new. No cloth, no sculpture, no poles, no people, no text, no logos, no signs, no UI. This is a clean photographic landscape layer only, for compositing a moving 3D fabric sculpture later in code.",
+  "sha256": "0f2f905d9e88548b33a40e243b3e4d3900cd1a66bf15705e56d138ae76283f53"
+}
