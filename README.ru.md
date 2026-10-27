@@ -41,7 +41,7 @@
 | --- | --- | --- |
 | **[Маркетинг полного цикла](products/marketing-cycle/README.md)** | 5 навыков: ведение, стратегия, кампания, измерение и клиентский цикл; Россия и существующие владельцы компании | `--skills-only --pack marketing-cycle` |
 | **Инженерные процессы** | Project Start, Research, Task Delivery, Software Factory, Deployment, Product Care и вспомогательные скиллы | Общий установщик; `--skills-only` сохраняет настройки среды |
-| **[Бизнес и автоматизация](products/business-automation/README.md)** | 11 скиллов: бизнес-процесс, проверка гипотез, методы NMT и свежие внешние сигналы | `--skills-only --pack business-automation` |
+| **[Бизнес и автоматизация](products/business-automation/README.md)** | 12 скиллов: подготовка исследования клиентов, бизнес-процесс, проверка гипотез, методы NMT и свежие внешние сигналы | `--skills-only --pack business-automation` |
 | **[Бизнес-модель](products/business-model/README.md)** | Общий business-work и 3 новых скилла: модель, экономика, процесс → продукт; российский рынок по умолчанию | `--skills-only --pack business-model` |
 | **[CRM](products/crm-business-pack/README.md)** | Один скилл со справочниками Bitrix24/amoCRM: проектирование, обмен, запуск и сопровождение | Исходники опубликованы; в установщике пока не зарегистрирован |
 | **[Жизненный цикл агентов](products/agent-lifecycle/README.md)** | 4 скилла: проектирование, память, сквозная проверка результата и коммерческая передача | `--skills-only --pack agent-lifecycle` |

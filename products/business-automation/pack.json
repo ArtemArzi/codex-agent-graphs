@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "business-automation",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "entrypoint": "business-work",
   "managed_skills": [
     "nmt-analyze-interviews",
@@ -14,7 +14,8 @@
     "nmt-update",
     "last30days",
     "business-work",
-    "business-hypothesis-check"
+    "business-hypothesis-check",
+    "customer-research-prep"
   ],
   "reused_capabilities": {
     "management": "existing-general-skills-installer",

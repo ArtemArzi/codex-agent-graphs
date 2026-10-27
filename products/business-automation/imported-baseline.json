@@ -360,6 +360,8 @@
     "skills/business-work/references/installation.json": "Explicit portability, entrypoint or repository-first maintenance integration",
     "skills/business-work/references/krasinsky-method-notes.md": "Explicit portability, entrypoint or repository-first maintenance integration",
     "skills/business-work/references/maintenance.md": "Explicit portability, entrypoint or repository-first maintenance integration",
-    "skills/business-hypothesis-check/references/method.md": "Explicit portability, entrypoint or repository-first maintenance integration"
+    "skills/business-hypothesis-check/references/method.md": "Explicit portability, entrypoint or repository-first maintenance integration",
+    "skills/nmt-chat/SKILL.md": "Local customer-research-prep handoff; preserve upstream canon, contracts, notices and original skill source",
+    "skills/nmt-analyze-interviews/SKILL.md": "Local customer-research-prep handoff; preserve upstream canon, contracts, notices and original skill source"
   }
 }

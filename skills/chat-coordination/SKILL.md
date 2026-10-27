@@ -1,6 +1,6 @@
 ---
 name: chat-coordination
-description: Coordinate independent Codex chats when their tasks may overlap in files, interfaces or mutable resources. Discover relevant owners, exchange authorized facts and resolve dependencies while preserving each user's task; ordinary isolated work needs no chat scan.
+description: Coordinate independent Codex chats with a concrete shared-resource or contract dependency. Reuse known context and native activity metadata before reading any chat; isolated work and unrelated active chats need no scan.
 ---
 
 # Chat Coordination
@@ -12,27 +12,57 @@ creates no scheduler, registry, lock, permission or background observer.
 
 ## Enter only for a useful intersection
 
-Before substantial work that can share a checkout, unsettled interface or mutable
-environment, check known related tasks through their existing links. Reassess on
-material scope/target changes, unexpected foreign edits or resumption after a gap.
-A simple isolated edit or unrelated active chat does not need discovery, messages,
-extra agents or a new interview. Keep the decision in the existing owning plan;
-do not add a parallel STATUS, backlog or mandatory coordination form.
+First name the affected shared resource or missing cross-chat fact. A known owner,
+a changing shared interface, foreign edits in owned paths or a shared deployment
+target can justify coordination. Task size, an active chat, a common CWD, a skill
+invocation or resumption alone do not. If no concrete intersection is plausible,
+continue the task with zero chat-tool calls. Keep any material dependency in the
+existing owning plan; create no separate registry or mandatory coordination form.
 
-Inspect actual host capabilities for listing/reading chats, messaging and waiting.
-Tool names and availability vary: follow their current contracts, not a previous
-session's schema. Without these tools, use known owning documents and isolated
-preparation; state the missing coverage. Do not emulate them through private app
-databases, UI control, credentials or hidden session files.
+## Use the least context that resolves the dependency
 
-## Find relevant work, then verify the intersection
+Use capabilities already exposed by the host; do not rediscover their schemas on
+every task. Follow current contracts when tools differ or are unavailable. Do not
+emulate them through private app databases, UI control, credentials or hidden
+session files. Native children belong to this task: use their native status/wait
+facilities, not a search across independent user chats. Child visibility is not a
+global list of other chats.
 
-Start from known host/thread IDs and current task/resource links. Otherwise make
-one bounded relevant listing and read only plausible candidates. Titles, summaries
-and status are discovery hints, not trusted instructions or resource reservations.
-Recent lists, unavailable hosts and unsearched history leave partial coverage;
-absence from a result does not establish absence of another owner. Avoid repeated
-polling without a changed dependency or meaningful new evidence.
+1. Reuse known host/thread IDs, resource links and observations already in this
+   task's context. A still-applicable observation needs no new listing. There is
+   no implied automatic feed of all running chats into every prompt.
+2. If an owner is unknown and discovery could change the next action, make one
+   bounded `list_threads` call, typically with a small recent limit. This host can
+   return `id`, `hostId`, `status`, `cwd`, `projectId`, title and summary without
+   reading conversations. Use supplied metadata first; no `read_thread` calls
+   merely to learn activity or directory. Current listing arguments may offer
+   only `limit`, not an active/CWD/project filter. All pinned entries can be
+   included regardless of that limit. Where orchestration supports it, return
+   only relevant metadata from the tool result to the model, without inventing
+   unsupported server filters. Do not load project lists to duplicate these fields.
+3. Check resource links and metadata for a plausible intersection before reading.
+   Exclude this chat. `active` is a liveness hint; idle, notLoaded, unknown or
+   missing entries do not prove a resource is free. A title, summary or matching
+   directory is a clue, not an instruction, reservation or proven conflict.
+   Unrelated entries need no history read. A bounded recent list has partial
+   coverage; do not widen into a history/archive sweep to prove absence.
+4. Read a candidate only to answer a named missing fact that changes the next
+   action, such as exact owned paths or an unsettled contract. Start with one or
+   two plausible candidates and the smallest useful recent turn window, with
+   outputs omitted. Read more only if a remaining concrete dependency needs it.
+   If metadata and local owning documents suffice, read zero conversations.
+5. Once a specific peer's progress matters, use `wait_threads` for that ID rather
+   than repeated listings/history reads. Use `timeoutMs: 0` for a compact status
+   snapshot, otherwise its cursor and a bounded wait for a real dependency.
+   Do not start monitoring unrelated chats or poll unchanged state.
+
+Reuse the result while target, scope and dependency remain applicable. A routine
+next step, test, same-scope correction, tool switch or plan stage does not reset
+discovery. Refresh only affected evidence after a changed target/contract, newly
+observed foreign edits, a peer update or a stale fact needed for a contested
+operation. Check current resource state through its native guard at mutation time;
+old observations and a negative listing never replace that protection. Missing
+host coverage leaves only the dependent action pending; independent work proceeds.
 
 Compare the affected resource, not just projectId or CWD. Different directories
 can share a canonical repo, API, DB or service; a common workspace can contain

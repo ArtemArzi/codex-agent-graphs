@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "package_id": "business-automation",
-  "package_version": "1.0.1",
+  "package_version": "1.1.0",
   "baseline_package_version": "1.2",
   "canonical_repository": "https://github.com/ArtemArzi/codex-agent-graphs",
   "canonical_product_path": "products/business-automation",
@@ -27,7 +27,8 @@
     "nmt-update",
     "last30days",
     "business-work",
-    "business-hypothesis-check"
+    "business-hypothesis-check",
+    "customer-research-prep"
   ],
   "installation_scope": "--skills-only --pack business-automation",
   "discovery_layout": "one resolved modern skills root; preserve existing host aliases",
@@ -41,6 +42,7 @@
     "Pilot refinement: nmt-chat overview references include exact canon subdirectories; Krasinsky notes link full findings/cards and timestamped transcript",
     "repository-first version management",
     "business-work process/context/adoption guides",
-    "portable optional source notes"
+    "portable optional source notes",
+    "customer-research-prep: interview/survey preparation, optional project sources and pre-fieldwork handoff"
   ]
 }

@@ -1,14 +1,45 @@
 ---
 name: software-factory
-description: Coordinate optional Codex worktree-based delivery with Task Delivery, choosing ordinary, sequential or parallel work from actual dependencies. Use when the user requests Software Factory or isolated parallel development.
+description: Design a software factory for recurring agent work and coordinate its tasks through Task Delivery. Use for Software Factory requests, remote-agent workflow design, or isolated sequential/parallel development.
 ---
 
 # Software Factory
 
-Preserve installed Task Delivery, Project Start, model routing and user
-authorization. This workflow uses native Codex agents and needs no dashboard.
-Use the available Task Delivery skill; if unavailable, report the missing
-dependency without installing or claiming that its workflow ran.
+Help the user design and operate their own factory, including a gradual move
+from local Codex work to remote execution. Preserve Project Start, Task Delivery,
+model routing and task authorization. A skill describes work; it does not supply
+a remote runner, event listener or scheduler.
+
+## Choose the intent
+
+- **Design:** the user wants to decide how recurring agent work should operate,
+  choose infrastructure or move it remotely. Read [designing-a-factory.md](references/designing-a-factory.md).
+  Produce an actionable design with current capabilities, target behavior and
+  the next bounded implementation slice. Do not start execution merely because
+  a design is complete.
+- **Execute:** the user has a concrete task to perform. Use the execution guidance
+  below and the available Task Delivery skill. Do not require a factory interview
+  for a small task. If Task Delivery is unavailable, report that missing dependency
+  and the work that can still be prepared; do not install it or claim it ran.
+
+These are intents inside one skill, not mandatory lifecycle stages. A request
+to design and implement may use both within its existing authorization. Read
+only references needed for the selected work.
+
+## Execution environment
+
+Local, remote and mixed describe where work runs, independently of whether its
+parts are ordinary, sequential or parallel. For remote/mixed execution, read the
+[remote execution contract](references/designing-a-factory.md#remote-execution-contract)
+and establish the actual runner, capabilities, durable state and authority before
+dispatch. Native child creation runs where that host provides it; a remote URL,
+worktree or MCP connection alone does not create remote agent execution.
+The bundled helper provides local Git/worktree operations only. When remote
+capability is missing, continue authorized design or local preparation, keep
+remote execution pending and state the next concrete step. Do not silently
+substitute local execution for a requested remote run.
+
+## Execute a task
 
 Enter from Task Delivery after decomposition, or on an explicit Factory request.
 Use Project Start's accepted slice dependencies and architecture sections as

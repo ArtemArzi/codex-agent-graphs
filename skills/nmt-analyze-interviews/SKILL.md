@@ -52,10 +52,11 @@ The following integration rules govern conflicting upstream workflow defaults:
 
 ## Where this skill sits
 
-The **post-fieldwork half of the interview loop** — the study design and interview guide *before* the field are a separate (not publicly shipped) product; ask `$nmt-chat` to help you prepare interviews. This skill analyzes the transcripts *after*. Distinct from `$nmt-market-research`, which **invents** segments from web research and reasoning — this skill **reconstructs** segments from *your real interviews* and tells you how far the data can be trusted. Its output feeds `$nmt-craft-value-proposition`, `$nmt-diagnose`, and `$nmt-craft-go-to-market`.
+The **post-fieldwork half of the interview loop**. Before gathering answers, use the local collection's `customer-research-prep` when available, or ask `$nmt-chat` for bounded help. The local preparation procedure is not the separate unpublished research-design product mentioned by upstream. This skill analyzes the transcripts *after*. Distinct from `$nmt-market-research`, which **invents** segments from web research and reasoning — this skill **reconstructs** segments from *your real interviews* and tells you how far the data can be trusted. Its output feeds `$nmt-craft-value-proposition`, `$nmt-diagnose`, and `$nmt-craft-go-to-market`.
 
 | Skill | Input | Answers |
 |---|---|---|
+| `customer-research-prep` (local collection) | business decision, existing sources and collection constraints | participants, interview/survey material and an evidence-to-decision handoff |
 | `nmt-chat` (interview prep) | segment + Job hypothesis | help designing the study before the field |
 | **`nmt-analyze-interviews`** | **the interview files you already have** | **what's in them, the segments by Core Jobs, and whether the data can solve your task** |
 | `nmt-market-research` | an idea / product | market size + GO/NARROW/PIVOT (segments invented from research) |

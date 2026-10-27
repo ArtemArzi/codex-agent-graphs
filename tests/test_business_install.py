@@ -599,7 +599,7 @@ class BusinessInstallTests(unittest.TestCase):
 
     def test_actual_repository_manifest_is_valid_and_legacy_scope_is_unchanged(self):
         pack = business.load_pack(REPO)
-        self.assertEqual(11, len(pack["managed_skills"]))
+        self.assertEqual(12, len(pack["managed_skills"]))
         self.assertFalse(set(pack["managed_skills"]) & set(installer.SKILLS))
         self.assertTrue(set(pack["reused_capabilities"]["skills"]).issubset(installer.SKILLS))
         with mock.patch.object(installer, "SKILLS_ROOT", REPO / "skills"):

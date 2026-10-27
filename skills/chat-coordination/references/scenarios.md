@@ -8,6 +8,16 @@ and production effects separate.
 | Input | Expected decision |
 | --- | --- |
 | Small isolated typo | Edit/read back directly; no chat scan, extra agents or interview |
+| Large isolated implementation, no shared dependency | Zero chat-tool calls; task size alone does not trigger discovery |
+| Native children already assigned | Use child status/wait tools; no independent-chat listing |
+| Listing supplies activity, CWD and project | Use metadata directly; zero history reads for these fields |
+| Active chat in unrelated resource | No history read, message or wait |
+| Known peer and sufficient current facts | No listing or repeated read; continue from the known dependency |
+| Known peer, only progress needed | Compact native wait/status for that ID; no listing loop |
+| Next test or same-scope correction | Reuse applicable discovery; no new scan |
+| Recent listing omits an owner | Partial coverage; no archive sweep or claim that the resource is free |
+| Idle peer owns a shared target | Preserve ownership and use the native resource guard |
+| Concrete ownership fact missing for one candidate | Minimal recent read with outputs omitted; expand only for the unresolved fact |
 | Same CWD, unrelated products | Compare affected object; continue if no material intersection |
 | Different CWD/projectless chats, same canonical repo | Resolve actual source/contract rather than assuming independence |
 | Same checkout/file | Isolate own candidate or agree authorized sequencing |

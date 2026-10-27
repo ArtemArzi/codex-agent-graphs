@@ -48,3 +48,18 @@ The new context/current-process, future-process and adoption/effect guides are
 the local synthesis of the agreed workflow. External skill entrypoints and
 method sources are linked in `business-work/references/sources-and-reuse.md`.
 Their implementations have not been imported by this release.
+
+## Customer research preparation (1.1.0)
+
+`customer-research-prep` is a locally authored preparation procedure and examples,
+not an official upstream NMT skill or an implementation of its unpublished
+research-design product. It refers to the available pinned public NMT canon
+without copying it into another skill. Attributed local NMT entrypoint changes
+only connect the preparation handoff; upstream notices and originals remain.
+
+The author's public interview guides and user-provided course/workshop materials
+informed the methodology questions; full PDFs, OCR, CSV exports and identifiable
+client records are not shipped. Research-design and recruitment decisions are
+our synthesis using existing research guidance, not a claim that the interview
+slides contain a complete study-design course. The source map in the skill
+identifies these boundaries. Existing third-party terms remain unchanged.
