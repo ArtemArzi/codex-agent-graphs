@@ -44,6 +44,12 @@ share the requirement/subject/environment/dependency model. Do not add or run
 every category automatically. Follow project gates even if a generic profile
 looks cheaper. Unknown impact widens investigation, not silent omission.
 
+For a release affecting a critical business flow, use the project's existing
+flow/quality mapping and the relevant
+[critical-business-flows.md](../verification-loop/references/critical-business-flows.md)
+branches for required smoke, compatibility and recovery evidence. This adds no
+new release authority, live purchase or blanket test campaign.
+
 Read [check-placement.md](references/check-placement.md) when preparing or changing
 local/CI execution. A pipeline can run locally, on a chosen runner or across both.
 Choose one authoritative execution for each required check and candidate; share

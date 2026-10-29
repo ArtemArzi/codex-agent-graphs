@@ -14,6 +14,13 @@ description: >-
 
 Apply the inherited “Collaboration and useful questions” policy. Before substantial bootstrap/maintenance, use the project's documentation map and [quality-and-intake.md](references/quality-and-intake.md). Identify missing product boundaries, data ownership, load, recovery and acceptance requirements; maintenance covers only changed areas. Keep one owning project quality document and a short route to it from AGENTS.md. Record unresolved requirements as unknown, not as approved defaults.
 
+Для существенных процессов с состояниями, правами, деньгами, интеграциями или
+восстановлением читай относящиеся разделы
+[critical-business-flows.md](../verification-loop/references/critical-business-flows.md).
+В bootstrap определи правила и владельцев; maintenance обновляет только
+затронутую область. Примеры помогают выбрать решение, но не заменяют
+требования проекта и не запрещают лучше обоснованную альтернативу.
+
 ## Состояние проекта между сессиями
 
 При подготовке пути выпуска используй доступный `deployment`: он продолжает

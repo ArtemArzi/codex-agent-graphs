@@ -13,6 +13,12 @@ outcome. Use this skill to decide what behavior to protect; verification-loop
 can run and report the checks when that skill is available. Neither owns the
 user's whole delivery process or model/delegation policy.
 
+When the affected behavior is part of a critical state, access, purchase,
+integration or recovery flow, read the relevant branches of
+[critical-business-flows.md](../verification-loop/references/critical-business-flows.md).
+Protect the accepted invariant and actual effect. Use an example as a starting
+point; choose a stronger context-specific oracle when justified and verified.
+
 ## Establish the test obligation
 
 Read the relevant requirements, quality policy, affected execution path and

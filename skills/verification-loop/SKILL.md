@@ -54,6 +54,14 @@ if none exists, report meaningful uncovered risks without inventing a percentage
 Not every row applies to every task. The task's test plan should identify which
 checks already exist, which need adding, and when/where deferred checks run.
 
+For an affected consequential state/permission/money/integration/recovery
+flow, read the relevant sections of
+[critical-business-flows.md](references/critical-business-flows.md). Use the
+project contract to select scenarios and evidence boundaries. Consult
+[reference-implementations.md](references/reference-implementations.md) only
+when a concrete example helps a design or testing decision. References are
+advisory; justify and check a better fit without weakening binding requirements.
+
 Before a meaningful refactor of insufficiently protected behavior, or when
 stateful rules need invariant/sequence checks, read
 [legacy-and-invariants.md](references/legacy-and-invariants.md). For shared

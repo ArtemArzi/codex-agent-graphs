@@ -50,6 +50,26 @@ a small representative mutation in an isolated copy. Do not weaken an accepted
 requirement to accommodate the mutation. Report the scenarios protected and
 remaining gaps; a passing baseline is not proof that any refactor is safe.
 
+## Make a discriminating check reproducible
+
+When forcing a failure by mutating code or a fixture, retain the pristine
+candidate and inspect the actual diff before trusting the red. Confirm the
+mutated path ran and failed for the intended behavior, not compilation, an
+unavailable dependency or an unrelated error. Restore the intended candidate
+and recheck; keep the mutation evidence separate from the delivered change.
+
+For important rules choose a bounded sample of plausible faults. A survivor
+can mean a missing case, weak oracle, unexecuted path or equivalent behavior;
+classify it instead of adding meaningless assertions for a target score.
+For generative/stateful failures preserve a minimal failing input/sequence,
+version and all tool-specific replay information. Shrink without changing the
+symptom, and add a readable regression example when useful. A roundtrip alone
+does not prove an external format if encoder and decoder share the same error.
+Use an independent literal/specification/implementation as appropriate.
+
+The relevant [reference catalogue](reference-implementations.md#strong-tests-and-reproducible-failures)
+contains examples and tool limits; it does not require a new dependency.
+
 Independently written guidance informed by Michael Feathers's publisher excerpt
 on [seams](https://www.informit.com/articles/article.aspx?p=359417&seqNum=2).
 Observed behavior and intended correctness remain separate sources of evidence.

@@ -5,6 +5,19 @@
 This guide describes workflow ownership and the optional control layer.
 Current skill instructions and project requirements govern a real task.
 
+## Critical flows and engineering references
+
+[Critical business flows](../skills/verification-loop/references/critical-business-flows.md)
+is the shared conditional guide. Project Start identifies affected actors,
+invariants and owners; Task Delivery selects the changed scenarios; verification
+establishes actual outcomes; deployment retains release/recovery ownership.
+Existing projects enter at the needed stage rather than repeat bootstrap.
+Read only useful branches and [reference examples](../skills/verification-loop/references/reference-implementations.md).
+Project documents own business rules and exact commands. A repo-local skill may
+help repeated preparation/execution without becoming a second specification.
+The managed engineering policy permits a better justified and verified
+alternative to an example while preserving binding contracts and authority.
+
 ## Engineering lifecycle
 
 | Stage | Owner | Evidence or output |

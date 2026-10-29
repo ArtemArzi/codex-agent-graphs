@@ -14,6 +14,15 @@ description: >-
 
 Apply the inherited “Collaboration and useful questions” policy. Before a substantial task, including quick/skill-only, read the project quality document through its documentation map and the applicable sections of [testing-and-review.md](references/testing-and-review.md). Identify the affected requirements, failure modes and acceptance checks; explain meaningful choices briefly. A clear trivial edit needs only known applicable rules and proportionate verification. Keep decisions and evidence in the existing task record; a skill switch does not restart intake.
 
+Когда задача меняет существенную цепочку состояний, права, деньги, внешний
+эффект, повтор или восстановление, прочитай применимые разделы
+[critical-business-flows.md](../verification-loop/references/critical-business-flows.md).
+Используй правила проекта для выбора сценариев и уровня evidence; локальная
+правка не требует нового Project Start или прогона всего каталога. Если
+companion недоступен, используй имеющиеся требования и testing-and-review,
+сохрани точный пробел без автоматической установки. Референс допускает
+лучшее решение с обоснованием и проверкой при сохранении binding contracts.
+
 ## Продолжение задачи и проектная память
 
 Для подготовки/выпуска используй доступный `deployment` по

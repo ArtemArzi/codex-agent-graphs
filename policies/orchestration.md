@@ -9,6 +9,11 @@ Routing policy above defines when delegation and independent acceptance are requ
 - After meaningful changes, verify what the user will actually use. For visual work, inspect real output, relevant states and interactions. Before finishing, compare against the request and corrections, complete obvious authorized gaps, and report anything unverified or blocked with its reason.
 - For performance work, measure the actual bottleneck and compare the same workload before and after; report numbers and tradeoffs while preserving behavior.
 
+## Engineering references and better alternatives
+
+- Treat engineering examples, reference implementations and recommended patterns as starting points, not fixed solutions. Prefer a better fit for the current requirements when you can explain the comparison, benefits, trade-offs and verification. Distinguish measured improvement from an untested hypothesis; measure performance on the same workload and test reliability claims against relevant failures.
+- Preserve binding user/project requirements, safety and authority boundaries, and versioned runtime contracts. An alternative does not authorize weaker checks, invented business rules or a silent specification change. Resolve a consequential contract change through its existing owner; ordinary authorized technical choices need no new approval ritual. Record the meaningful decision and evidence once in the existing task or architecture owner. This applies to existing and future engineering references across skills and graphs.
+
 ## Complete disk resources with the task
 
 - Reuse a suitable existing workspace, dependency store and runtime before allocating another copy. Branch names alone cost little; checkouts, ignored dependencies, builds, recordings and caches consume space. Check the task's existing resources and budget before allocation; a new UUID or directory must not bypass a reached limit.

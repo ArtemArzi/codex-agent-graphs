@@ -9,6 +9,18 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
+## 2026-10-29 - Critical flows and reference-guided engineering
+
+Shared conditional guidance connects Project Start, Task Delivery, verification,
+AI regression and release to actual business invariants and evidence. A pinned
+catalogue records implementation examples and their limits; project documents
+and optional local skills retain concrete rules and commands. Mutation/replay
+guidance and architecture handoffs preserve real-boundary obligations.
+The managed policy explicitly permits better justified, verified alternatives
+to existing or new references, while binding requirements and authority remain.
+Graph/runtime contracts, roles, models and invocation metadata are unchanged.
+[Scope and verification](tasks/TD-CRITICAL-FLOWS/PLAN.md).
+
 ## 2026-10-29 - Fresh subagent context
 
 Engineering dispatch guidance now explicitly starts children with a fresh

@@ -59,7 +59,8 @@
     }
   ],
   "policy_before_sha256": [
-    "72f101f319fb3d737cec25ccb61b73f9bd6d86112d3b05d9f5c4b5ef784e6912"
+    "72f101f319fb3d737cec25ccb61b73f9bd6d86112d3b05d9f5c4b5ef784e6912",
+    "23cbcc7d0ae7839a609ad60c4e4fa6f38f1917cc4c984ed98f9fca63f7e3d71a"
   ],
-  "policy_after_sha256": "bb36da531b77dba00c7e2bd42fff73a92038aa57558939cad6d3b637eae35ec5"
+  "policy_after_sha256": "54ed8a9ea7b813b5efbed288f273eadbeb8fe6ed1258f3497b10c43b2ebe31c8"
 }

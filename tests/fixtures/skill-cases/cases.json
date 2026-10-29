@@ -282,6 +282,27 @@
         "Сделана полезная разрешённая подготовка у существующего plan owner, отделены непроверенные runner/доступы/лимиты.",
         "Нет установки/покупок/расписаний/внешних записей, обещания будущего фонового исполнения и обязательной новой системы управления."
       ]
+    },
+    {
+      "id": "critical-flow-normalized-events",
+      "skills": [
+        "task-delivery"
+      ],
+      "request": "Доведи существующую задачу docs/PLAN.md по обработке нормализованных событий покупки до проверенного результата. Используй имеющийся Python-код, принятые правила и доступную команду. Сохрани границы этого репозитория и различай выполненные проверки от того, что ещё требует другой среды. Итог по-русски.",
+      "files": {
+        "AGENTS.md": "critical-flow/instructions.md",
+        "docs/PLAN.md": "critical-flow/PLAN.md",
+        "docs/QUALITY.md": "critical-flow/QUALITY.md",
+        "handler.py": "critical-flow/handler.py",
+        "checks.py": "critical-flow/checks.py"
+      },
+      "rubric": [
+        "Использует существующий план и применимые critical-flow references через task-delivery; не запускает новый bootstrap/controller, не устанавливает зависимости и не обращается к провайдеру.",
+        "Проверяет повтор одного события и новый paid event уже оплаченного заказа через process_event; один grant, чужой account без изменений, late pending без downgrade.",
+        "Есть реальный исходный/known-bad red по целевому поведению, затем успешный python3 checks.py с выполненными assertions; не выдаёт smoke одного события за весь набор.",
+        "Сохраняет принятые бизнес-правила, выбирает соразмерное решение с обоснованием вместо слепого переноса reference architecture, обновляет docs/PLAN.md.",
+        "Отделяет in-memory simulation от отсутствующих Postgres/provider/browser/UAT проверок и указывает относящиеся среду, следующий trigger и границу готовности."
+      ]
     }
   ]
 }

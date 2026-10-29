@@ -8,7 +8,7 @@ When assessing a candidate for deepening, classify its dependencies. The categor
 
 ### 1. In-process
 
-Pure computation, in-memory state, no I/O. Always deepenable — merge the modules and test through the new interface directly. No adapter needed.
+Pure computation, in-memory state, no I/O. Combining modules can hide real coupling when it preserves the accepted responsibilities; test useful behavior through the resulting interface. An adapter is unnecessary when nothing varies across a seam.
 
 ### 2. Local-substitutable
 
@@ -28,6 +28,16 @@ Third-party services (Stripe, Twilio, etc.) you don't control. The deepened modu
 
 - **One adapter means a hypothetical seam. Two adapters means a real one.** Don't introduce a port unless at least two adapters are justified (typically production + test). A single-adapter seam is just indirection.
 - **Internal seams vs external seams.** A deep module can have internal seams (private to its implementation, used by its own tests) as well as the external seam at its interface. Don't expose internal seams through the interface just because tests use them.
+
+## Preserve real-boundary obligations
+
+A local stand-in, in-memory adapter or mock tests that selected path only.
+Carry applicable real-adapter/target-DB checks, transaction/concurrency
+semantics and external-effect recovery into the implementation handoff; a
+deeper module does not remove those obligations. Use the project contract and
+the relevant [critical-flow guidance](../verification-loop/references/critical-business-flows.md).
+Dependency categories are design references; a better justified shape can be
+chosen without weakening the accepted behavior or its checks.
 
 ## Testing strategy: replace, don't layer
 
