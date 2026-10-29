@@ -41,7 +41,13 @@ Controller compatibility: prefer skill-only/native review for ordinary and simpl
 user-level routing policy; этот skill не переопределяет их. Для substantive
 full/audit результата root владеет решением, интеграцией и reconciliation с
 исходниками, а auxiliary explorer, implementation, synthesis и focused-review
-agents получают свежий bounded context и остаются leaf-only.
+agents получают свежий bounded context и остаются leaf-only. Каждый новый
+субагент начинает с чистой историей; в native Codex явно задавай
+`fork_turns="none"`. Передай конкретную гипотезу или вопрос, наблюдаемый сбой,
+принятые ограничения, пути исходников, область и критерий результата. Агент
+читает эти источники и сообщает о пробелах, не предполагая доступ к истории
+родителя. Исправления своей области возвращай прежнему исполнителю; новая
+независимая работа получает новое задание со свежим контекстом.
 
 Только при глобальном пороге complex engineering / material risk нужны свежий
 `task_plan_reviewer` и другой `improvement_verifier` для всего результата.

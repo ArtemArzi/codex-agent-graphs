@@ -27,6 +27,12 @@ this one interview discipline; do not start nested interviews for each skill.
 
 Find facts in the repository, available tools or relevant primary sources yourself. Delegate a bounded independent investigation only when it repays the handoff; the presence of an unanswered question does not require a subagent.
 
+Start any admitted fact-finding leaf with a fresh context window
+(`fork_turns="none"` in native Codex). Supply the question, relevant settled
+decisions, source paths, exclusions and required evidence. It must read those
+sources and return contradictions or missing context rather than infer answers
+from a parent conversation it does not receive.
+
 Ask the user about material choices that the evidence cannot resolve: intended behavior, ownership, business rules, loss tolerance or scope. Choose routine technical mechanisms and test names yourself. Reuse previous authorization and accepted decisions.
 
 ## Question rounds

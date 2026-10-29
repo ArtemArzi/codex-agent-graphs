@@ -33,6 +33,12 @@ For each worthwhile candidate, connect source evidence to a concrete cost:
 - Would removing a wrapper simplify the whole call path or merely move its
   complexity into every caller? Does combining modules create a new coupling?
 
+If an independent investigation repays delegation under the host policy, start
+the leaf with a fresh context window (`fork_turns="none"` in native Codex).
+Give it the exact question, accepted architecture constraints, source paths
+and revision, exclusions and expected evidence. Require it to read the sources
+and report missing context; it cannot rely on the parent conversation.
+
 Read decisive call paths and tests. Cite files/symbols and distinguish observed
 friction from a hypothesis. Size, line count and a code-smell label alone do not
 establish a defect. Preserve deliberate architecture and compatibility; explain

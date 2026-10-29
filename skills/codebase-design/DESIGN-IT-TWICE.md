@@ -18,7 +18,9 @@ Explain the meaningful choice plainly and continue within the existing authoriza
 
 ### 2. Explore distinct variants
 
-Generate distinct interfaces yourself for a bounded choice. When independent design blocks justify delegation, use the host's native agents, configured roles and limits, normally one or two non-overlapping read-only assignments. Children remain leaves. More variants do not require more agents.
+Generate distinct interfaces yourself for a bounded choice. When independent design blocks justify delegation, use the host's native agents, configured roles and limits, normally one or two non-overlapping read-only assignments. Start each delegated design with a fresh context window; in native Codex set `fork_turns="none"`. Children remain leaves. More variants do not require more agents.
+
+The brief must carry the relevant accepted constraints, source paths and revision, owned scope and comparison criteria. Require the leaf to read those sources and report missing context instead of assuming it sees the parent conversation. Reuse an agent only for corrections to the same assigned design; a different independent design gets a fresh assignment.
 
 Give each variant a technical brief (file paths, coupling details, dependency category from [DEEPENING.md](DEEPENING.md), what sits behind the seam). Choose the constraints that illuminate the actual trade-off:
 

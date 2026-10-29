@@ -9,6 +9,19 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
+## 2026-10-29 - Fresh subagent context
+
+Engineering dispatch guidance now explicitly starts children with a fresh
+conversation (`fork_turns="none"` in native Codex) and carries accepted
+constraints, readable sources, ownership and completion evidence in the brief.
+New independent assignments stay separate; corrections to the same scope
+retain their existing agent/reviewer policy. Authoring guidance applies the
+same contract to future skills. This adapts
+[Matt Pocock #1341](https://github.com/mattpocock/skills/pull/1341) and the
+distinct-job clarification in [#1342](https://github.com/mattpocock/skills/pull/1342).
+Graph schemas, runtime, model routing and invocation metadata are unchanged.
+[Scope and delivery evidence](tasks/TD-SUBAGENT-CONTEXT/PLAN.md).
+
 ## 2026-10-20 - Skill quality
 
 Instruction refinement of seven legacy entries, following a semantic

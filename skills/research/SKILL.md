@@ -42,7 +42,11 @@ effort selection; this skill never hardcodes either. For substantive research,
 the root owns the question, source decisions, final synthesis and
 reconciliation; auxiliary scouts, planners, synthesizers and focused reviewers
 receive fresh bounded context, remain leaf-only and may return bounded
-independent packets.
+independent packets. Start every admitted child with a fresh context window
+(`fork_turns="none"` in native Codex). Its brief carries the exact question,
+relevant accepted constraints, source paths or URLs, known facts and unknowns,
+exclusions and required evidence. Require the child to read those sources and
+report missing context rather than assume access to the parent conversation.
 
 Only when the global complex-engineering/material-risk threshold is met, a fresh
 `task_plan_reviewer` accepts the whole plan and a different `research_verifier`

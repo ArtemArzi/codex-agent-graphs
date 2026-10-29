@@ -109,8 +109,11 @@ Keep required instructions intact while selecting only relevant source excerpts
 and verification details; the context reference explains how to avoid repeated
 bulk reads without dropping inherited requirements.
 
-Prepare creates a branch/worktree and brief; it does not launch an agent. Send
-the exact absolute CWD and brief, require the leaf to read them and the relevant
+Prepare creates a branch/worktree and brief; it does not launch an agent.
+Start every admitted native leaf with a fresh context window and explicitly
+set `fork_turns="none"` in Codex. A new independent job gets a new leaf;
+same-job corrections can return to its existing leaf under the host policy.
+Send the exact absolute CWD and brief, require the leaf to read them and the relevant
 project instructions, test, and commit only owned files. Leaves do not delegate.
 Do not send the entire chat or another agent's private reasoning. Each leaf
 returns its commit, changed files, commands/results, assumptions and remaining
