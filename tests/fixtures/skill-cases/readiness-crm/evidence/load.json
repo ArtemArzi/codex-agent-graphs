@@ -1,0 +1,10 @@
+{
+  "revision": "r2",
+  "kind": "supplied synthetic report",
+  "scheduled_iterations": 1000,
+  "completed_iterations": 100,
+  "dropped_iterations": 900,
+  "duration_seconds": 60,
+  "p95_ms_for_completed": 40,
+  "error_rate_for_completed": 0
+}

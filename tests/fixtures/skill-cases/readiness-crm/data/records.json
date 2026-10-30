@@ -1,0 +1,20 @@
+{
+  "users": {
+    "alice": {
+      "tenant": "alpha"
+    },
+    "bob": {
+      "tenant": "beta"
+    }
+  },
+  "records": {
+    "a1": {
+      "tenant": "alpha",
+      "name": "Alpha draft"
+    },
+    "b1": {
+      "tenant": "beta",
+      "name": "Beta private draft"
+    }
+  }
+}

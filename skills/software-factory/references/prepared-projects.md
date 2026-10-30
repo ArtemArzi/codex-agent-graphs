@@ -72,6 +72,12 @@ instruction does not add either mechanism or change the host's actual limits.
 
 ## Close the whole requested outcome
 
+When the accepted outcome includes application readiness for handoff/release,
+pass the one integrated candidate, QUALITY and original check evidence to the
+available production-audit before claiming readiness. Use its conditional
+profiles; do not audit each leaf independently or add a fixed reviewer chain.
+Missing capability remains an explicit gap, not automatic installation or PASS.
+
 Read back the integrated candidate, applicable acceptance checks and required
 independent review. State what is implemented, what was actually verified, what
 awaits a human/external prerequisite and what has been accepted or released.

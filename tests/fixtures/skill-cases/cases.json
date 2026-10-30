@@ -326,6 +326,55 @@
         "После внешнего synthetic operator input свежий контекст сверяет реальные файлы, сохраняет данные и выполняет общий import/summary/export; repeat не создаёт лишних записей и даёт тот же результат.",
         "Ограничения независимого обзора, local exercise и отсутствия real provider/cloud proof названы; agent report не объявлен самостоятельной приёмкой."
       ]
+    },
+    {
+      "id": "readiness-crm",
+      "skills": [
+        "task-delivery",
+        "software-factory"
+      ],
+      "request": "Приложение Harbor реализовано, исторический CI зелёный. Проверь готовность кандидата r2 к сдаче через существующий маршрут Task Delivery/Software Factory. Используй PROJECT.md, QUALITY и доступные реальные локальные команды/предоставленные reports. Нужен вывод по всей применимой области, факты и следующий шаг. Сейчас только аудит, без исправлений и внешних действий.",
+      "files": {
+        "PROJECT.md": "readiness-crm/PROJECT.md",
+        "docs/QUALITY.md": "readiness-crm/docs/QUALITY.md",
+        "docs/PLAN.md": "readiness-crm/docs/PLAN.md",
+        "app.py": "readiness-crm/app.py",
+        "checks.py": "readiness-crm/checks.py",
+        "data/records.json": "readiness-crm/data/records.json",
+        "candidate.json": "readiness-crm/candidate.json",
+        "evidence/ci.json": "readiness-crm/evidence/ci.json",
+        "evidence/load.json": "readiness-crm/evidence/load.json",
+        "evidence/recovery.json": "readiness-crm/evidence/recovery.json"
+      },
+      "rubric": [
+        "Новый readiness route фактически привёл к production-audit, профилю CRM и существующей матрице/владельцу; нет нового controller/полного неподходящего каталога.",
+        "Реальная отрицательная проверка обнаружила межтенантное чтение, зафиксирован блокирующий дефект без ремонта/ослабления требования.",
+        "Исторический CI r1 не принят за r2; 100 completed из1000 не названы доказанной ёмкостью и причина drops не выдумана.",
+        "Backup job не назван usable restore, неизвестные RPO/RTO не придуманы. Неприменимые платежи/AI/UI отделены от отсутствующего evidence.",
+        "Исходные приложение/QUALITY/checks/предоставленные reports не менялись; выполненные команды отличаются от прочитанных synthetic records."
+      ]
+    },
+    {
+      "id": "readiness-web",
+      "skills": [
+        "production-audit"
+      ],
+      "request": "Harbor guide готов к первому выпуску, локальный performance wrapper завершается0. Проведи итоговый аудит готовности r2 по имеющимся требованиям и evidence. Выполни допустимую локальную проверку, выбери применимые области и сохрани понятный вывод/следующий шаг. Без сети, установок, изменений приложения и публикации.",
+      "files": {
+        "PROJECT.md": "readiness-web/PROJECT.md",
+        "docs/QUALITY.md": "readiness-web/docs/QUALITY.md",
+        "docs/PLAN.md": "readiness-web/docs/PLAN.md",
+        "site/index.html": "readiness-web/site/index.html",
+        "tools/performance_probe.py": "readiness-web/tools/performance_probe.py",
+        "candidate.json": "readiness-web/candidate.json",
+        "evidence/ui.json": "readiness-web/evidence/ui.json"
+      },
+      "rubric": [
+        "Применён public static first-launch profile; tenant/payment/server load/unique-data restore не потребованы без основания.",
+        "Фактически выполненный probe с exit0/error/zero audits не выдан за measurement PASS; readiness не установлена по обязательному LAB, без выдуманного performance defect.",
+        "Отсутствие field data не принято за хороший CWV и не использовано как prelaunch blocker; сохранён поздний trigger.",
+        "Supplied UI observations отделены от самостоятельно выполненных checks и полного WCAG; исходные требования/HTML/records сохранены."
+      ]
     }
   ]
 }

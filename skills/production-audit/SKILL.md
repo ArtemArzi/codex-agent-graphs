@@ -59,7 +59,10 @@ found in the project; explain its practical consequence. Respect an explicit
 no-questions request, record material unknowns and continue independent checks.
 Do not invent load limits, recovery targets or risk acceptance.
 
-For release-level conclusions read [evidence-matrix.md](references/evidence-matrix.md).
+For release-level conclusions read [evidence-matrix.md](references/evidence-matrix.md)
+and [readiness-profiles.md](references/readiness-profiles.md) for product/stage
+selection, actual load, recovery and tool-result interpretation. For a browser
+interface, read [web-measurements.md](references/web-measurements.md).
 Select applicable risks; a static site need not have payment or tenant tests.
 Use permitted local checks and supplied evidence first. Restore drills, load
 traffic, notifications and payment tests can mutate systems or incur costs;
@@ -115,7 +118,9 @@ Use only authorized test identities for credentialed checks.
 
 ### Payments And Webhooks
 
-- Are webhook signatures verified before parsing trusted payload fields?
+- Are notifications authenticated using the provider's current documented
+  mechanism before accepting state, with object ownership/status checked against
+  local expectations? Use a signature where that provider specifies one.
 - Is each payment, subscription, or fulfillment webhook idempotent?
 - Are replay, duplicate delivery, and out-of-order delivery handled?
 - Are test-mode and live-mode credentials separated?

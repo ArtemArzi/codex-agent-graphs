@@ -18,6 +18,19 @@ help repeated preparation/execution without becoming a second specification.
 The managed engineering policy permits a better justified and verified
 alternative to an example while preserving binding contracts and authority.
 
+## Application readiness
+
+For whole-application handoff/release readiness, Task Delivery and Factory route
+the integrated candidate and existing QUALITY/evidence to
+[Production Audit](../skills/production-audit/SKILL.md). Its
+[conditional profiles](../skills/production-audit/references/readiness-profiles.md)
+select checks during implementation, on the candidate and after release.
+[Web measurements](../skills/production-audit/references/web-measurements.md)
+distinguish lab/field performance, accessibility and actual public delivery.
+A required-now defect blocks readiness; absent required evidence leaves it
+unestablished. Deployment retains actual release authority and its native journal.
+Ordinary small changes do not acquire a full application audit or new controller.
+
 ## Engineering lifecycle
 
 | Stage | Owner | Evidence or output |

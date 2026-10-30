@@ -9,6 +9,17 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
+## 2026-10-30 - Conditional application readiness
+
+Production Audit gains product/stage profiles and browser measurement guidance.
+Task Delivery/Factory explicitly route application handoff readiness to it;
+Project Start preserves the existing QUALITY owner. Actual load, usable restore,
+raw tool-result completeness and deferred first-launch field data stay distinct.
+Webhook authenticity follows the provider contract rather than a universal
+signature rule. Two synthetic audit cases exercise real local failures without
+repairs, live scans or deployment. Runtime/graph/model contracts are unchanged.
+[Scope and verification](tasks/TD-RELEASE-READINESS/PLAN.md).
+
 ## 2026-10-30 - Prepared-project execution in Software Factory
 
 The existing execute route now explicitly covers a documented whole project,

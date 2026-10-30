@@ -27,6 +27,11 @@ Statuses:
 - **NOT APPLICABLE:** the requirement does not apply, with a scope-based reason.
   Lack of evidence or access is never a reason for this status.
 
+Apply requirements at their declared stage. A post-launch field measurement
+can remain deferred before first launch; it is not a pre-launch PASS. Inspect raw
+result completeness: exit 0 with an error or no executed required checks is not
+PASS. See [readiness-profiles.md](readiness-profiles.md).
+
 For mixed evidence split the criterion or keep the unresolved portion explicit.
 A missing required check prevents claiming readiness. An unknown requirement
 that could change release acceptance stays unresolved; it does not silently
@@ -41,7 +46,7 @@ recorded owner acceptance; do not manufacture approval or a person's role.
 | Lost or duplicated writes | Stored result, retries/concurrency and transaction behavior | Button success message; happy-path unit test |
 | External delivery | Matching provider receipt and final record in the relevant environment | Mocked API success; request merely sent |
 | Recovery | Restore/rollback rehearsal and observed usable data/service against agreed targets | Backup schedule; recovery document exists |
-| Load | Measured workload, errors, latency and saturation against project targets | Fast local page; invented user-count limit |
+| Load | Requested and actually delivered workload, dropped iterations, errors, latency and saturation against project targets | Fast local page; undelivered target load; invented user-count limit |
 | UI and accessibility | Critical journeys, error/empty/denied states on applicable viewports and assistive checks | Build passes; screenshot of one happy state |
 | Public web delivery | Authorized live URL behavior, indexability/redirects/assets where required | Configuration file exists; assuming private pages need indexing |
 | AI actions and costs | Task outcomes, allowed tools, failure cases and budgets in representative evals | Fluent response; one model run; unmeasured confidence score |

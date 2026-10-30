@@ -25,6 +25,13 @@ companion недоступен, используй имеющиеся требо
 
 ## Продолжение задачи и проектная память
 
+Если результат включает готовность приложения к сдаче/выпуску или явный запрос
+«что пропустили?», используй доступный `production-audit` для общего кандидата
+до объявления готовности. Передай принятый QUALITY, точный subject/environment
+и исходное evidence; это не новый controller или review cycle. Локальная правка
+сохраняет проверки своей области. Если навык недоступен, сохрани точный пробел
+и выполни доступные проверки без вымышленного readiness PASS.
+
 Для подготовки/выпуска используй доступный `deployment` по
 [testing-and-review.md](references/testing-and-review.md): передай native lane,
 exact candidate, project check IDs/subjects/environments/prerequisites, original
