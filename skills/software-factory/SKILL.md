@@ -1,6 +1,6 @@
 ---
 name: software-factory
-description: Design a software factory for recurring agent work and coordinate its tasks through Task Delivery. Use for Software Factory requests, remote-agent workflow design, or isolated sequential/parallel development.
+description: Design a software factory or implement a prepared project through Task Delivery. Use for Software Factory requests, documented system implementation, remote-agent workflow design, or isolated sequential/parallel development.
 ---
 
 # Software Factory
@@ -40,6 +40,12 @@ remote execution pending and state the next concrete step. Do not silently
 substitute local execution for a requested remote run.
 
 ## Execute a task
+
+When the user supplies project documentation and asks to build the system, or
+continues after a human step/interruption, read
+[prepared-projects.md](references/prepared-projects.md). Use the existing execute
+route through the requested accepted scope, with applicable checks and review.
+A prepared project does not require another factory-design interview.
 
 Enter from Task Delivery after decomposition, or on an explicit Factory request.
 Use Project Start's accepted slice dependencies and architecture sections as

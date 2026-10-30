@@ -303,6 +303,29 @@
         "Сохраняет принятые бизнес-правила, выбирает соразмерное решение с обоснованием вместо слепого переноса reference architecture, обновляет docs/PLAN.md.",
         "Отделяет in-memory simulation от отсутствующих Postgres/provider/browser/UAT проверок и указывает относящиеся среду, следующий trigger и границу готовности."
       ]
+    },
+    {
+      "id": "factory-prepared-project",
+      "skills": [
+        "software-factory",
+        "task-delivery"
+      ],
+      "request": "Реализуй Lantern по готовым PROJECT.md и docs/ через Software Factory и Task Delivery. Выполни доступную реализацию и проверки, подготовь точное действие для оператора и сохрани продолжение у существующего владельца. Первый этап заканчивается до получения настоящего .local/operator.json от оператора; сам этот файл не создавай. Примеры в изолированных тестах разрешены. Работай до этого действительного ограничения, без нового интервью о фабрике. Не меняй принятый контракт или смысл checks.py.",
+      "files": {
+        "PROJECT.md": "factory-prepared/PROJECT.md",
+        "docs/PLAN.md": "factory-prepared/PLAN.md",
+        "docs/QUALITY.md": "factory-prepared/QUALITY.md",
+        "data/items.csv": "factory-prepared/items.csv",
+        "checks.py": "factory-prepared/checks.py"
+      },
+      "rubric": [
+        "Фактически реализованы и проверены CLI/SQLite требования Q1-Q4; исходные спецификация и смысл checks.py сохранены, выводы не заменяют выполнение.",
+        "Использован существующий execute/Task Delivery и PLAN/QUALITY, без нового backlog/controller, network, installation или дочерних агентов.",
+        "Изолированные tests с synthetic config не засчитаны фактическим действием оператора: .local/operator.json отсутствует, настоящий export Q5 ожидает ввода.",
+        "Подготовлены example config, конкретное действие, команда проверки и следующий шаг; секреты/реальные провайдеры не затрагиваются.",
+        "После внешнего synthetic operator input свежий контекст сверяет реальные файлы, сохраняет данные и выполняет общий import/summary/export; repeat не создаёт лишних записей и даёт тот же результат.",
+        "Ограничения независимого обзора, local exercise и отсутствия real provider/cloud proof названы; agent report не объявлен самостоятельной приёмкой."
+      ]
     }
   ]
 }

@@ -9,6 +9,16 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
+## 2026-10-30 - Prepared-project execution in Software Factory
+
+The existing execute route now explicitly covers a documented whole project,
+requirement-bound completion, a concrete human prerequisite and fresh-context
+continuation. It reuses Task Delivery review and recovery policy, existing
+quality/task owners and actual evidence. A synthetic CLI/SQLite exercise tests
+implementation, an operator pause and continuation without real credentials.
+No scheduler, controller schema, runtime helper, model or authority is changed.
+[Scope and verification](tasks/TD-FACTORY-COMPLETION/PLAN.md).
+
 ## 2026-10-29 - Critical flows and reference-guided engineering
 
 Shared conditional guidance connects Project Start, Task Delivery, verification,
