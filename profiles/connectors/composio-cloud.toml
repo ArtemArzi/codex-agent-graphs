@@ -1,0 +1,11 @@
+# Cloud-only candidate. Merge into the supported MCP host configuration.
+# Supply this consumer key through Cloud Personal vault; never store its value here.
+[mcp_servers.composio_cloud]
+url = "https://connect.composio.dev/mcp"
+env_http_headers = { "x-consumer-api-key" = "COMPOSIO_CONSUMER_KEY" }
+enabled = true
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+default_tools_approval_mode = "prompt"
+enabled_tools = ["COMPOSIO_SEARCH_TOOLS", "COMPOSIO_GET_TOOL_SCHEMAS"]
