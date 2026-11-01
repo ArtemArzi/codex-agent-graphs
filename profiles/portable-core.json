@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "skill_roots": [{"path": "../skills"}],
+  "include_native_skill_creator": true,
+  "requirements": [{"name": "python", "minimum": "3.12"}]
+}

@@ -2,6 +2,10 @@
 
 [Repository](../README.md) · [Русский README](../README.ru.md) · [Documentation map](README.md)
 
+For a self-contained personal skills/context bundle in a separate Linux/WSL
+Codex home, use the [portable kit guide](PORTABLE-KIT.ru.md). Its source capture,
+immutable releases and rollback are separate from updating an existing host below.
+
 Use the installer from a reviewed checkout. **Choose the scope before running
 `install`**: the default engineering set, a selected product pack, host routing,
 and full host setup are different operations.

@@ -13,6 +13,7 @@ contents; current `skills/`, `policies/` and project instructions own execution.
 | Document | Read it when / когда читать |
 | --- | --- |
 | [Installation and updates](INSTALLATION.md) | Installing one pack, targeting CLI/Desktop, preserving settings, updating or using Claude Code |
+| [Portable personal kit, RU](PORTABLE-KIT.ru.md) | Active skills and context, isolated installation, updates and rollback |
 | [Workflow guide](WORKFLOWS.md) | Choosing stage owners, understanding optional graphs, review, routing and artifact lifecycle |
 | [Critical business flows](../skills/verification-loop/references/critical-business-flows.md) and [reference catalogue](../skills/verification-loop/references/reference-implementations.md) | Selecting relevant invariants, failure/abuse scenarios and examples across preparation, delivery and verification |
 | [Matt companions](MATT_POCOCK_COMPANIONS_2026-10-02.md) | Product interviews, domain decisions, architecture surveys and integration with Project Start/Task Delivery |

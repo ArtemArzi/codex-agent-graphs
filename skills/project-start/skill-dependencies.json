@@ -1,5 +1,12 @@
 {
   "schema_version": 1,
+  "required_skills": [
+    {
+      "name": "task-delivery",
+      "phase": "project-helper-runtime",
+      "reason": "Project helpers import the sibling Task Delivery inventory and runtime modules."
+    }
+  ],
   "optional_skills": [
     {
       "name": "chat-coordination",

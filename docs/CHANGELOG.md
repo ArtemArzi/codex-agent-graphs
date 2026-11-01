@@ -9,6 +9,12 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
+## 2026-11-01 - Portable personal skills kit
+
+- Added native enabled-skill capture and standalone stdlib bundle export with required dependency closure, nested resources, canonical roles/policies and selected private knowledge.
+- Added isolated Linux/WSL installation, verified updates, rollback, explicit old-release retirement and stable native system/mutable home data.
+- Added source/update guidance and filesystem regression checks. MCP setup and actual Cloud environment execution remain separate.
+
 ## 2026-10-30 - Conditional application readiness
 
 Production Audit gains product/stage profiles and browser measurement guidance.

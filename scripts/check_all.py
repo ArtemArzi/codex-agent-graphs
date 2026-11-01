@@ -40,6 +40,10 @@ def run(command: list[str]) -> None:
 
 def main() -> int:
     scripts = [
+        ROOT / "scripts" / "portable_kit.py",
+        ROOT / "scripts" / "portable_bundle.py",
+        ROOT / "scripts" / "portable_install.py",
+        ROOT / "scripts" / "portable_sources.py",
         ROOT / "scripts" / "install.py",
         ROOT / "scripts" / "business_pack.py",
         ROOT / "scripts" / "check_all.py",
