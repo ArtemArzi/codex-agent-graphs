@@ -57,6 +57,7 @@ SKILLS = (
     "continuous-improvement",
     "development-recovery",
     "project-start",
+    "cloud-project-copy",
     "research",
     "task-delivery",
     "chat-coordination",

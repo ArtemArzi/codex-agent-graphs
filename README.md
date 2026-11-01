@@ -23,6 +23,7 @@ distribution. An independent community project.
 | Your task | Start with | What you get |
 | --- | --- | --- |
 | Lead a business marketing cycle in Russia | [`$marketing-work`](products/marketing-cycle/README.md) | Research, strategy, campaigns, sales handoff, fulfilled orders, lifecycle and evidence-based decisions |
+| Prepare a project copy in Codex Cloud | [`$cloud-project-copy`](skills/cloud-project-copy/SKILL.md) | Guided setup that reuses connections, checks the full skill bundle and verifies a new Cloud task |
 | Prepare a new or inherited codebase | [`$project-start`](skills/project-start/SKILL.md) | Project context, architecture, engineering guidance and a usable plan |
 | Build, fix or release software | [`$task-delivery`](skills/task-delivery/SKILL.md) | A scoped change, appropriate tests, review and handoff; [`$deployment`](skills/deployment/SKILL.md) owns release |
 | Understand and improve a business process | [`$business-work`](products/business-automation/README.md) | Current work, a chosen improvement, a future process and checks for adoption |

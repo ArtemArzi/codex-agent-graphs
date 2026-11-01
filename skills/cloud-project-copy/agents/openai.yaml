@@ -1,0 +1,6 @@
+interface:
+  display_name: "Копия проекта в Codex Cloud"
+  short_description: "Подготовить Cloud-копию и пройти настройку по шагам"
+  default_prompt: "Используй $cloud-project-copy: подготовь копию этого проекта в Codex Cloud и проведи меня через недостающие шаги, переиспользуя рабочие подключения."
+policy:
+  allow_implicit_invocation: true
