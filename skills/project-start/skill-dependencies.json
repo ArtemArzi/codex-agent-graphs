@@ -12,6 +12,16 @@
       "name": "chat-coordination",
       "phase": "cross-chat-intersection",
       "reason": "Map actual shared contract/resource owners without creating a second state registry; no shared resource means no coordination prerequisite."
+    },
+    {
+      "name": "docs-governance",
+      "phase": "knowledge-maintenance",
+      "reason": "Audit existing document roles, links and evidence without a second project registry."
+    },
+    {
+      "name": "context-and-decisions",
+      "phase": "domain-ambiguity",
+      "reason": "Clarify recurring domain ambiguity within the existing glossary and decision owners."
     }
   ]
 }

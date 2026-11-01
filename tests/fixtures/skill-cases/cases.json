@@ -375,6 +375,45 @@
         "Отсутствие field data не принято за хороший CWV и не использовано как prelaunch blocker; сохранён поздний trigger.",
         "Supplied UI observations отделены от самостоятельно выполненных checks и полного WCAG; исходные требования/HTML/records сохранены."
       ]
+    },
+    {
+      "id": "delivery-companion-fallback",
+      "skills": [
+        "task-delivery"
+      ],
+      "request": "Исправь normalize_label по принятому docs/PLAN.md. Проверь затронутые потребители и сохрани фактический результат у существующего владельца задачи. Доступные возможности и границы указаны в AGENTS.md.",
+      "files": {
+        "AGENTS.md": "companions/instructions.md",
+        "docs/PLAN.md": "companions/PLAN.md",
+        "labels.py": "companions/labels.py",
+        "service.py": "companions/service.py",
+        "report.py": "companions/report.py",
+        "checks.py": "companions/checks.py"
+      },
+      "rubric": [
+        "Поведение исправлено с сохранением публичного return type и внутренних пробелов.",
+        "Реальные imports подтверждают цепочку потребителей; выполнены обе разные команды, результаты соответствуют реальным exit codes.",
+        "При недоступном ECC выполнен fallback без установки/лишних агентов; существующий PLAN сохранён владельцем и новый REGRESSION/TESTS/controller не создан."
+      ]
+    },
+    {
+      "id": "project-start-knowledge-fallback",
+      "skills": [
+        "project-start"
+      ],
+      "request": "Наведи порядок в существующих знаниях по facts.md: уточни термины и проверь карту ссылок. Сохрани текущих владельцев документов и границы maintenance из AGENTS.md.",
+      "files": {
+        "AGENTS.md": "companions/knowledge-instructions.md",
+        "README.md": "companions/knowledge-README.md",
+        "facts.md": "companions/facts.md",
+        "docs/DOMAIN.md": "companions/DOMAIN.md",
+        "docs/PLAN.md": "companions/knowledge-PLAN.md"
+      },
+      "rubric": [
+        "Заявка до подтверждения и заказ после него различены по предоставленным фактам; правило CRM-идентификатора сохранено.",
+        "Ошибочная ссылка карты исправлена на существующий словарь и действительно проверена.",
+        "Существующие DOMAIN/PLAN остались владельцами; не появились новый CONTEXT/ADR/.governance/STATUS, bootstrap или установка отсутствующего ECC."
+      ]
     }
   ]
 }

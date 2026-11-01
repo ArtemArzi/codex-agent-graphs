@@ -5,6 +5,26 @@
       "name": "chat-coordination",
       "phase": "cross-chat-intersection",
       "reason": "Relevant independent tasks may share contracts or mutable resources, including quick and resumed work; native fallback remains available."
+    },
+    {
+      "name": "change-impact",
+      "phase": "before-after-impact",
+      "reason": "Map actual consumers before a cross-module change and reconcile the implemented diff."
+    },
+    {
+      "name": "module-regression",
+      "phase": "downstream-verification",
+      "reason": "Run affected module and consumer commands when real dependencies justify it."
+    },
+    {
+      "name": "test-collaboration",
+      "phase": "verification-gaps",
+      "reason": "Link requirements, defects and contracts to the existing test owner and executable evidence."
+    },
+    {
+      "name": "skill-host-compat",
+      "phase": "ecc-skill-portability",
+      "reason": "Lint ECC skill projections using their matching ECC validator; CAG retains its own checks."
     }
   ]
 }

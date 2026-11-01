@@ -9,6 +9,15 @@ they do not establish installation, deployment or adoption.
 В репозитории отдельные версии паков и контрактов графов. Единой версии всего
 набора пока нет. Публикация исходников не подтверждает установку или внедрение.
 
+## 2026-11-01: Conditional ECC companions
+
+Task Delivery can select change-impact, module-regression, test-collaboration and
+ECC-specific skill-host-compat for relevant changes. Project Start can select
+docs-governance and context-and-decisions while preserving existing document and
+domain owners. Dependencies remain optional; core installations work without ECC.
+Existing commands, review policy, graph schemas, roles and host settings retain
+their contracts. Availability and real execution are verified separately.
+
 ## 2026-11-01 - Portable personal skills kit
 
 - Added native enabled-skill capture and standalone stdlib bundle export with required dependency closure, nested resources, canonical roles/policies and selected private knowledge.
