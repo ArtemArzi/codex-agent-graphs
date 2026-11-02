@@ -56,6 +56,7 @@ def main() -> int:
         ROOT / "skills" / "project-start" / "scripts" / "project_start.py",
         ROOT / "skills" / "project-start" / "scripts" / "project_maintenance.py",
         ROOT / "skills" / "task-delivery" / "scripts" / "task_graph.py",
+        ROOT / "skills" / "marketing-work" / "scripts" / "marketing_graph.py",
         ROOT / "skills" / "deployment" / "scripts" / "deployment.py",
     ]
     for script in scripts:
@@ -315,7 +316,7 @@ def main() -> int:
     if (ROOT / "skills" / "codebase-discovery").exists():
         raise RuntimeError("Large-codebase discovery must reuse existing roles instead of adding a skill")
     graph_validator = ROOT / "skills" / "agent-graph-builder" / "scripts" / "graph_contract.py"
-    for skill in ("continuous-improvement", "project-start", "research", "task-delivery"):
+    for skill in ("continuous-improvement", "project-start", "research", "task-delivery", "marketing-work"):
         command = [
             sys.executable,
             str(graph_validator),
@@ -342,6 +343,7 @@ def main() -> int:
     run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"])
     run([sys.executable, "-m", "unittest", "discover", "-s", "skills/deployment/scripts", "-p", "test_*.py", "-v"])
     run([sys.executable, "-m", "unittest", "skills/research/scripts/test_research_graph.py", "-v"])
+    run([sys.executable, "-m", "unittest", "skills/marketing-work/scripts/test_marketing_graph.py", "-v"])
     run([sys.executable, "-m", "unittest", "skills/agent-graph-builder/scripts/test_graph_contract.py", "-v"])
     run([sys.executable, "-m", "unittest", "skills/continuous-improvement/scripts/test_continuous_improvement_graph.py", "-v"])
     run([sys.executable, "skills/project-start/scripts/test_project_start.py"])

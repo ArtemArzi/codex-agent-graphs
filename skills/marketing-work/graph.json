@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "graph_id": "marketing-work",
+  "graph_version": "1.0.0",
+  "default_mode": "marketing",
+  "limits": {"max_node_retries": 1, "max_verification_repairs": 1, "max_parallel_agents": 2},
+  "work_policy": {
+    "schema_version": 2,
+    "fast_path": "root-only",
+    "capability_discovery": "need-based",
+    "agent_admission": "independent-work-only",
+    "review_admission": "risk-or-uncertainty-only",
+    "progress_updates": "state-change-only",
+    "documentation_followup": "impact-gated",
+    "explicit_user_override": "bounded",
+    "budgets": {"max_agent_starts": null, "max_review_starts": 2, "max_repair_cycles": 1, "max_no_new_evidence_iterations": 2, "max_artifacts_per_work_unit": 3},
+    "loop_guards": {"duplicate_agent_scope": "forbidden", "same_scope_retry": "new-evidence-required", "repair_start": "first-false-assumption-required", "no_new_evidence": "stop-at-budget"}
+  },
+  "execution_policy": {
+    "schema_version": 1,
+    "default_tier": "skill-only",
+    "tiers": {"skill-only": {"controller": false, "verification": "self"}, "tracked": {"controller": true, "verification": "conditional"}, "verified": {"controller": true, "verification": "required"}},
+    "admission": {"controller": "resumability-or-durable-evidence", "verification": "risk-or-uncertainty"}
+  },
+  "control_plane_policy": {
+    "schema_version": 1,
+    "task_priority": "domain-first",
+    "controller_role": "checkpoint-and-completion-boundary",
+    "protocol_failure": "degrade-control-not-task",
+    "max_protocol_repairs_before_degrade": 1,
+    "human_interrupt": "authority-semantic-or-high-risk-only",
+    "project_context_before_controller_detail": true,
+    "multiple_unfinished_tasks": "independent-per-task",
+    "verified_completion_requires_healthy_control": true
+  },
+  "optional_agents": ["block_reviewer"],
+  "mcp_policy": {
+    "discovery": "when-relevant", "relevant_use": "required",
+    "receipt_prefix": "mcp:", "fallback_prefix": "mcp:fallback:", "not_applicable_prefix": "mcp:not-applicable:",
+    "selection_order": ["provider-specific-mcp", "context7-for-library-docs", "research-or-service-mcp", "native-web-or-browser"]
+  },
+  "routes": {
+    "marketing": {
+      "entry": "work", "terminal": "complete",
+      "nodes": {
+        "work": {"role": "root", "artifact": "work-N.json", "on_success": "complete", "on_verify": "verify"},
+        "verify": {"role": "block_reviewer", "artifact": "verification-N.json", "on_success": "complete", "on_rejected": "work"},
+        "complete": {"role": "root", "artifact": "FINAL.json"}
+      }
+    }
+  }
+}

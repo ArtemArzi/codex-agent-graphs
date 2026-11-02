@@ -38,6 +38,7 @@ MANAGED_ROOTS = {
     ),
     PurePosixPath(".agent-graphs/project-start-runs"): ("project-start", "run"),
     PurePosixPath(".agent-graphs/research-runs"): ("research", "run"),
+    PurePosixPath(".agent-graphs/marketing-work-runs"): ("marketing-work", "run"),
     PurePosixPath(".agent-graphs/task-delivery-runs"): ("task-delivery", "run"),
     PurePosixPath(".codex/task-delivery"): ("task-delivery-task-state", "task-state"),
 }

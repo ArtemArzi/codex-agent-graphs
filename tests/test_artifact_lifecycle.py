@@ -155,6 +155,32 @@ class ArtifactLifecycleTests(unittest.TestCase):
         second = lifecycle.compact(self.root, run)
         self.assertTrue(second["data"]["idempotent"])
 
+    def test_marketing_run_holds_active_state_and_preserves_canonical_output(self) -> None:
+        parent = self.root / ".agent-graphs/marketing-work-runs"
+        output = self.root / "campaign/funnel.md"
+        output.parent.mkdir(parents=True)
+        output.write_text("# Marketing design, not a live campaign\n")
+        foreign = self.root / "foreign-evidence.txt"
+        foreign.write_text("keep foreign evidence\n")
+        for status in ("running", "completed"):
+            run = parent / status
+            self.write_json(run / "state.json", {
+                "schema_version": 1, "graph_id": "marketing-work", "run_id": status,
+                "root": str(self.root), "status": status, "output": str(output),
+                "updated_at": lifecycle.iso(self.completed_at),
+            })
+        before = (parent / "running/state.json").read_bytes()
+        records = {Path(item["run"]).name: item for item in lifecycle.inventory(self.root)["data"]["runs"]}
+        self.assertEqual(records["running"]["hold_reason"], "running")
+        with self.assertRaises(lifecycle.ArtifactError):
+            lifecycle.compact(self.root, parent / "running")
+        result = lifecycle.compact(self.root, parent / "completed")["data"]["final"]
+        self.assertEqual(result["graph_id"], "marketing-work")
+        self.assertEqual(result["canonical_outputs"][0]["path"], "campaign/funnel.md")
+        self.assertEqual(before, (parent / "running/state.json").read_bytes())
+        self.assertEqual(foreign.read_text(), "keep foreign evidence\n")
+        self.assertEqual(output.read_text(), "# Marketing design, not a live campaign\n")
+
     def test_active_blocked_and_awaiting_implementation_are_refused(self) -> None:
         for identifier, status in (("active", "running"), ("blocked", "blocked"), ("retired", "retired")):
             with self.subTest(status=status):
