@@ -43,6 +43,10 @@ existing comments outside the assigned change.
 
 <!-- PROJECT-START:REQUIRED Map behavior changes to unit, integration and E2E reuse/update/add decisions and identify expensive final gates. -->
 
+## Development toolchain and resources
+
+<!-- PROJECT-START:REQUIRED Record the selected runner, exact version/config owners and noninteractive setup. Default to mise for a new or adopted development repo, or explain the existing equivalent/constraint. Match checks to the actual stack; preserve working tools. Record commands, side effects, shared-resource locks, storage ownership/budget and actual setup proof or pending prerequisites. Follow references/development-tooling.md through the installed Project Start skill; do not copy the catalogue here. -->
+
 ## Quality commands
 
 <!-- PROJECT-START:REQUIRED Give exact formatter, linter, type-checker, structural, unit, integration and E2E commands with their working directories. Do not restate rules already fully enforced by those tools. -->
