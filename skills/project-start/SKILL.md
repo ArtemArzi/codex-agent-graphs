@@ -173,7 +173,7 @@ python3 scripts/project_graph.py ready --run <run-dir>
 При bootstrap/adoption и maintenance затронутых технических решений читай по задаче:
 
 - выбор зависимости, native extension или генерации: [готовые решения](references/reusable-solutions.md);
-- setup tools/команд: [среда и проверки](references/development-tooling.md), mise default;
+- setup tools/команд, очередь и lifecycle ресурсов: [общий маршрут](references/development-tooling.md), mise default;
 - изменение границы/API/данных или check: [проверяемые контракты](references/contract-checks.md).
 
 Результат: обоснованный выбор и actual config/команды с доказательством в разрешённом

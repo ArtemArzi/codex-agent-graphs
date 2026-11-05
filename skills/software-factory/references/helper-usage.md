@@ -10,7 +10,7 @@ checkout is dirty, preserve it and use an authorized clean clone/base. Keep the
 workspace outside the repository, with separate job ownership for exact files.
 
 ```sh
-python3 "$HELPER" prepare --repo /absolute/clean-repo   --base experiment/task-base --workspace /absolute/workspace   --job summary --owns src/summary.py --owns tests/test_summary.py   --objective 'Implement the accepted summary contract' --context /absolute/summary.md
+python3 "$HELPER" prepare --repo /absolute/clean-repo   --base experiment/task-base --workspace /absolute/workspace   --job summary --owns src/summary.py --owns tests/test_summary.py   --objective 'Implement the accepted summary contract' --context /absolute/summary.md   --authority TASK-ID --lifecycle ephemeral --owner summary-writer
 python3 "$HELPER" status --workspace /absolute/workspace
 python3 "$HELPER" verify --workspace /absolute/workspace --timeout 180 --   python3 /absolute/run_combined_checks.py
 ```
@@ -46,6 +46,19 @@ fresh. Freshness is not approval, permissions enforcement or runtime isolation.
 The helper never installs skills, merges source/main, pushes or deploys. Locks
 serialize helper calls only; they do not prove an external writer has stopped.
 Changing the baseline requires a new workspace rather than reusing stale verification.
+
+For new task-owned disposable copies, use the ephemeral declaration in the
+example within existing task authority. Keep needed delivery/recovery candidates
+until their owning handoff completes; the CLI default retain remains compatible
+with old callers. Before reporting completion, use the managed closure below
+for every eligible job and integration copy; record retained paths/reasons.
+
+Plan closure before moving the bound source/base. Once the accepted candidate
+and required outputs are available through anchored branch/commit and evidence
+outside the checkout, close disposable copies and use that ref for authorized
+integration. Keep a path still needed by its consumer. If source/base already
+moved, the existing guard retains the copy; report that exact unfinished closure,
+never rewrite its baseline or ownership to make removal pass.
 
 ## Managed storage and completion
 

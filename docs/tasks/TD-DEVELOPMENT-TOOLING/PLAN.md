@@ -56,3 +56,29 @@ check_all and two bounded forward scenarios must show choices and executable
 positive/negative proof. Update exact installed files with native transactional
 publication and preserve unrelated manifests. Different whole-result acceptance
 covers this delta before local commit. No source push or deployment is implied.
+
+## Resource refinement: queue, reuse and task closure
+
+User approved a queue for heavy work and rejected new blanket quotas. Reuse
+native mise task.lock and existing storage/lifecycle owners. This is a bounded
+refinement of the accepted outcome: existing guidance/routes/templates and a
+project guide, no new runtime deletion engine, scheduler, schema, global host
+setting or historical-resource removal. Use one auxiliary block_reviewer for
+the completed result; earlier whole acceptance remains valid for unchanged scope.
+
+Baseline be4cb857ced2624c5faac871adeb6d5d9b45e1ea. Expand the existing resource
+section and compact PS/TD pointers; retain existing resource owners and main Deployment/Product Care.
+Factory gets a bounded quickstart/closure clarification for its existing native
+ephemeral lifecycle; helper scripts, CLI defaults and ownership guards are unchanged. Project profile covers common named-lock
+scope, reuse before allocation and native closure after readback/writer join on
+success/error/cooperative cancellation; preserve foreign/resumable/release state.
+No universal 30GB reserve, CPU/RAM/disk cap or worker quota is introduced.
+Existing native safety/admission contracts remain binding.
+
+Validate cross-project native lock contention, visible wait and exit propagation;
+exercise owned scratch success/error/cancellation with retained foreign sentinel
+and evidence. Configuration/scenario/installation are distinct claims. Run native
+skill checks, exact local links and check_all; activate only exact reviewed source
+files with existing transactional installation and unrelated-drift preservation.
+The current local application profile already has two heavy tasks with the same
+lock; preserve running services and unavailable target Python. No push/deployment.

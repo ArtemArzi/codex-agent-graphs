@@ -153,7 +153,10 @@ tracked TD/PS needs its own end-to-end validation.
 
 Use the helper's storage lifecycle for new task-owned disposable workspaces:
 prepare with the task authority, owner token and explicit `--lifecycle ephemeral`;
-record these in the existing task. Default `retain` preserves legacy callers.
+record these in the existing task. Choose this lifecycle for new disposable
+task copies within existing authority; default `retain` preserves legacy callers.
+Completion includes closing eligible copies after result/evidence readback and
+writer join; report exact retained paths/reasons for unfinished closure.
 Join every writer before `verify --writers-joined` or finishing a resource.
 Repeated unchanged verification reuses its candidate and runs a fresh check;
 at capacity inspect `storage` and its retained reasons instead of allocating

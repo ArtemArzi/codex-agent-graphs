@@ -58,3 +58,38 @@ unions and prior drift are preserved. Resource/client/runtime work is deferred.
 Real generator, database, hosted CI and production were not exercised; the
 method requires project-appropriate execution within actual authority.
 Phase1 evidence and its separate application setup gap remain unchanged.
+
+## Queue and resource lifecycle accepted, 6 November 2026
+
+The user retained a queue and rejected new blanket quotas. The existing resource
+reference now defines native named-lock queue scope, reuse before allocation and
+task-owned native closure after result/evidence readback and writer join. PS/TD
+entrypoints and existing ENGINEERING/QUALITY templates route this without a new
+skill/controller/schema. Existing native admission and storage guards remain.
+
+Factory's new disposable-copy quickstart now declares ephemeral lifecycle and
+completion includes eligible copy closure. CLI retain/legacy defaults and runtime
+code are unchanged. Accepted refs/outputs/evidence allow removing unnecessary
+checkouts before the bound source/base moves; a path still needed by its consumer
+is retained. Existing source/ownership guards are never rewritten to allow removal.
+Branches/commits and external evidence survive native checkout removal.
+
+Verification: check_all passed, including existing Factory reuse/close/foreign/
+ignored/interruption tests; native quick_validate passed PS/TD/Factory. Real mise
+synthetic tests across two projects proved visible wait, exit7, cooperative cancel,
+timeout and lock release after crash. Owned temporary scratch success/error/cancel,
+foreign sentinel and result/evidence retention passed; crash scratch required
+explicit reconciliation. Test process groups and owned fixture were closed after
+evidence readback. Prior unchanged same-lock nested-call proof remains valid.
+
+Seven exact skill files were activated in each WSL/Desktop home with native
+transactional backup/readback and unrelated installed-manifest union preservation;
+one subsequent ordering clarification used the same native transaction. Independent
+block_reviewer resource_lifecycle_review accepted source, activation and the targeted
+clarification. The local application guide/profile was updated and DOC passed via
+explicit host SOURCE override; missing target Python and full target check stay open.
+
+No old host/project copies, Docker resources, service data, global host quotas or
+new runtime/dependency stores were changed. Fixture reuse is not proof of real
+dependency-store reuse or universal cleanup. No Windows/WSL cross-lock, push or
+deployment is claimed. Private detailed evidence remains with its existing owner.

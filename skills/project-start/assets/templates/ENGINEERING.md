@@ -47,7 +47,7 @@ existing comments outside the assigned change.
 
 ## Development toolchain and resources
 
-<!-- PROJECT-START:REQUIRED Record the selected runner, exact version/config owners and noninteractive setup. Default to mise for a new or adopted development repo, or explain the existing equivalent/constraint. Match checks to the actual stack; preserve working tools. Record commands, side effects, shared-resource locks, storage ownership/budget and actual setup proof or pending prerequisites. Follow references/development-tooling.md through the installed Project Start skill; do not copy the catalogue here. -->
+<!-- PROJECT-START:REQUIRED Record the selected runner, exact version/config owners and noninteractive setup. Default to mise for a new or adopted development repo, or explain the existing equivalent/constraint. Match checks to the actual stack; preserve working tools. Record commands, side effects, heavy-task queue/lock scope, reusable environments/stores and resource owners. Define task-owned temporary closure after result/evidence readback and writer join on success, failure and cooperative cancellation; reconcile crash state on resume. Add no blanket CPU/RAM/disk quotas; preserve existing native admission/guards and shared/release data. Record actual proof or pending prerequisites. Follow references/development-tooling.md through the installed Project Start skill; do not copy the catalogue here. -->
 
 ## Quality commands
 
