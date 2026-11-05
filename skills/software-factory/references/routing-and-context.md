@@ -3,6 +3,12 @@
 Read before delegating through Software Factory. Keep the decision and results in
 the existing task record; do not introduce a mandatory graph or ceremony.
 
+Для новых dependency/generator решений используй принятый
+[выбор реализации](../../project-start/references/reusable-solutions.md);
+при изменении shared API/schema/boundary передай [контрактные проверки](../../project-start/references/contract-checks.md)
+в job и combined candidate. Dependency lock/schema/generated output имеют одного
+писателя; готовый выбор не исследуется заново каждым worker.
+
 ## Check independence
 
 | Observed condition | Route or adjustment |

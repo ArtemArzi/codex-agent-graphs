@@ -5,6 +5,12 @@ Separate a requirement, existence of a test and an observed run. Preserve native
 full suites and financial/security/migration gates. A profile cannot authorize
 skipping required work. Test labels are descriptive, not a fixed enum.
 
+When dependencies, generated outputs, module/API/data contracts change, use the
+accepted [implementation choice](../../project-start/references/reusable-solutions.md)
+and [contract checks](../../project-start/references/contract-checks.md) for the exact candidate.
+Preserve native release gates and original baseline evidence. Release does not
+restart tool selection or authorize a new install, DB probe or migration.
+
 Carry forward requirement references from the existing plan/quality/handoff and
 link them to applicable release checks, actual evidence and unresolved gaps.
 Reconcile both directions: each required release criterion has sufficient evidence

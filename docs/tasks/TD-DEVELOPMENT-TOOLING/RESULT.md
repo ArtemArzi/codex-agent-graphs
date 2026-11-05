@@ -37,3 +37,24 @@ Docker audit/cleanup, new dependency stores or global project migration.
 The common workflow and installed references are ready for new/adopted projects.
 Each application still needs its own authorized setup, applicable tools and
 executed evidence. Configuration alone does not prove tool activation or CI.
+
+## Phase 2 accepted
+
+Delta accepted: PHASE2-RESULT-20261105-B82F4D19, baseline9605dde.
+Reuse/generation and executable architecture/API/database constraints are
+conditionally routed across the engineering cycle. Main Project Start grew
+by2lines/111bytes, Task Delivery by3/480; Factory/Deployment/Product Care main
+entrypoints did not change. Two focused references are64/66lines, read by need.
+No new skills, graph/schema or mandatory agent chain.
+
+Native validation passed for5skills; required check_all passed. Fresh bounded
+new/existing project cases reused a public platform hook and native checkers,
+with5/4tests and deliberate category/import/field/type violations. Original
+platform/checker/baseline bytes were preserved. Synthetic Project Start runs
+remain degraded and are not claimed verified complete.
+
+All20exact installed files in WSL/Desktop match source; unrelated manifest
+unions and prior drift are preserved. Resource/client/runtime work is deferred.
+Real generator, database, hosted CI and production were not exercised; the
+method requires project-appropriate execution within actual authority.
+Phase1 evidence and its separate application setup gap remain unchanged.

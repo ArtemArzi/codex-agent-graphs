@@ -62,7 +62,7 @@
 | JSON/YAML/TOML schemas | check-jsonschema либо имеющийся validator | Когда полезная схема действительно закрывает пробел; локальные pinned schemas |
 | Секреты, уязвимости, updates | Работающий scanner; Betterleaks, OSV-Scanner, Renovate как кандидаты | По публикуемым данным/зависимостям/платформе; без live credentials validation по умолчанию |
 | Особое правило кода | ast-grep или stack-native checker | Конкретное нарушение с положительным и отрицательным fixture |
-| API/БД/архитектура | oasdiff, schemalens, stack-specific tools, easement | Наличие соответствующего контракта и реального непокрытого риска |
+| API/БД/архитектура | oasdiff, schemalens, stack-specific tools, easement | Нужный контракт/риск и [исполняемая проверка](contract-checks.md), с сохранением достаточного native checker |
 
 Таблица служит маршрутом, не вечным рейтингом и не списком установки.
 Актуальные альтернативы, ограничения и rationale бери из официальных страниц

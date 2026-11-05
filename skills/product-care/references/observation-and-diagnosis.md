@@ -24,6 +24,13 @@ Backup existence/freshness is distinct from verified restore. A restore drill,
 new instrumentation, provider retry, or alert configuration is separate work
 through its owner and applicable authorization.
 
+When a concrete signal concerns duplicated custom machinery, an unsupported
+library, generated-code drift or a recurring boundary/API/schema violation,
+use [implementation choices](../../project-start/references/reusable-solutions.md)
+or [contract checks](../../project-start/references/contract-checks.md) for that gap.
+Return a bounded change to Task Delivery and affected document maintenance to
+Project Start; diagnosis alone does not install tools or run DB operations.
+
 ## Validate the observation
 
 Check event meaning and collection changes, partial periods, comparable cohorts,

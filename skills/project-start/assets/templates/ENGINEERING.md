@@ -18,6 +18,8 @@
 
 ## Framework patterns and anti-patterns
 
+<!-- PROJECT-START:REQUIRED For a new or changed implementation choice, name the native/library/generator/custom decision and reason, supported extension seam and relevant verification. If code is generated, identify the authoritative input, generator/version, command/outputs and freshness proof. Keep existing sufficient choices; do not duplicate the global catalogue. -->
+
 <!-- PROJECT-START:REQUIRED List only project-relevant native patterns and the AI-prone mistakes that existing tools cannot fully prevent. -->
 
 ## Code shape and growth

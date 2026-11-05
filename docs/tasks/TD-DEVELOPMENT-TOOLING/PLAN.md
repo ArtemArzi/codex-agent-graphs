@@ -37,3 +37,22 @@ source checks with a host interpreter does not prove target-runtime readiness.
 Disposable setup resources have an owner, budget and native closure after
 readback. A single official mise binary may use a 256 MiB installation budget;
 reuse existing runtimes/dependencies rather than allocating new stores.
+
+## Phase 2: reuse, additional checks and contract enforcement
+
+User now prioritizes these directions before further resource work and asks
+that Project Start remain compact. Baseline9605dde0398cd0e31caaacb0001a227f07dfd966.
+Delta plan accepted: PHASE2-PLAN-20261105-6D39. Prior mise/resource acceptance
+remains valid; current scope introduces no resource/client/runtime operations.
+
+Two conditional references own reuse/generation and executable architecture/API/
+DB checks. PS/TD get small task-specific pointers; existing references carry
+Factory, Deployment and Product Care handoff. Those main entrypoints are unchanged.
+Existing ENGINEERING/QUALITY sections own choices, commands, conditions and proof.
+No new skill, automatic chain, graph/schema, fixed tool roster or blanket audit.
+
+Validate native skills, reference reachability and context-size delta; one final
+check_all and two bounded forward scenarios must show choices and executable
+positive/negative proof. Update exact installed files with native transactional
+publication and preserve unrelated manifests. Different whole-result acceptance
+covers this delta before local commit. No source push or deployment is implied.
