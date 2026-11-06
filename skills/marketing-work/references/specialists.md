@@ -7,6 +7,7 @@
 | Исследование рынка и альтернатив | market-research / research / deep-research; NMT market-research при выбранном методе | Проверенные источники, рынок/выборка, факты и неизвестное для решения |
 | Реальные клиентские интервью | nmt-analyze-interviews или Marketing Skills customer-research | Эпизоды/цитаты с происхождением, мотивы как интерпретации, противоречия |
 | Предложение и GTM | NMT value-proposition/go-to-market; Marketing Skills product-marketing/offers | Связь сегмента, альтернатив, ценности, доказательства и условий |
+| Восприятие ценности, сравнение и опасения | [buyer-perception](buyer-perception.md), Marketing Skills marketing-psychology; offers/pricing по вопросу | Наблюдение отдельно от мотива-гипотезы, применимая альтернатива, изменение и способ проверки |
 | SEO, контент и видимость | seo, content-strategy, местные редакционные навыки, Marketing Skills | Исследованный спрос, материал и путь читателя; позиции не объявляются продажами |
 | Сайт, тексты, CRO, дизайн | website-standards + местный сайт; copywriting/copy-editing/cro и доступный design skill | Фактическая страница/актив, нужные состояния, экспорт и проверка |
 | SMM, PR, авторы, партнёры, события, локальные карточки | Местные навыки и выбранные Marketing Skills guides | Бриф/материал/размещение в рамках прав, стоимость, передача и наблюдение |
