@@ -1,6 +1,6 @@
 ---
 name: marketing-work
-description: Lead or diagnose a company's marketing cycle for the Russian market, connecting research, strategy, campaigns, sales handoff, fulfilled orders and learning. Use for a marketing plan, growth problem or ongoing marketing responsibility; send narrow copy or channel tasks directly to their specialist.
+description: Lead or diagnose a company's marketing cycle for the Russian market, connecting research, strategy, campaigns, sales handoff, fulfilled orders and learning. Use for a marketing plan, growth problem, ongoing marketing or a review of competitor pricing and packaging that informs the offer. Send narrow copy or channel tasks directly to their specialist.
 ---
 
 # Вести маркетинг компании
@@ -14,6 +14,8 @@ description: Lead or diagnose a company's marketing cycle for the Russian market
 Если нужен заголовок, редактирование или готовый узкий расчёт, выполни его с подходящим специалистом. Не начинай заново исследование, стратегию и интервью. Сохраняй решения и уже полученные права при переходе между навыками. При запросе «без вопросов» подготовь доступную часть, назови существенные допущения; неизвестный бюджет или обещание не становятся согласованными.
 
 Для постоянной работы найди существующую стратегию, эксперимент, контент-карточку или task. Продолжай их. Не создавай отдельные marketing-plans, progress, CRM, очередь или scheduler. При Company Work System прочитай [совместимость с компанией](references/company-integration.md); обычному проекту этот адаптер не нужен.
+
+Для запроса об изменениях цен или состава тарифов конкурентов начни с [повторного сравнения тарифов](references/research-methods.md#сравнить-тарифы-при-повторном-обзоре). Используй прежний обзор и свяжи изменения с ближайшим решением о нашем предложении.
 
 Если работа начинается с нуля или владелец просит помочь понять первые шаги, прочитай [первый рабочий разговор](references/first-session.md). Сначала покажи, что уже известно, затем выбери понятные вопросы по реальным пробелам и подготовь короткую карточку начала. Термины, выбор каналов и методику берёт на себя агент; владельцу нужны решения о своём бизнесе. Этот вход не повторяется для уточнения той же задачи.
 

@@ -1,6 +1,6 @@
 ---
 name: business-work
-description: Diagnose and improve a business or operational process, or route opportunity discovery, business-model design, delivery economics and process productization through the appropriate installed skills. Preserve existing company context, implementation owners and evidence boundaries.
+description: Diagnose or improve a business process, choose what goes into its first rollout, and check the proposed work with affected roles. Route opportunity discovery, business-model design, delivery economics and process productization through the appropriate installed skills. Preserve existing company context, implementation owners and evidence boundaries.
 ---
 
 # Разбор и улучшение бизнеса
@@ -20,7 +20,7 @@ description: Diagnose and improve a business or operational process, or route op
 | Нужно подготовить интервью, самостоятельную анкету или следующую встречу с клиентом | `customer-research-prep`: решение, недостающие сведения, отбор, готовые вопросы и способ разбора; используй уже известный контекст |
 | Клиент начинает с рассказа; процесс не описан или описания расходятся | [Сбор контекста и текущий процесс](references/context-and-current.md) |
 | Есть жалоба, инцидент или запрос «автоматизировать всё» | Разбери реальные эпизоды и возможные причины по тому же руководству; из общей карты выдели ограниченный участок |
-| Текущий участок понятен; нужно выбрать улучшение и описать будущую работу | [Будущий процесс и выбор изменения](references/future-process.md) |
+| Текущий участок понятен и нужно выбрать улучшение, определить состав первого выпуска или проверить будущий порядок с участниками | [Будущий процесс и выбор изменения](references/future-process.md) |
 | Изменение обосновано и нужна реализация | Передай требования в существующий цикл разработки/настройки; сохрани связь с бизнес-целью и затем используй [внедрение и результат](references/adoption-and-effect.md) |
 | Решение готово, сотрудники обходят его или эффект неясен | [Внедрение с людьми и проверка результата](references/adoption-and-effect.md) |
 | Нужны источники, готовые компоненты или внешние методы | [Повторное использование и основания](references/sources-and-reuse.md); исследуй только неизвестное, влияющее на выбор |

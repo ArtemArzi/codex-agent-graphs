@@ -58,6 +58,13 @@ Collect:
 - distribution and pricing clues
 - strengths, weaknesses, and positioning gaps
 
+For a repeat comparison of competitor prices or plan contents, start with the
+existing dated review. If `marketing-work` is available, follow its section
+«Сравнить тарифы при повторном обзоре» in `references/research-methods.md`.
+Otherwise compare dated terms for the same market and billing period, identify
+what changed, and explain which decision it affects. When older terms are
+unavailable, use the verified current terms as a baseline for the next review.
+
 ### Market Sizing
 Use:
 - top-down estimates from reports or public datasets
