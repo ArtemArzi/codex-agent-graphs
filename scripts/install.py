@@ -240,9 +240,19 @@ def config_with_block(original: str) -> str:
         except tomllib.TOMLDecodeError as exc:
             raise InstallError(f"Adopted managed config would be invalid TOML: {exc}") from exc
         return adopted
+    # Desktop may serialize the same registered roles without our comment markers.
+    # Adopt graph-role tables only when their public description and relative path match.
+    remaining_entries = tomllib.loads(without_managed).get("agents", {})
+    equivalent = {
+        role for role, description in role_descriptions().items()
+        if isinstance(entry := remaining_entries.get(role), dict)
+        and entry.get("description") == description
+        and entry.get("config_file") in (f"./agents/{role}.toml", f"agents/{role}.toml")
+        and not set(entry) - {"description", "config_file", "nickname_candidates"}
+    }
     try:
         without_managed, _ = routing.adopt_native_registrations(
-            without_managed, NATIVE_ROLES | set(routing.load_policy().get("retired_roles", {})))
+            without_managed, equivalent | NATIVE_ROLES | set(routing.load_policy().get("retired_roles", {})))
     except ValueError as exc:
         raise InstallError(str(exc)) from exc
     remaining = tomllib.loads(without_managed)
@@ -656,7 +666,32 @@ def validate_install_parents(codex_home: Path) -> None:
             raise InstallError(f"Unsafe install parent: {parent}")
 
 
-def validate_routing_environment(codex_home: Path) -> None:
+def isolated_glm_profile(profile: Path, overlay: dict[str, Any]) -> bool:
+    """Only the independently configured OpenRouter profile owns these role files."""
+    if (profile.name != "far-glm.config.toml" or overlay.get("model_provider") != "openrouter"
+            or overlay.get("model") != "z-ai/glm-5.3-flash"):
+        return False
+    agents = overlay.get("agents", {})
+    if not isinstance(agents, dict) or agents.get("default_subagent_model") != overlay["model"]:
+        return False
+    private = profile.parent / "profiles" / "far-glm"
+    if private.resolve() != private:
+        return False
+    for role in routing.load_policy()["roles"]:
+        if not isinstance(agents.get(role), dict):
+            return False
+    for entry in agents.values():
+        if not isinstance(entry, dict):
+            continue
+        file = Path(entry.get("config_file", ""))
+        if not file.resolve().is_relative_to(private) or not file.is_file():
+            return False
+        if tomllib.loads(file.read_text(encoding="utf-8")).get("model") != overlay["model"]:
+            return False
+    return True
+
+
+def validate_routing_environment(codex_home: Path, *, routing_only: bool = False) -> None:
     validate_install_parents(codex_home)
     for role, retirement in routing.load_policy().get("retired_roles", {}).items():
         path = codex_home / "agents" / f"{role}.toml"
@@ -674,7 +709,33 @@ def validate_routing_environment(codex_home: Path) -> None:
         except (OSError, ValueError) as exc:
             raise InstallError(f"Cannot inspect unmanaged profile: {profile}") from exc
         if routing.has_routing_override(overlay):
+            if routing_only and isolated_glm_profile(profile, overlay):
+                continue
             raise InstallError(f"Unmanaged profile contains routing overrides: {profile}")
+
+
+ROUTING_BASELINE = "model-routing.applied.sha256"
+
+
+def routing_baseline(home: Path) -> str | None:
+    target = home / ROUTING_BASELINE
+    if target.is_symlink() or (target.exists() and not target.is_file()):
+        raise InstallError(f"Invalid routing baseline: {target}")
+    if not target.exists():
+        return None
+    value = target.read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"[0-9a-f]{64}", value):
+        raise InstallError(f"Invalid routing baseline digest: {target}")
+    return value
+
+
+def record_verified_routing(home: Path, backup: Path, previous: str | None) -> None:
+    # Both entrypoints call this only after normal post-install verification.
+    desired = sha256_file(routing.POLICY_PATH)
+    if sha256_file(home / routing.POLICY_TARGET) != desired or routing_baseline(home) != previous:
+        raise InstallError("Concurrent routing policy or baseline change")
+    if previous != desired:
+        replace_generated(desired + "\n", home / ROUTING_BASELINE, backup / ROUTING_BASELINE)
 
 
 def routing_only_candidates(
@@ -682,7 +743,7 @@ def routing_only_candidates(
 ) -> dict[Path, str]:
     """Render only model-routing surfaces; preserve root choices and all skills."""
     codex_home = codex_home.expanduser().resolve()
-    validate_routing_environment(codex_home)
+    validate_routing_environment(codex_home, routing_only=True)
     desired = routing.load_policy()
 
     def read_installed(relative: Path) -> str:
@@ -702,10 +763,21 @@ def routing_only_candidates(
     prior_model = installed.get("auxiliary", {}).get("model")
     current_model = desired["auxiliary"]["model"]
     expected_prior = {**desired, "auxiliary": {**desired["auxiliary"], "model": prior_model}}
-    if not isinstance(prior_model, str) or installed != expected_prior:
+    recorded = routing_baseline(codex_home)
+    installed_digest = hashlib.sha256(installed_text.encode()).hexdigest()
+    known = json.loads((routing.POLICY_PATH.parent / "routing-preimages.json").read_text(encoding="utf-8"))
+    if not isinstance(prior_model, str):
+        raise InstallError("Missing prior auxiliary model")
+    compatible_models = (current_model, "gpt-6.1-sol", "gpt-5.6-sol", "gpt-6-sol")
+    legacy_policy = installed_text.replace(
+        f'[auxiliary]\nmodel = "{prior_model}"', '[auxiliary]\nmodel = "gpt-6.1-sol"', 1
+    )
+    known_legacy = prior_model in compatible_models and (
+        installed == expected_prior
+        or hashlib.sha256(legacy_policy.encode()).hexdigest() in known["legacy_sol61"]
+    )
+    if installed_digest != recorded and installed_digest not in known["exact"] and not known_legacy:
         raise InstallError("Installed routing policy has unrelated drift")
-    if prior_model not in (current_model, "gpt-5.6-sol", "gpt-6-sol"):
-        raise InstallError(f"Unexpected prior auxiliary model: {prior_model}")
 
     candidates: dict[Path, str] = {}
     descriptions = role_descriptions()
@@ -715,14 +787,7 @@ def routing_only_candidates(
         if target.is_symlink() or not target.is_file():
             raise InstallError(f"Missing or unsafe installed role: {target}")
         rendered = routing.render_agent(role, description)
-        if desired["roles"][role]["class"] == "auxiliary":
-            new_line = f"model = {json.dumps(current_model)}"
-            old_line = f"model = {json.dumps(prior_model)}"
-            if rendered.count(new_line) != 1:
-                raise InstallError(f"Ambiguous generated model for {role}")
-            previous = rendered.replace(new_line, old_line, 1)
-        else:
-            previous = rendered
+        previous = routing.render_agent(role, description, installed)
         if read_installed(relative) not in (previous, rendered):
             raise InstallError(f"Installed role has unrelated drift: {target}")
         candidates[relative] = rendered
@@ -739,7 +804,7 @@ def routing_only_candidates(
     if len(matches) != 1:
         raise InstallError("Missing or duplicate model-routing AGENTS.md block")
     rendered_block = f"{routing.POLICY_START}\n{routing.render_policy()}{routing.POLICY_END}\n"
-    previous_block = f"{routing.POLICY_START}\n{routing.render_policy(expected_prior)}{routing.POLICY_END}\n"
+    previous_block = f"{routing.POLICY_START}\n{routing.render_policy(installed)}{routing.POLICY_END}\n"
     existing_block = matches[0].group()
     if existing_block not in (previous_block, rendered_block):
         raise InstallError("Global model-routing block has unrelated drift")
@@ -759,26 +824,34 @@ def routing_only_candidates(
     for role, description in descriptions.items():
         entry = agents.get(role)
         if (not isinstance(entry, dict)
-                or entry.get("config_file") != f"./agents/{role}.toml"
+                or entry.get("config_file") not in (f"./agents/{role}.toml", f"agents/{role}.toml")
                 or entry.get("description") != description
                 or set(entry) - {"config_file", "description", "nickname_candidates"}):
             raise InstallError(f"Managed role registration has unrelated drift: {role}")
     if agents.get("default_subagent_model") not in (prior_model, current_model):
         raise InstallError("Unexpected default_subagent_model")
-    if agents.get("default_subagent_reasoning_effort") != desired["auxiliary"]["effort"]:
+    if agents.get("default_subagent_reasoning_effort") not in (installed["auxiliary"]["effort"], desired["auxiliary"]["effort"]):
         raise InstallError("Unexpected default_subagent_reasoning_effort")
     hint = parsed.get("features", {}).get("multi_agent_v2", {}).get("usage_hint_text")
     new_hint = routing.usage_hint()
-    old_hint = new_hint.replace(current_model, prior_model, 1)
+    old_hint = routing.usage_hint(installed)
     if hint not in (old_hint, new_hint):
         raise InstallError("Existing subagent usage hint has unrelated drift")
-    updated_config = routing.rewrite_fields(original_config, ("agents",), {
-        "default_subagent_model": current_model,
-        "default_subagent_reasoning_effort": desired["auxiliary"]["effort"],
-    })
-    updated_config = routing.rewrite_fields(
-        updated_config, ("features", "multi_agent_v2"), {"usage_hint_text": new_hint}
-    )
+    updated_config = original_config
+    if agents["default_subagent_model"] != current_model:
+        updated_config = routing.rewrite_fields(
+            updated_config, ("agents",), {"default_subagent_model": current_model}
+        )
+    if agents["default_subagent_reasoning_effort"] != desired["auxiliary"]["effort"]:
+        updated_config = routing.rewrite_fields(
+            updated_config, ("agents",), {"default_subagent_reasoning_effort": desired["auxiliary"]["effort"]}
+        )
+    if hint != new_hint:
+        updated_config = routing.rewrite_fields(
+            updated_config, ("features", "multi_agent_v2"), {"usage_hint_text": new_hint}
+        )
+    if parsed.get("model") in routing.LEGACY_ROOT_MODELS:
+        updated_config = routing.rewrite_fields(updated_config, (), routing.root_settings(parsed, desired))
     candidates[Path("config.toml")] = updated_config
     return candidates
 
@@ -811,6 +884,7 @@ def verify_routing_environment(codex_home: Path) -> dict[str, Any]:
 
 def install_routing_environment(codex_home: Path) -> dict[str, Any]:
     codex_home = codex_home.expanduser().resolve()
+    previous_baseline = routing_baseline(codex_home)
     preimages: dict[Path, str] = {}
     candidates = routing_only_candidates(codex_home, preimages=preimages)
     if set(preimages) != set(candidates):
@@ -835,8 +909,9 @@ def install_routing_environment(codex_home: Path) -> dict[str, Any]:
         verification = verify_routing_environment(codex_home)
         if verification["status"] != "ok":
             raise InstallError(f"Routing verification failed: {verification['issues']}")
+        record_verified_routing(codex_home, backup, previous_baseline)
         return {"codex_home": str(codex_home), "changes": changes,
-                "backup": str(backup) if touched else None}
+                "backup": str(backup) if backup.exists() else None}
     except (InstallError, OSError, ValueError) as exc:
         conflicts = []
         for target, before, content in reversed(touched):
@@ -903,6 +978,7 @@ def retire_agents(codex_home: Path, backup: Path) -> list[dict[str, str]]:
 
 def install_environment(codex_home: Path) -> dict[str, Any]:
     codex_home = codex_home.expanduser().resolve()
+    previous_baseline = routing_baseline(codex_home)
     original, candidate, agents_original, agents_candidate = preflight_environment(codex_home)
     config = codex_home / "config.toml"
     agents_file = codex_home / "AGENTS.md"
@@ -968,7 +1044,8 @@ def install_environment(codex_home: Path) -> dict[str, Any]:
         verification = verify_environment(codex_home)
         if verification["status"] != "ok":
             raise InstallError(f"Post-install verification failed for {codex_home}: {verification['issues']}")
-        backup_used = any(change["status"] in ("installed", "retired") for change in changes) and backup.exists()
+        record_verified_routing(codex_home, backup, previous_baseline)
+        backup_used = backup.exists()
         return {
             "codex_home": str(codex_home),
             "changes": changes,
@@ -1126,7 +1203,7 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("action", choices=("plan", "install", "verify"))
     command.add_argument("--all", action="store_true", help="Target both WSL and Desktop")
     scopes = command.add_mutually_exclusive_group()
-    scopes.add_argument("--routing-only", action="store_true", help="Update model routing without skills or root model changes")
+    scopes.add_argument("--routing-only", action="store_true", help="Upgrade managed model families while preserving skills and manual root effort")
     scopes.add_argument("--skills-only", action="store_true", help="Update maintained skills/runtime only; preserve profiles, models, config, roles, policies and credentials")
     scopes.add_argument("--storage-only", action="store_true", help="Apply only reviewed disk lifecycle file changes and the orchestration block")
     command.add_argument("--pack", choices=("business-automation", "agent-lifecycle", "business-model", "marketing-cycle", "interface-design"), help="Select one shared skill pack (requires --skills-only)")

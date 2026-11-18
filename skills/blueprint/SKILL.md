@@ -7,7 +7,7 @@ description: >-
   Includes adversarial review gate, dependency graph, parallel step
   detection, anti-pattern catalog, and plan mutation protocol.
   TRIGGER when: user requests a plan, blueprint, or roadmap for a
-  complex multi-PR task, or describes work that needs multiple sessions.
+  complex engineering task or work spanning multiple sessions.
   DO NOT TRIGGER for a small bounded task that already has a sufficient
   accepted plan; use the existing implementation workflow instead.
 metadata:
@@ -27,7 +27,7 @@ Choose parallel work only when independent scopes repay handoff cost.
 
 ## When to Use
 
-- Breaking a large feature into multiple PRs with clear dependency order
+- Breaking a large feature into reviewable steps with clear dependency order
 - Planning a refactor or migration that spans multiple sessions
 - Coordinating parallel workstreams across sub-agents
 - Any task where context loss between sessions would cause rework
@@ -38,13 +38,26 @@ Use the existing implementation workflow for a small bounded task with a suffici
 
 Blueprint runs a 5-phase pipeline:
 
-1. **Research** — Pre-flight checks (git, gh auth, remote, default branch), then reads project structure, existing plans, and memory files to gather context.
-2. **Design** — Breaks the objective into one-PR-sized steps (3–12 typical). Assigns dependency edges, parallel/serial ordering, configured host role where delegation is warranted, and rollback strategy per step.
+1. **Research** — Read project instructions, structure, existing plans and accepted decisions. Identify the project’s source-control and review procedure where it affects the plan.
+2. **Design** — Break the objective into reviewable steps (3–12 typical). Assigns dependency edges, parallel/serial ordering, configured host role where delegation is warranted, and rollback strategy per step.
 3. **Draft** - Updates the existing owning plan. Create a new plan at the project-prescribed location only when no owner exists. Each step includes the context, work, verification and exit criteria needed to resume it.
 4. **Review** — Uses proportionate independent review under host policy (bounded reviewer for ordinary plans; whole-plan acceptor for complex engineering or material risk) against a checklist and anti-pattern catalog. Fixes all critical findings before finalizing.
 5. **Register** — Saves the plan in its existing project owner, updates memory only if the user explicitly requests it, and presents the step count and parallelism summary to the user.
 
-Blueprint detects git/gh availability automatically. With git + GitHub CLI, it generates full branch/PR/CI workflow plans. Without them, it switches to direct mode (edit-in-place, no branches).
+## Project delivery tools
+
+Keep branch, review and CI steps aligned with the project's own procedure.
+Use its local instructions and configuration first. A plan can specify a
+GitLab merge request, GitHub pull request or local review without checking
+provider authentication. Record unresolved delivery details as prerequisites
+for the future step that needs them.
+
+Use Git read-only when local history or repository configuration is needed to
+ground the plan. Check a provider's availability and authentication only when
+the next explicitly authorized action uses it. For example, use a supported
+GitLab client for a GitLab action, and `gh` or the active GitHub connector when
+the authorized GitHub action calls for it. Opening review requests, creating
+branches, pushing and changing CI are separate from saving a plan.
 
 ## Examples
 
@@ -73,7 +86,7 @@ Produces a plan with parallel steps where possible (e.g., "implement Anthropic p
 
 - **Cold-start execution** — Every step includes a self-contained context brief. No prior context needed.
 - **Adversarial review gate** — Reviews follow the host's task-size and risk threshold, using its configured roles against a checklist covering completeness, dependency correctness, and anti-pattern detection.
-- **Branch/PR/CI workflow** — Built into every step. Degrades gracefully to direct mode when git/gh is absent.
+- **Delivery checkpoints** — Describe branch, review and CI work where a step needs it, following the project procedure.
 - **Parallel step detection** — Dependency graph identifies steps with no shared files or output dependencies.
 - **Plan mutation protocol** — Steps can be split, inserted, skipped, reordered, or abandoned with formal protocols and audit trail.
 - **Instruction-only planning** - This entrypoint describes a plan; it does not execute the planned migration or release. Inspect the actual target repository and its runtime risks. The containing skill repository may include scripts, hooks or other executable components.
@@ -106,7 +119,7 @@ If you are vendoring only this skill outside the full ECC install, copy the revi
 ## Requirements
 
 - A host that can load this skill: `$blueprint` in Codex or the supported skill invocation in Claude Code. Slash-command examples are illustrative; use the actual host catalog.
-- Git + GitHub CLI (optional — enables full branch/PR/CI workflow; Blueprint detects absence and auto-switches to direct mode)
+- Project delivery instructions where applicable. Planning has no provider CLI or login prerequisite.
 
 ## Source
 

@@ -31,6 +31,8 @@ def load_policy(path: Path | None = None) -> dict[str, Any]:
             raise ValueError(f"Invalid routing class: {kind}")
         if data[kind]["effort"] not in (ROOT_EFFORTS if kind == "root" else ROLE_EFFORTS):
             raise ValueError(f"Invalid reasoning effort for routing class: {kind}")
+    if "spawn_hint" in data and (not isinstance(data["spawn_hint"], str) or not data["spawn_hint"].strip()):
+        raise ValueError("Expected a nonempty subagent usage hint")
     roles = data.get("roles", {})
     if not isinstance(roles, dict) or not roles:
         raise ValueError("Routing policy has no roles")
@@ -57,7 +59,7 @@ def load_policy(path: Path | None = None) -> dict[str, Any]:
     if deep := data.get("deep_review_role"):
         if roles.get(deep, {}).get("class") != "acceptance":
             raise ValueError("deep_review_role must name an acceptance role")
-        astra = [r for r in roles if role_route(r, data)["model"] == "gpt-6-astra"]
+        astra = [r for r in roles if role_route(r, data)["model"].endswith("-astra")]
         if astra != [deep]:
             raise ValueError("Only the declared deep reviewer may use Astra")
     for role, retirement in data.get("retired_roles", {}).items():
@@ -88,12 +90,12 @@ def role_template(role: str) -> Path:
     return path
 
 
-def render_agent(role: str, description: str) -> str:
+def render_agent(role: str, description: str, policy: dict[str, Any] | None = None) -> str:
     template = role_template(role).read_text(encoding="utf-8")
     spec = tomllib.loads(template)
     if "model" in spec or "model_reasoning_effort" in spec:
         raise ValueError(f"{role}: model settings belong only in model-routing.toml")
-    route = role_route(role)
+    route = role_route(role, policy)
     header = ["# Generated from policies/model-routing.toml and the role template."]
     if "name" not in spec:
         header.append(f"name = {json.dumps(role)}")
@@ -130,8 +132,11 @@ def render_policy(policy: dict[str, Any] | None = None) -> str:
     return "\n".join(rows)
 
 
-def usage_hint() -> str:
-    data = load_policy()
+def usage_hint(policy: dict[str, Any] | None = None) -> str:
+    data = policy or load_policy()
+    if "spawn_hint" in data:
+        return data["spawn_hint"]
+    # Historical renderer used to identify (and only replace) a released hint.
     return ("Apply the global complex-engineering/material-risk threshold. Simple engineering gets one "
             "block_reviewer result review; ordinary non-engineering reviews also use block_reviewer, "
             "including complete bounded artifacts. Trivial chat/wording stays root-only. "
@@ -254,8 +259,7 @@ def config_defaults(text: str) -> str:
     for name, overlay in original.get("profiles", {}).items():
         if has_routing_override(overlay):
             raise ValueError(f"Embedded profile {name} contains routing overrides; migrate explicitly")
-    effort = root_effort(original, data)
-    text = rewrite_fields(text, (), {"model": data["root"]["model"], "model_reasoning_effort": effort})
+    text = rewrite_fields(text, (), root_settings(original, data))
     text = rewrite_fields(text, ("features",), {"multi_agent": True})
     text = rewrite_fields(text, ("agents",), {"enabled": True,
         "default_subagent_model": data["auxiliary"]["model"],
@@ -264,16 +268,25 @@ def config_defaults(text: str) -> str:
     return text
 
 
-def root_effort(settings: dict[str, Any], policy: dict[str, Any] | None = None) -> str:
-    """Root effort is a target-owned preference, not auxiliary routing drift."""
+LEGACY_ROOT_MODELS = {"gpt-6.1-sol": "gpt-6.2-sol", "gpt-6-astra": "gpt-6.2-astra"}
+
+
+def root_settings(settings: dict[str, Any], policy: dict[str, Any] | None = None) -> dict[str, str]:
+    """Preserve the selected current root family and the home's manual effort."""
     data = policy or load_policy()
-    if settings.get("model") == data["root"]["model"]:
+    model = settings.get("model")
+    model = LEGACY_ROOT_MODELS.get(model, model)
+    current_models = {data["root"]["model"], role_route(data["deep_review_role"], data)["model"]}
+    effort = data["root"]["effort"]
+    if model in current_models:
         selected = settings.get("model_reasoning_effort")
-        if selected in ROOT_EFFORTS:
-            return selected
         if selected is not None:
-            raise ValueError("Invalid selected root reasoning effort")
-    return data["root"]["effort"]
+            if selected not in ROOT_EFFORTS:
+                raise ValueError("Invalid selected root reasoning effort")
+            effort = selected
+    else:
+        model = data["root"]["model"]
+    return {"model": model, "model_reasoning_effort": effort}
 
 
 def has_routing_override(data: dict[str, Any]) -> bool:

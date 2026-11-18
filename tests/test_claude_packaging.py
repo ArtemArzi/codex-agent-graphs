@@ -76,7 +76,7 @@ class ClaudePackagingTests(unittest.TestCase):
         roles = sync.canonical_roles()
         for role, (codex_effort, model, effort) in expected.items():
             with self.subTest(role=role):
-                self.assertEqual(roles[role]["model"], "gpt-6.1-sol")
+                self.assertEqual(roles[role]["model"], "gpt-6.2-sol")
                 self.assertEqual(roles[role]["model_reasoning_effort"], codex_effort)
                 fields = frontmatter_fields(self.rendered[sync.claude_name(role)])
                 self.assertEqual((fields["model"], fields["effort"]), (model, effort))
@@ -84,10 +84,11 @@ class ClaudePackagingTests(unittest.TestCase):
     def test_role_projection_rejects_source_drift(self) -> None:
         roles = sync.canonical_roles()
         for role in roles:
+            different_effort = "medium" if roles[role]["model_reasoning_effort"] == "xhigh" else "xhigh"
             for key, value in (("model", "gpt-99-unknown"),
                                ("model_reasoning_effort", "ultra"),
                                ("model", "gpt-5.6-luna"),
-                               ("model_reasoning_effort", "xhigh")):
+                               ("model_reasoning_effort", different_effort)):
                 with self.subTest(role=role, key=key, value=value):
                     with self.assertRaises(SystemExit):
                         sync.render_role(role, {**roles[role], key: value}, "desc")

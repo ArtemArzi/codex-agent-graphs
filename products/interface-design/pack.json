@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "interface-design",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "entrypoint": "interface-design",
   "managed_skills": [
     "interface-design",

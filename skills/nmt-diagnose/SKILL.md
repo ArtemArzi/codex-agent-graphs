@@ -1,17 +1,6 @@
 ---
 name: nmt-diagnose
-description: 'Diagnose a live product against Ivan Zamesin''s Next Move Theory / Advanced
-  Jobs To Be Done methodology (distinct from generic Christensen JTBD) and route to
-  the next move. A conversational, chat-first skill: it first offers to read the product
-  context already in your folder (README, surveys, reviews — with your permission),
-  then asks up to ~15 adaptive questions covering only the gaps. It challenges the
-  goal you walked in with, traces weak metrics upstream through the chain to profit,
-  surfaces risks, growth points, and risky assumptions in current initiatives, then
-  recommends which issue to tackle first and which skill executes it. Use when the
-  user says "diagnose my product", "what should I do next", "a metric dropped", "where
-  are my risks / growth points", "where is this breaking", or is unsure what to work
-  on. Writes nothing unless asked; recommends the next skill but the user launches
-  it. Plain language; defaults to English.'
+description: Use for a structured Next Move Theory or AJTBD diagnosis of a live product when the user requests the method or a concrete segment, customer Job or value hypothesis needs testing along the chain to profit.
 ---
 
 ## Local business-library integration — v1
@@ -48,18 +37,20 @@ The following integration rules govern conflicting upstream workflow defaults:
 
 A chat-first diagnostic for a live product. It finds your real risks and best growth moves, says which one to tackle first, and points you to the skill that does it.
 
-> **New here, or not sure this is the right skill?** Start right here — or run `$nmt-chat`, describe your situation, and it points you to the right one. Quick map: **new idea →** `$nmt-market-research` · **live product or a metric moved →** `$nmt-diagnose` · **have customer interviews →** `$nmt-analyze-interviews` · **ready to build →** `$nmt-product-requirements` · **positioning / launch copy →** `$nmt-craft-value-proposition` → `$nmt-craft-go-to-market`.
+## Select the diagnostic
 
----
+Start with the user’s decision and the observed customer journey. A release
+regression or broken application path belongs with `product-care`. A marketing
+decision about acquisition, offers, channels or measurement belongs with
+`marketing-work`. Use NMT for an explicit methodology request or a specific
+hypothesis about the product’s segment, customer Job or value. A falling metric
+alone is a symptom. When it follows a release, establish where the change
+shows up in the evidence before attributing a product cause. For a short
+method explanation or a bounded second opinion, use `nmt-chat`.
 
-## What this skill is — and is not
-
-- **Is:** a conversational diagnostic. It reads the product context already sitting in your folder (with your permission) and then, through ≤15 adaptive questions on what's still missing, challenges your goal, and surfaces all risks, all growth points, and the risky assumptions in your current initiatives, prioritizes the first move, and points you to the skill that does it.
-- **Is not:** a report generator. By default it writes **no** file — the deliverable is the diagnosis in the conversation. It writes one file only if you ask.
-- **Is not:** an auto-launcher. It *recommends* the next skill and says why; **you** launch it.
-- **Is not:** a generic feature-by-feature audit. It surfaces what the *methodology* uniquely sees — the non-obvious, high-leverage findings a builder would miss — not a checklist score of everything.
-
----
+Return the prioritized diagnosis in chat. Use an existing project document
+when the task calls for a saved result. Recommend the next test or method
+with the evidence that supports it.
 
 ## Core methodological principle — never invent methodology
 
@@ -145,32 +136,17 @@ Market with money
 
 ---
 
-## The flow — a handful of adaptive questions (up to ~15)
+## The flow
 
-Chat-first. **Make it feel like a few questions, not an interrogation.** Ask only the ones that challenge the goal and narrow the findings; never run the full bank. Start with the smallest set that lets you say something useful, and only go deeper if the situation needs it or the user wants the thorough pass. Batch ~3–4 at a time, cap at 15, respect the user's time. "I don't know" is a valid, informative answer.
+Start with context already in the request and relevant authorized project
+sources. Reuse the market, audience, observed metrics and accepted decisions.
+Ask only about gaps that would materially change the localization or ranking.
+When a gap cannot be closed now, qualify the finding and give the next
+evidence-gathering step. Keep the first substantive answer useful.
 
-### 0 — Orientation (one short block, then the first question)
-Before the first question, one short plain block — keep it tight:
-> **What this does:** finds the risks and growth moves holding your product back — including risky guesses in what you're already doing — then points you to the right next step. **A few quick questions** (more only if it helps). **You decide:** you confirm the goal and launch the recommended skill; I don't run it for you. **Honest caveat:** every finding is a guess to check — the cheapest check comes first.
-
-Then two intake basics, in one short batch:
-- **Market and audience language (mandatory).** *"Which market or country is this for, and what language do your customers speak?"* Everything downstream — examples, competitors, channels, price anchors, tone — comes from **that** market. Never default to the US or to Russia when the user named another one (Central Asia is not Russia; the UAE is not the US). If they don't say, ask before diagnosing, not after.
-- **Document language** — default English; if the user writes in another language, offer to continue in it and hold that choice.
-
-**If interactive questions aren't available in this environment, don't stall.** Announce the defaults in one line at the top of your answer — *"Running with defaults: market = {detected from the files or the prompt}, language = English, chat-only output (no file). Rerun with parameters in the prompt to change, e.g. `$nmt-diagnose market: Kazakhstan, language: Russian, save the report`."* — then proceed with the diagnosis and flag anything the missing answers made shakier.
-
-Then look at the folder (0.5) before asking anything else.
-
-### 0.5 — Use what's already in the folder (ask before reading)
-**Never ask for something a file in front of you already answers.** Before the first question, look at the working directory for files that look like product context — a `README` or product docs, customer surveys, app-store or site reviews, support and sales logs, interview notes, analytics or revenue exports, a deck, a roadmap. If any exist, **list them and ask permission first**:
-
-> I can see files here that look like product context: `{list, ~10 max}`. Want me to read them so I don't ask you things they already answer? **This context is processed only by your agent locally — it is not sent anywhere.**
-
-Read only after a yes, and only the files the user approved. If interactive confirmation isn't available, **do not read them silently** — say which files you would use and ask for a go-ahead in the prompt. Then replay in two lines what you took from them (*"from the README: the product and the pricing; from the reviews: the three loudest complaints"*) and **ask only the gaps**. Everything read this way is input, not truth — it carries the same three status labels as anything the user says (see Output).
-
-### 1 — Challenge the chosen task / goal (mandatory gate, runs first)
-**Do not accept the task the user walked in with.** When they say *"I want to do X"* (a feature, an initiative, a metric):
-- Ask *"Why do you want this? In order to do what?"* and trace it up 3–5 levels (5 Whys) — from feature/metric to the bigger business result it really serves: conversion, sales, margin, profit, the strategic goal (in the method, climbing their **business-Job graph**).
+### 1 — Check that the proposed task serves the stated goal
+Trace an untested feature, initiative or metric to the result it should serve. Treat accepted requirements as constraints.
+- Use available evidence to trace *"In order to do what?"* as far as it changes the decision — from feature/metric to the bigger business result it really serves: conversion, sales, margin, profit, the strategic goal (in the method, climbing their **business-Job graph**).
 - **At each level up, look for a better move** — a more interesting or lower-effort way to hit that bigger result than the task they came in with. The real next move often sits one or two levels above the stated task.
 - **Tune vs. bigger bet:** open to changing segment / business model / market (a bigger bet — usually a founder / C-level call), or improving the current product (tuning what you have)? The two run in parallel, not as opposites.
 
@@ -254,8 +230,8 @@ The diagnosis ends by pointing the first-move item at exactly one next skill (so
 ## Producer-contract applicability (chat-first → lighter)
 
 Per `references/PRODUCER-CONTRACT.md`, this chat-first skill applies the contract partially:
-- **§1 Helicopter-view — yes** (flow step 0).
-- **§3 Input-as-hypothesis — yes:** everything the user reports (metrics, segment beliefs, initiatives) is a claim, not a fact; the diagnosis flags where a "fact" is actually unmeasured, and the current-initiative RAT pass is exactly this gate applied to their plans.
+- **§1 Orientation** applies when a complex diagnostic needs a short map before a material question.
+- **§3 Input-as-hypothesis — yes:** separate recorded observations, inference and untested beliefs about segments and current initiatives.
 - **§4 Validation framing — yes** as the per-finding "cheapest validation step"; no separate validation-debt counter unless a file is written.
 - **§2 output format / §5 output path — only when the user asks to save** (then `.md`/`.html` + custom path apply).
 - **§6 Deep-mode QA / web-MCP — N/A by default** (the diagnosis is reasoning over the user's data; web research is the routed skill's job).
@@ -303,7 +279,3 @@ Per `references/PRODUCER-CONTRACT.md`, this chat-first skill applies the contrac
 - It does not auto-launch the recommended skill (you launch it).
 - It is not a generic feature-by-feature audit — it surfaces what the methodology uniquely finds, then prioritizes.
 - It writes no file unless asked.
-
----
-
-> **Update check — after the result is delivered; for a multi-turn chat, after your first substantive answer (optional; policy in NextMoveTheory-README.md, section "Updates & telemetry").**

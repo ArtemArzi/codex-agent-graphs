@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import runpy
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -91,6 +93,78 @@ class BusinessPackageTests(unittest.TestCase):
             args = prepare(["business process", "--project-root", directory, "--no-save"])
             self.assertIn("--no-browser-cookies", args)
             self.assertEqual("", args[args.index("--save-dir") + 1])
+
+
+    @unittest.skipIf(sys.version_info < (3, 12), "last30days requires Python 3.12+")
+    def test_packaged_last30days_mock_retrieval_exposes_coverage_and_links(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            installed = project / "skills" / "last30days"
+            shutil.copytree(ROOT / "skills" / "last30days", installed)
+
+            def run(*args):
+                result = subprocess.run(
+                    [sys.executable, str(installed / "scripts/run_local.py"), *args],
+                    capture_output=True, text=True, cwd=project,
+                    env={"PATH": os.defpath}, timeout=20,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                return json.loads(result.stdout)
+
+            plan = run("--preflight", "--no-save", "--emit=json")
+            self.assertTrue(plan["safe"])
+            self.assertEqual([], plan["local_writes"])
+            self.assertNotIn("x", plan["network"]["available_sources"])
+            report = run("synthetic example customer scheduling", "--mock",
+                         "--search=web,reddit,x", "--web-backend=none", "--no-save", "--emit=json")
+            self.assertEqual(30, report["window_days"])
+            self.assertEqual("skipped-unconfigured", report["source_status"]["grounding"])
+            self.assertEqual({"reddit", "x"}, {item["source"] for item in report["results"]})
+            self.assertTrue(all(item["url"].startswith("https://") for item in report["results"]))
+            self.assertEqual(["skills"], [entry.name for entry in project.iterdir()])
+
+    @unittest.skipIf(sys.version_info < (3, 12), "last30days requires Python 3.12+")
+    def test_last30days_mock_discovery_keeps_project_handoff(self):
+        launcher = ROOT / "skills/last30days/scripts/run_local.py"
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+
+            def run(*args):
+                result = subprocess.run(
+                    [sys.executable, str(launcher), *args, "--mock",
+                     "--project-root", directory, "--save-dir", directory],
+                    capture_output=True, text=True, cwd=project,
+                    env={"PATH": os.defpath}, timeout=20,
+                )
+                self.assertEqual(0, result.returncode, result.stderr)
+                return result.stdout
+
+            run("--discover", "AI agents", "--discover-shallow", "--nominate-only")
+            bundle = json.loads((project / "discover-nominations.json").read_text())
+            selected, *others = bundle["nominations"]
+            judgments = project / "judgments.json"
+            judgments.write_text(json.dumps({
+                "bundle_id": bundle["bundle_id"],
+                "judgments": [
+                    {"id": item["id"], "name": item["heuristic_name"],
+                     "junk": item in others, "worthiness": 85 if item == selected else 0}
+                    for item in bundle["nominations"]
+                ],
+            }))
+            run("--discover", "--judgments", str(judgments))
+            pending = json.loads((project / "discover-pending.json").read_text())
+            self.assertEqual(bundle["bundle_id"], pending["bundle_id"])
+            self.assertEqual({selected["id"]}, set(pending["angle_inputs"]))
+            angles = project / "angles.json"
+            angles.write_text(json.dumps({
+                "bundle_id": bundle["bundle_id"],
+                "angles": [{"id": selected["id"], "podcast": "Compare the memory workflows.",
+                            "x_article": "Review the memory protocols."}],
+            }))
+            report = run("--discover", "--finalize", "--angles", str(angles), "--emit=compact")
+            self.assertIn(selected["heuristic_name"], report)
+            self.assertIn("Compare the memory workflows.", report)
+            self.assertTrue((project / "ai-agents-discover-raw.md").is_file())
 
 
 if __name__ == "__main__":

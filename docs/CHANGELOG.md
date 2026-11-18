@@ -1,5 +1,13 @@
 # Changelog / Изменения и версии
 
+## 2026-11-18 - Review integrity and Codex profile updates
+
+- Research retains an independent review obligation after rejection. Marketing history distinguishes the accepted output from later edits to its working path.
+- Task Delivery and Continuous Improvement select the reviewer for the admitted scope; previous graph versions keep their contracts.
+- Agent Graphs uses GPT-6.2 Sol for bounded and whole reviews and Astra 6.2/XHigh for deep review. Role-only installations verify source provenance and preserve home-specific root choices.
+- Shorter local entrypoints cover NMT and last30days. Interview aliases, repository provider selection and interface guidance follow the requested task.
+- The maintained inventory's legacy shell helpers are aligned with the MIT-licensed ECC versions already used on Windows. The stdlib inventory remains the default route.
+
 [Repository](../README.md) · [Русский README](../README.ru.md) · [Documentation](README.md)
 
 The repository contains independently versioned packs and graph contracts.

@@ -70,15 +70,22 @@
 - `research.internal` непустой. Для внешнего исследования используй `status: used` и receipt Research run; иначе дай содержательную причину `not-needed`.
 - `capabilities` содержит один тип MCP-квитанции: `mcp:<server>` после реального вызова, `mcp:fallback:<reason>` после неудачи релевантного MCP или `mcp:not-applicable:<reason>` для локальной задачи. Эти типы нельзя смешивать.
 - `documentation_impact.class` равен `none`, `factual` или `semantic`. Только два последних открывают Project Start maintenance.
-- Без унаследованной policy `standard` и `complex` не требуют result verifier
-  по имени профиля. Записывай work outcome `verify` только при фактическом
-  risk/uncertainty signal; `critical`, low confidence и повтор после reject
-  остаются обязательным verified путём этого released controller. При активной
-  policy named whole-acceptors выбираются только по глобальному complex-engineering/
-  material-risk порогу; simple engineering review использует `block_reviewer`.
-  Если controller требует исключённую этим порогом роль, не подменяй receipt:
-  примени Controller compatibility из SKILL.md, сохрани state/pending obligations
-  и native verdict отдельно, не заявляй controller verified/complete.
+- Graph `3.10.0` допускает `block_reviewer` в `verify` для `light` и `standard`.
+  При низкой уверенности или после `reject` запиши outcome `verify`.
+- В `complex` и `critical` режим `plan` завершает положительная проверка
+  от `task_plan_reviewer`. Для реализации нужен `pass` этой роли в фазе
+  `plan-review` на точный план или подтверждение из сохранённого планового
+  запуска. В `verification.json` реализации используй другой
+  `reviewer_receipt` от `task_result_reviewer`. Для явно выбранной по
+  политике глубокой приёмки результата допустима роль `deep_reviewer`.
+  Проверяющий должен отличаться и от авторов реализации, записанных как
+  `task_worker`.
+- Для новой `critical` реализации укажи `risk_review.coverage` с конкретными
+  рисками и проверками в общей приёмке. Если нужен отдельный обзор, укажи
+  `risk_review.separate_risk` и приложи положительный receipt
+  `task_risk_reviewer` в фазе `result-review`. Иначе укажи
+  `"separate_risk": null`. В прежних версиях сохраняются их роли и
+  обязательный дополнительный обзор для critical реализации.
 - Обычный agent receipt имеет поля `role`, `phase`, `receipt`, `outcome`. `task_worker` дополнительно содержит `slice_id`, `packet_sha256`, `receipt_sha256`, а `outcome` точно равен worker status. Acceptance и checkpoint принадлежат root controller, не worker. Роли и количество обязаны соответствовать профилю.
 - При существенном вопросе `decision` содержит как минимум `question`; обычный результат использует `null`.
 

@@ -7,6 +7,7 @@ import contextlib
 import datetime as dt
 import importlib.util
 import io
+from argparse import Namespace
 import json
 import sys
 import tempfile
@@ -20,6 +21,15 @@ assert SPEC and SPEC.loader
 lifecycle = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = lifecycle
 SPEC.loader.exec_module(lifecycle)
+
+
+MARKETING_SPEC = importlib.util.spec_from_file_location(
+    "marketing_lifecycle_fixture",
+    MODULE_PATH.parents[1] / "skills/marketing-work/scripts/marketing_graph.py",
+)
+assert MARKETING_SPEC and MARKETING_SPEC.loader
+marketing = importlib.util.module_from_spec(MARKETING_SPEC)
+MARKETING_SPEC.loader.exec_module(marketing)
 
 
 class ArtifactLifecycleTests(unittest.TestCase):
@@ -180,6 +190,134 @@ class ArtifactLifecycleTests(unittest.TestCase):
         self.assertEqual(before, (parent / "running/state.json").read_bytes())
         self.assertEqual(foreign.read_text(), "keep foreign evidence\n")
         self.assertEqual(output.read_text(), "# Marketing design, not a live campaign\n")
+
+    def marketing_run(self, run_id):
+        for name, content in {"brief.md": "Brief", "output.md": "Accepted A",
+                              "work.md": "Work evidence", "review.md": "Review evidence"}.items():
+            (self.root / name).write_text(content)
+        common = dict(run=run_id)
+        marketing.init(Namespace(**common, company="Fixture", objective="Test archived acceptance",
+                                 input=["brief.md"], output="output.md", tier="verified"), self.root)
+        worked = marketing.transition(
+            Namespace(**common, command="work", evidence=["work.md"], author="author",
+                      capability=["mcp:not-applicable:local-fixture"], verify=False,
+                      first_false_assumption=None), self.root)
+        marketing.transition(
+            Namespace(**common, command="verify", verdict="accept", reviewer="independent",
+                      role="block_reviewer", work_sha=worked["receipts"][worked["work"]],
+                      output_sha=lifecycle.sha256_file(self.root / "output.md"), reason="Reviewed fixture",
+                      evidence=["review.md"]), self.root)
+        marketing.transition(Namespace(**common, command="complete"), self.root)
+        return self.root / marketing.MANAGED / run_id
+
+    def test_marketing_compaction_binds_accepted_content_and_reports_current_path(self):
+        for change in ("unchanged", "modified", "missing"):
+            with self.subTest(change=change):
+                run = self.marketing_run(change)
+                output = self.root / "output.md"
+                accepted = output.read_bytes()
+                accepted_sha = lifecycle.sha256_file(output)
+                if change == "modified":
+                    output.write_text("Current B")
+                elif change == "missing":
+                    output.unlink()
+                final = lifecycle.compact(self.root, run)["data"]["final"]
+                record = final["canonical_outputs"][0]
+                self.assertEqual(record["sha256"], accepted_sha)
+                self.assertEqual(record["current_status"], change)
+                if change == "unchanged":
+                    self.assertEqual((self.root / record["preserved_copy"]).read_bytes(), accepted)
+                else:
+                    self.assertIsNone(record["preserved_copy"])
+                if change == "modified":
+                    self.assertEqual(record["current_sha256"], lifecycle.sha256_file(output))
+                    self.assertNotEqual(record["current_sha256"], accepted_sha)
+
+    def test_marketing_preserved_copy_drift_fails_recheck(self):
+        run = self.marketing_run("copy-drift")
+        final = lifecycle.compact(self.root, run)["data"]["final"]
+        copy = self.root / final["canonical_outputs"][0]["preserved_copy"]
+        copy.write_text("Unexpected bytes")
+        with self.assertRaisesRegex(lifecycle.ArtifactError, "Marketing accepted history copy"):
+            lifecycle.compact(self.root, run)
+        self.assertEqual((self.root / "output.md").read_text(), "Accepted A")
+
+    def test_marketing_legacy_archive_misstatement_is_detected_without_rewriting(self):
+        run = self.marketing_run("legacy-archive")
+        final = lifecycle.compact(self.root, run)["data"]["final"]
+        final_path = lifecycle.history_final_path(self.root, "marketing-work", run.name)
+        # Recreate the old canonical_outputs record, which used current B.
+        final["canonical_outputs"] = [{"path": "output.md", "sha256": "0" * 64,
+                                       "bytes": 8, "preserved_copy": None}]
+        self.write_json(final_path, final)
+        before = final_path.read_bytes()
+        with self.assertRaisesRegex(lifecycle.ArtifactError, "misstates the accepted"):
+            lifecycle.compact(self.root, run)
+        unrelated = self.research_run()
+        lifecycle.compact(self.root, unrelated)
+        due = lifecycle.utc_now() + dt.timedelta(days=60)
+        prune = lifecycle.prune(self.root, apply=False, now=due)["data"]
+        self.assertIn("misstates the accepted", prune["holds"][0]["reason"])
+        self.assertIn(str(unrelated), [action["target"] for action in prune["actions"]])
+        self.assertEqual(final_path.read_bytes(), before)
+        self.assertTrue(run.exists())
+
+    def test_expired_marketing_archives_recheck_acceptance_after_raw_prune(self):
+        finished = lifecycle.utc_now()
+        records = {}
+        for run_id in ("unbound", "wrong-digest", "verified"):
+            if run_id == "unbound":
+                run = self.root / marketing.MANAGED / run_id
+                self.write_json(run / lifecycle.STATE_NAME, {
+                    "schema_version": 1, "graph_id": "marketing-work", "run_id": run_id,
+                    "root": str(self.root), "status": "completed", "output": "output.md",
+                    "updated_at": lifecycle.iso(finished),
+                })
+            else:
+                run = self.marketing_run(run_id)
+            output = self.root / "output.md"
+            output.write_text("Current B")
+            final = lifecycle.compact(self.root, run)["data"]["final"]
+            records[run_id] = (run, final)
+
+        lifecycle.prune(self.root, apply=True, now=finished + dt.timedelta(days=14))
+        for run_id, (run, final) in records.items():
+            self.assertFalse(run.exists())
+            archive = self.root / final["raw"]["archive"]
+            self.assertTrue(archive.is_file())
+            final_path = lifecycle.history_final_path(self.root, "marketing-work", run_id)
+            if run_id != "unbound":
+                recorded_digest = lifecycle.sha256_file(output) if run_id == "wrong-digest" else final["canonical_outputs"][0]["sha256"]
+                # Model a pre-fix final emitted before the raw run expired.
+                final["canonical_outputs"] = [{"path": "output.md", "sha256": recorded_digest,
+                                               "bytes": output.stat().st_size, "preserved_copy": None}]
+            final["retention"]["archive_cleanup_after"] = lifecycle.iso(finished - dt.timedelta(days=1))
+            self.write_json(final_path, final)
+            records[run_id] = (final_path, final_path.read_bytes(), archive)
+
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            exit_code = lifecycle.main(["prune", "--root", str(self.root), "--apply"])
+        self.assertEqual(exit_code, 0)
+        result = json.loads(stdout.getvalue())["data"]
+        self.assertEqual([("verified", "prune-archive")],
+                         [(item["run_id"], item["action"]) for item in result["actions"]])
+        self.assertEqual({"unbound", "wrong-digest"},
+                         {Path(item["path"]).parent.name for item in result["holds"]})
+        for run_id, (final_path, original, archive) in records.items():
+            self.assertEqual(final_path.read_bytes(), original)
+            self.assertEqual(archive.exists(), run_id != "verified")
+        self.assertEqual(output.read_text(), "Current B")
+
+    def test_marketing_compaction_refuses_tampered_receipts(self):
+        run = self.marketing_run("tampered")
+        for name in ("FINAL.json", "work-0.json", "verification-0.json"):
+            artifact = run / name
+            original = artifact.read_bytes()
+            artifact.write_bytes(original + b" ")
+            with self.assertRaisesRegex(lifecycle.ArtifactError, "Marketing"):
+                lifecycle.compact(self.root, run)
+            artifact.write_bytes(original)
 
     def test_active_blocked_and_awaiting_implementation_are_refused(self) -> None:
         for identifier, status in (("active", "running"), ("blocked", "blocked"), ("retired", "retired")):

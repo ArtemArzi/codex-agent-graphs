@@ -158,7 +158,7 @@ def build_desktop_config(source_bytes: bytes, target_bytes: bytes) -> bytes:
     before = parse_toml_bytes(target_bytes, "current Windows Desktop config")
     source_text = source_bytes.decode("utf-8")
     target_text = target_bytes.decode("utf-8")
-    source = {**source, "model_reasoning_effort": routing.root_effort(before)}
+    source = {**source, **routing.root_settings(before)}
     managed = any(line.strip() in {installer.BLOCK_START, installer.LEGACY_BLOCK_START}
                   for _, line in routing._structural_lines(source_text))
     if managed:
@@ -212,7 +212,8 @@ def build_desktop_config(source_bytes: bytes, target_bytes: bytes) -> bytes:
         if before.get(key, missing) != after.get(key, missing):
             raise SyncError(f"Windows-specific config changed unexpectedly: {key}")
 
-    return result_bytes
+    # Desktop may reserialize equivalent TOML and remove comment markers.
+    return target_bytes if before == after else result_bytes
 
 
 def agent_files(path: Path) -> list[Path]:

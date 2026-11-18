@@ -520,7 +520,7 @@ Recorded in the Task Delivery receipt.
         self.assertEqual("root-only", contract["work_policy"]["fast_path"])
         self.assertEqual("skill-only", contract["execution_policy"]["default_tier"])
         self.assertEqual(0, contract["profiles"]["standard"]["result_reviewers"])
-        self.assertEqual(0, contract["profiles"]["complex"]["result_reviewers"])
+        self.assertEqual(1, contract["profiles"]["complex"]["result_reviewers"])
         self.assertFalse(contract["delegation_policy"]["parallel_write_enabled"])
         self.assertEqual(
             "advisory-total-hard-concurrency",
@@ -805,7 +805,9 @@ src/app.py
         self.assertEqual(old_binding, self.read(run / graph.STATE_NAME)["engineering_standard"])
         self.plan(task_id="TD-A2")
         self.write("src/app.py", "VALUE = 3\n")
-        payload = self.work_payload(fresh)  # fixture's fresh independent plan-review receipt
+        payload = self.work_payload(fresh, review_mode="independent", agents=[
+            self.agent("task_plan_reviewer", "plan-review", "/root/fresh-architecture-review"),
+        ])
         self.write_work(fresh, payload)
         with mock.patch.object(graph.legacy, "reject_pending_project_reopen"):
             result = graph.record(fresh, "work", "verify")
@@ -881,9 +883,20 @@ src/app.py
         )
         ready = graph.record(run, "work", "verify")
         self.assertEqual("verify", ready["data"]["current"])
+        verification = self.verify_payload(run)
+        self.write_verify(run, {**verification, "reviewer_receipt": self.worker_agent(run)["receipt"]})
+        with self.assertRaisesRegex(graph.GraphError, "автором реализации"):
+            graph.record(run, "verify", "succeeded")
+        self.write_verify(run, {**verification, "reviewer_role": "deep_reviewer"})
+        graph.record(run, "verify", "succeeded")
+        self.assertEqual(graph.complete(run)["status"], "completed")
 
-    def test_complex_full_slice_allows_self_review_before_worker(self) -> None:
+    def test_pinned_v3_9_2_complex_full_slice_allows_self_review_before_worker(self) -> None:
         run = self.initialize(profile="complex")
+        path = run / graph.STATE_NAME
+        state = self.read(path)
+        state.update(graph_version="3.9.2", graph_sha256=dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.9.2"])
+        graph.atomic_json(path, state)
         self.plan()
         draft = self.slice_draft(run)
         payload = self.read(draft)
@@ -1725,7 +1738,7 @@ src/app.py
         self.write_work(implement_run, payload)
         graph.record(implement_run, "work", "verify")
 
-    def test_complex_implement_can_reuse_light_self_review(self) -> None:
+    def test_complex_implement_cannot_reuse_light_self_review(self) -> None:
         run = self.initialize(mode="plan", profile="light")
         self.plan()
         self.write_work(run, self.work_payload(run))
@@ -1734,8 +1747,8 @@ src/app.py
         implement = self.initialize(mode="implement", profile="complex", plan="docs/tasks/TD-1/PLAN.md")
         self.write("src/app.py", "VALUE = 3\n")
         self.write_work(implement, self.work_payload(implement, review_mode="reused"))
-        ready = graph.record(implement, "work", "verify")
-        self.assertEqual("verify", ready["data"]["current"])
+        with self.assertRaisesRegex(graph.GraphError, "independent plan review"):
+            graph.record(implement, "work", "verify")
 
     def test_implement_rejects_scope_drift_after_plan_review(self) -> None:
         run = self.initialize(mode="plan", profile="light")
@@ -1747,20 +1760,74 @@ src/app.py
         with self.assertRaisesRegex(graph.GraphError, "Область реализации изменилась"):
             self.initialize(mode="implement", profile="light", plan="docs/tasks/TD-1/PLAN.md")
 
-    def test_complex_full_defaults_to_self_review(self) -> None:
+    def test_complex_full_requires_distinct_whole_plan_and_result_acceptance(self) -> None:
         run = self.initialize(profile="complex")
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
         self.write_work(run, self.work_payload(run, review_mode="self"))
-        ready = graph.record(run, "work", "verify")
-        self.assertEqual("verify", ready["data"]["current"])
+        with self.assertRaisesRegex(graph.GraphError, "independent plan review"):
+            graph.record(run, "work", "verify")
+        plan_reviewer = self.agent("task_plan_reviewer", "plan-review", "/root/plan-reviewed")
+        payload = self.work_payload(run, review_mode="independent", agents=[plan_reviewer])
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "требует независимый verify"):
+            graph.record(run, "work", "succeeded")
+        graph.record(run, "work", "verify")
+        verification = self.verify_payload(run)
+        self.write_verify(run, {**verification, "reviewer_role": "block_reviewer"})
+        with self.assertRaisesRegex(graph.GraphError, "task_result_reviewer"):
+            graph.record(run, "verify", "succeeded")
+        self.write_verify(run, {**verification, "reviewer_receipt": plan_reviewer["receipt"]})
+        with self.assertRaisesRegex(graph.GraphError, "должен отличаться"):
+            graph.record(run, "verify", "succeeded")
+        self.write_verify(run, verification)
+        graph.record(run, "verify", "succeeded")
+        self.assertEqual(graph.complete(run)["status"], "completed")
 
-    def test_critical_full_requires_risk_reviewer(self) -> None:
+    def test_critical_full_requires_coverage_and_conditional_risk_reviewer(self) -> None:
+        run = self.initialize(profile="critical")
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        plan_reviewer = self.agent("task_plan_reviewer", "plan-review", "/root/plan-reviewer")
+        payload = self.work_payload(run, agents=[plan_reviewer], review_mode="independent")
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "risk_review"):
+            graph.record(run, "work", "verify")
+        payload["risk_review"] = {"separate_risk": "Distinct rollback failure during cutover",
+                                  "coverage": "Whole acceptors cover ordinary behavior and permission risks."}
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "task_risk_reviewer"):
+            graph.record(run, "work", "verify")
+        payload["agents"].append(self.agent("task_risk_reviewer", "result-review", "/root/rollback-reviewer"))
+        self.write_work(run, payload)
+        graph.record(run, "work", "verify")
+        self.write_verify(run, self.verify_payload(run))
+        graph.record(run, "verify", "succeeded")
+        self.assertEqual(graph.complete(run)["status"], "completed")
+
+    def test_critical_without_separate_risk_uses_whole_acceptors(self) -> None:
         run = self.initialize(profile="critical")
         self.plan()
         self.write("src/app.py", "VALUE = 2\n")
         agents = [self.agent("task_plan_reviewer", "plan-review", "/root/plan-reviewer")]
-        self.write_work(run, self.work_payload(run, agents=agents, review_mode="independent"))
+        payload = self.work_payload(run, agents=agents, review_mode="independent")
+        payload["risk_review"] = {"separate_risk": None,
+                                  "coverage": "Whole acceptance checks permissions, rollback and exact tests."}
+        self.write_work(run, payload)
+        graph.record(run, "work", "verify")
+        self.write_verify(run, self.verify_payload(run))
+        graph.record(run, "verify", "succeeded")
+        self.assertEqual(graph.complete(run)["status"], "completed")
+
+    def test_pinned_v3_9_2_critical_full_keeps_separate_risk_reviewer(self) -> None:
+        run = self.initialize(profile="critical")
+        path = run / graph.STATE_NAME
+        state = self.read(path)
+        state.update(graph_version="3.9.2", graph_sha256=dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.9.2"])
+        graph.atomic_json(path, state)
+        self.plan()
+        self.write("src/app.py", "VALUE = 2\n")
+        self.write_work(run, self.work_payload(run))
         with self.assertRaisesRegex(graph.GraphError, "task_risk_reviewer"):
             graph.record(run, "work", "verify")
 
@@ -1886,6 +1953,13 @@ src/app.py
         with self.assertRaisesRegex(graph.GraphError, "требует независимый verify"):
             graph.record(run, "work", "succeeded")
         graph.record(run, "work", "verify")
+        verifier = {**self.verify_payload(run), "reviewer_role": "block_reviewer"}
+        self.write_verify(run, {**verifier, "work_sha256": "0" * 64})
+        with self.assertRaisesRegex(graph.GraphError, "не текущий task.json"):
+            graph.record(run, "verify", "succeeded")
+        self.write_verify(run, verifier)
+        graph.record(run, "verify", "succeeded")
+        self.assertEqual(graph.complete(run)["status"], "completed")
 
     def test_one_verifier_repair_then_block(self) -> None:
         run = self.initialize(profile="standard")
@@ -2249,11 +2323,11 @@ src/app.py
             graph.retire(legacy, "Retire the final supported v3.7 run.", True)["status"],
         )
 
-    def test_retire_rejects_completed_and_new_runs_pin_39(self) -> None:
+    def test_retire_rejects_completed_and_new_runs_pin_current_identity(self) -> None:
         run = self.initialize(task_id="TD-CURRENT")
         state_path = run / graph.STATE_NAME
         state = self.read(state_path)
-        self.assertEqual("3.9.2", state["graph_version"])
+        self.assertEqual(graph.REVIEW_CONTRACT_VERSION, state["graph_version"])
         state["status"] = "completed"
         state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
         with self.assertRaisesRegex(graph.GraphError, "нельзя пометить retired"):
@@ -2505,7 +2579,7 @@ src/app.py
 
     def test_digest_vectors_and_previous_identity_are_retained(self) -> None:
         plan = self.write("docs/vector.md", "prefix\n<!-- task-delivery:plan:start -->\nAlpha\n<!-- task-delivery:plan:end -->\nsuffix\n")
-        for version in [item[0] for item in graph.LEGACY_ACTIVE_GRAPH_IDENTITIES] + ["3.9.2"]:
+        for version in [item[0] for item in graph.LEGACY_ACTIVE_GRAPH_IDENTITIES] + [graph.REVIEW_CONTRACT_VERSION]:
             vector = "Alpha\n" if version in graph.NORMALIZED_PLAN_DIGEST_VERSIONS else "\nAlpha\n"
             self.assertEqual(hashlib.sha256(vector.encode()).hexdigest(), graph.plan_digest(plan, graph_version=version))
         self.assertEqual(dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["3.9.0"], graph.sha256_file(graph.SKILL_DIR / "assets/legacy-graph-v3.9.json"))

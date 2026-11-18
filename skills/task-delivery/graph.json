@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "graph_id": "task-delivery",
-  "graph_version": "3.9.2",
+  "graph_version": "3.10.0",
   "default_mode": "full",
   "limits": {
     "max_node_retries": 1,
@@ -24,11 +24,11 @@
       "result_reviewers": 0
     },
     "complex": {
-      "plan_reviewers": 0,
-      "result_reviewers": 0
+      "plan_reviewers": 1,
+      "result_reviewers": 1
     },
     "critical": {
-      "plan_reviewers": 0,
+      "plan_reviewers": 1,
       "result_reviewers": 1
     }
   },
@@ -101,7 +101,9 @@
     "task_worker",
     "task_plan_reviewer",
     "task_result_reviewer",
-    "task_risk_reviewer"
+    "task_risk_reviewer",
+    "block_reviewer",
+    "deep_reviewer"
   ],
   "mcp_policy": {
     "discovery": "when-relevant",

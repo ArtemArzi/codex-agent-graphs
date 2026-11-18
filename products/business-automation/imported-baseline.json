@@ -361,7 +361,11 @@
     "skills/business-work/references/krasinsky-method-notes.md": "Explicit portability, entrypoint or repository-first maintenance integration",
     "skills/business-work/references/maintenance.md": "Explicit portability, entrypoint or repository-first maintenance integration",
     "skills/business-hypothesis-check/references/method.md": "Explicit portability, entrypoint or repository-first maintenance integration",
-    "skills/nmt-chat/SKILL.md": "Local customer-research-prep handoff; preserve upstream canon, contracts, notices and original skill source",
+    "skills/nmt-chat/SKILL.md": "Local customer-research-prep handoff and NMT-specific routing",
+    "skills/nmt-diagnose/SKILL.md": "NMT-specific routing and reuse of authorized project context",
+    "skills/nmt-market-research/SKILL.md": "Short inline route and linked full-research procedure",
+    "skills/nmt-market-research/references/PRODUCER-CONTRACT.md": "Apply producer evidence guidance without blanket intake or file setup",
+    "skills/last30days/SKILL.md": "Short CAG entry, existing safe launcher and preserved upstream reference",
     "skills/nmt-analyze-interviews/SKILL.md": "Local customer-research-prep handoff; preserve upstream canon, contracts, notices and original skill source"
   }
 }

@@ -10,13 +10,15 @@ import gzip
 import hashlib
 import json
 import os
+import re
 import shutil
+import stat
 import sys
 import tarfile
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 
 SCHEMA_VERSION = 1
@@ -56,6 +58,10 @@ LOCK_NAME = ".artifact-gc.lock"
 
 class ArtifactError(RuntimeError):
     pass
+
+
+class MarketingArchiveBindingError(ArtifactError):
+    """Hold one Marketing archive while retaining its completion evidence."""
 
 
 @dataclass(frozen=True)
@@ -472,6 +478,182 @@ def known_output_values(
     return outputs
 
 
+def marketing_json(raw: bytes, name: str) -> dict[str, Any]:
+    try:
+        value = json.loads(raw)
+    except ValueError as exc:
+        raise ArtifactError(f"Marketing receipt is not valid JSON: {name}") from exc
+    if not isinstance(value, dict):
+        raise ArtifactError(f"Marketing receipt is not an object: {name}")
+    return value
+
+
+def marketing_completion(
+    root: Path, run_dir: Path, state: dict[str, Any],
+    read_member: Callable[[str], bytes | None] | None = None,
+) -> dict[str, Any] | None:
+    """Validate the released Marketing v1 chain independently of its live inputs."""
+    def read_raw_file(name: str) -> bytes | None:
+        path = run_dir / name
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise ArtifactError(f"Marketing receipt is not a regular file: {path}")
+        return path.read_bytes() if path.is_file() else None
+
+    read = read_member or read_raw_file
+    fields = ("schema_version", "graph_id", "graph_version", "graph_sha256", "controller_sha256",
+              "root", "run_id", "mode", "tier", "company", "objective", "inputs", "output")
+    if not {"integrity", "receipts", "graph_version", "graph_sha256", "controller_sha256"}.intersection(state):
+        if read(FINAL_NAME) is not None:
+            raise ArtifactError("Marketing completion is missing its sealed state.")
+        return None  # Older terminal state has no evidence of the accepted content.
+    expected_identity = (
+        1, "1.0.0",
+        "2c993b3909b515adc7527889df48aa08515fcfccbcb8cbf6ee3ae6a8cbf34338",
+        "85043305f6e2a0b29840aedcc5617d05498c3d8227e7e3f39e8d0a2ce50e4eb7",
+    )
+    identity = tuple(state.get(k) for k in ("schema_version", "graph_version", "graph_sha256", "controller_sha256"))
+    unsigned = {k: v for k, v in state.items() if k != "integrity"}
+    encoded = (json.dumps(unsigned, sort_keys=True, ensure_ascii=False, indent=2) + "\n").encode()
+    if (
+        identity != expected_identity or state.get("integrity") != sha256_bytes(encoded)
+        or set(fields).difference(state) or state["root"] != str(root)
+        or state["graph_id"] != "marketing-work" or state["run_id"] != run_dir.name
+        or state.get("status") != "completed" or state.get("phase") != "done" or state["mode"] != "marketing"
+        or state["tier"] not in {"tracked", "verified"} or type(state.get("verification_required")) is not bool
+        or type(state.get("repairs")) is not int or state["repairs"] not in {0, 1}
+        or not isinstance(state.get("receipts"), dict)
+    ):
+        raise ArtifactError("Marketing completion state identity or integrity failed.")
+    binding = {k: state[k] for k in fields}
+
+    def receipt(name: str, kind: str) -> dict[str, Any]:
+        raw = read(name)
+        if raw is None or sha256_bytes(raw) != state["receipts"].get(name):
+            raise ArtifactError(f"Marketing {kind} receipt is missing or tampered.")
+        item = marketing_json(raw, name)
+        if item.get("binding") != binding or item.get("kind") != kind:
+            raise ArtifactError(f"Marketing {kind} receipt has mismatched context.")
+        return item
+
+    work_name = f"work-{state['repairs']}.json"
+    if state.get("work") != work_name:
+        raise ArtifactError("Marketing work receipt reference is invalid.")
+    work = receipt(work_name, "work")
+    final = receipt(FINAL_NAME, "completion")
+    work_sha = state["receipts"][work_name]
+    accepted_sha = final.get("output_sha256")
+    if (
+        not isinstance(accepted_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", accepted_sha)
+        or final.get("output") != state["output"] or accepted_sha != work.get("output_sha256")
+        or final.get("work_sha256") != work_sha
+    ):
+        raise ArtifactError("Marketing completion does not bind the exact work output.")
+    if state["verification_required"] or state["tier"] == "verified" or state["repairs"]:
+        review_name = f"verification-{state['repairs']}.json"
+        if state.get("verification") != review_name:
+            raise ArtifactError("Marketing verification receipt reference is invalid.")
+        review = receipt(review_name, "verification")
+        if (
+            review.get("verdict") != "accept" or review.get("work_sha256") != work_sha
+            or review.get("output_sha256") != accepted_sha
+            or final.get("verification_sha256") != state["receipts"][review_name]
+            or not review.get("reviewer") or review.get("reviewer") == work.get("author")
+            or not review.get("role") or review.get("role") == "root"
+        ):
+            raise ArtifactError("Marketing completion needs independent acceptance of the exact output.")
+    elif final.get("verification_sha256") is not None or state.get("verification") is not None:
+        raise ArtifactError("Marketing completion has an unexpected verification receipt.")
+    return final
+
+
+def verify_marketing_archive_binding(accepted: dict[str, Any] | None, receipt: dict[str, Any]) -> None:
+    if accepted is None:
+        return
+    outputs = receipt.get("canonical_outputs")
+    if (
+        not isinstance(outputs, list) or len(outputs) != 1 or not isinstance(outputs[0], dict)
+        or outputs[0].get("path") != accepted["output"]
+        or outputs[0].get("sha256") != accepted["output_sha256"]
+    ):
+        raise MarketingArchiveBindingError("Existing Marketing archive misstates the accepted output; historical evidence preserved.")
+
+
+def verify_expired_marketing_archive(
+    root: Path, run_dir: Path, archive_path: Path, receipt: dict[str, Any]
+) -> None:
+    """Confirm the permanent output record before removing the last raw evidence."""
+    try:
+        with tarfile.open(archive_path, mode="r:gz") as archive:
+            def read_member(name: str) -> bytes | None:
+                try:
+                    member = archive.getmember(name)
+                except KeyError:
+                    return None
+                if not member.isfile():
+                    raise ArtifactError(f"Marketing archive member is not a regular file: {name}")
+                source = archive.extractfile(member)
+                if source is None:
+                    raise ArtifactError(f"Marketing archive member cannot be read: {name}")
+                with source:
+                    return source.read()
+
+            raw_state = read_member(STATE_NAME)
+            if raw_state is None or sha256_bytes(raw_state) != receipt.get("state_sha256"):
+                raise ArtifactError("Marketing archived state is missing or differs from its completion record.")
+            state = marketing_json(raw_state, STATE_NAME)
+            accepted = marketing_completion(root, run_dir, state, read_member)
+            if accepted is None:
+                raise ArtifactError("Marketing archive lacks a sealed completion chain for the accepted output.")
+            verify_marketing_archive_binding(accepted, receipt)
+    except MarketingArchiveBindingError:
+        raise
+    except (ArtifactError, OSError, tarfile.TarError) as exc:
+        raise MarketingArchiveBindingError(str(exc)) from exc
+
+
+def preserve_marketing_output(root: Path, run_dir: Path, state: dict[str, Any]) -> list[dict[str, Any]]:
+    final = marketing_completion(root, run_dir, state)
+    if final is None:
+        # Earlier metadata may identify the working path, but proves no accepted hash.
+        return [{"path": path.relative_to(root).as_posix(), "sha256": None, "bytes": None,
+                 "preserved_copy": None, "current_status": "unbound",
+                 "current_sha256": sha256_file(path)}
+                for path in known_output_values(state, root, run_dir, "marketing-work")]
+    value = final["output"]
+    if not isinstance(value, str):
+        raise ArtifactError("Marketing output path is invalid.")
+    relative = PurePosixPath(value)
+    if relative.as_posix() != value or relative.parts[:1] == (".agent-graphs",):
+        raise ArtifactError("Marketing output must be a canonical domain path.")
+    path = safe_managed(root, relative)
+    record = {"path": value, "sha256": final["output_sha256"], "bytes": None,
+              "preserved_copy": None, "current_status": "missing", "current_sha256": None}
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return [record]
+    with os.fdopen(fd, "rb") as handle:
+        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+            raise ArtifactError("Marketing output is not a regular file.")
+        current_bytes = handle.read()
+    record["current_sha256"] = sha256_bytes(current_bytes)
+    if record["current_sha256"] != record["sha256"]:
+        record["current_status"] = "modified"
+        return [record]
+
+    destination = history_final_path(root, "marketing-work", run_dir.name).parent / "outputs" / relative
+    no_symlink_path(destination, root)
+    if destination.exists() and (not destination.is_file() or sha256_file(destination) != record["sha256"]):
+        raise ArtifactError("Marketing accepted output copy destination is occupied.")
+    if not destination.exists():
+        atomic_write(destination, current_bytes)
+    if sha256_file(destination) != record["sha256"]:
+        raise ArtifactError("Marketing accepted output copy failed verification.")
+    record.update(current_status="unchanged", bytes=len(current_bytes),
+                  preserved_copy=destination.relative_to(root).as_posix())
+    return [record]
+
+
 def preserve_outputs(
     root: Path,
     run_dir: Path,
@@ -578,6 +760,18 @@ def final_receipt_valid(root: Path, final_path: Path) -> dict[str, Any]:
     expected = history_final_path(root, receipt["graph_id"], receipt["run_id"])
     if expected.resolve() != final_path.resolve():
         raise ArtifactError("Final receipt is outside its canonical history path.")
+    if receipt["graph_id"] == "marketing-work":
+        for output in receipt.get("canonical_outputs", []):
+            copy = output.get("preserved_copy")
+            if output.get("current_status") != "unchanged":
+                continue  # Older compactions and unavailable accepted bytes.
+            expected_copy = expected.parent / "outputs" / str(output["path"])
+            try:
+                copy_path = safe_managed(root, PurePosixPath(copy or ""))
+            except (ArtifactError, TypeError) as exc:
+                raise MarketingArchiveBindingError("Marketing accepted history copy path is unsafe.") from exc
+            if copy_path != expected_copy or not copy_path.is_file() or sha256_file(copy_path) != output["sha256"]:
+                raise MarketingArchiveBindingError("Marketing accepted history copy is missing or tampered.")
     return receipt
 
 
@@ -608,6 +802,8 @@ def compact_locked(root: Path, run_dir: Path, spec: RunSpec) -> dict[str, Any]:
             and sha256_file(destination) == receipt.get("raw", {}).get("archive_sha256")
         ):
             verify_archive(destination, entries)
+            if spec.graph_id == "marketing-work" and state_status(state, spec) == "completed":
+                verify_marketing_archive_binding(marketing_completion(root, run_dir, state), receipt)
             return response(
                 "ok",
                 "Run is already compacted and verified.",
@@ -623,7 +819,10 @@ def compact_locked(root: Path, run_dir: Path, spec: RunSpec) -> dict[str, Any]:
     completed = completion_time(state, state_path)
     raw_cleanup = completed + dt.timedelta(days=rule["raw_days"])
     archive_cleanup = completed + dt.timedelta(days=rule["archive_days"])
-    outputs = preserve_outputs(root, run_dir, spec.graph_id, run_dir.name, state)
+    if spec.graph_id == "marketing-work" and status == "completed":
+        outputs = preserve_marketing_output(root, run_dir, state)
+    else:
+        outputs = preserve_outputs(root, run_dir, spec.graph_id, run_dir.name, state)
     if destination.exists():
         if not destination.is_file() or destination.is_symlink():
             raise ArtifactError("Compaction archive destination is unsafe.")
@@ -681,6 +880,9 @@ def verify_raw_against_receipt(root: Path, receipt: dict[str, Any]) -> Path:
     current = manifest(run_dir)
     if manifest_digest(current) != raw.get("manifest_sha256") or current != raw["manifest"]:
         raise ArtifactError(f"Raw run changed after compaction: {run_dir}")
+    if spec.graph_id == "marketing-work" and receipt.get("terminal_status") == "completed":
+        accepted = marketing_completion(root, run_dir, load_json(run_dir / STATE_NAME))
+        verify_marketing_archive_binding(accepted, receipt)
     return run_dir
 
 
@@ -742,9 +944,14 @@ def prune(root: Path, apply: bool, now: dt.datetime | None = None) -> dict[str, 
     current = now or utc_now()
     actions: list[dict[str, Any]] = []
     receipts: list[str] = []
+    holds: list[dict[str, str]] = []
     for final_path in final_receipts(root):
         no_symlink_path(final_path, root)
-        receipt = final_receipt_valid(root, final_path)
+        try:
+            receipt = final_receipt_valid(root, final_path)
+        except MarketingArchiveBindingError as exc:
+            holds.append({"path": str(final_path), "reason": str(exc)})
+            continue
         retention = receipt.get("retention")
         if not isinstance(retention, dict):
             raise ArtifactError(f"Final receipt has no retention policy: {final_path}")
@@ -762,21 +969,31 @@ def prune(root: Path, apply: bool, now: dt.datetime | None = None) -> dict[str, 
                 "run_id": receipt["run_id"],
                 "applied": apply,
             }
-            if apply:
-                with artifact_lock(source):
+            try:
+                if apply:
+                    with artifact_lock(source):
+                        verify_archive_against_receipt(root, receipt)
+                        verify_raw_against_receipt(root, receipt)
+                        remove_tree(source, root)
+                    gc = gc_receipt(root, receipt["graph_id"], receipt["run_id"], "prune-raw", source)
+                    receipts.append(str(gc))
+                else:
                     verify_archive_against_receipt(root, receipt)
                     verify_raw_against_receipt(root, receipt)
-                    remove_tree(source, root)
-                gc = gc_receipt(root, receipt["graph_id"], receipt["run_id"], "prune-raw", source)
-                receipts.append(str(gc))
-            else:
-                verify_archive_against_receipt(root, receipt)
-                verify_raw_against_receipt(root, receipt)
+            except MarketingArchiveBindingError as exc:
+                holds.append({"path": str(final_path), "reason": str(exc)})
+                continue
             actions.append(action)
         if archive_due and archive.exists():
             if source.exists():
                 continue
-            verify_archive_against_receipt(root, receipt)
+            verified_archive = verify_archive_against_receipt(root, receipt)
+            if receipt["graph_id"] == "marketing-work":
+                try:
+                    verify_expired_marketing_archive(root, source, verified_archive, receipt)
+                except MarketingArchiveBindingError as exc:
+                    holds.append({"path": str(final_path), "reason": str(exc)})
+                    continue
             action = {
                 "action": "prune-archive",
                 "target": str(archive),
@@ -793,7 +1010,7 @@ def prune(root: Path, apply: bool, now: dt.datetime | None = None) -> dict[str, 
         "ok",
         "Prune applied to due verified artifacts." if apply else "Dry-run only; no artifacts were removed.",
         artifacts=receipts,
-        data={"apply": apply, "actions": actions},
+        data={"apply": apply, "actions": actions, "holds": holds},
     )
 
 

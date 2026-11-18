@@ -10,13 +10,16 @@ description: Maintain the pinned NMT business library through its canonical repo
 Read [installed source metadata](../business-work/references/installation.json)
 and [repository-first maintenance](../business-work/references/maintenance.md).
 Canonical owner is `products/business-automation/pack.json` in
-https://github.com/ArtemArzi/codex-agent-graphs. The upstream original remains in
-references/upstream-SKILL.md.txt as source data; do not execute its installer or telemetry.
+https://github.com/ArtemArzi/codex-agent-graphs. Each upstream original remains in the skill’s
+`references/upstream-SKILL.md.txt` as source data; do not execute its installer or telemetry.
 
 On an update request, locate or prepare the canonical repository candidate.
 Fetch the selected upstream version into separate staging, compare canon,
 shared contracts and the seven operational skills, and preserve local patches
-and CC BY-NC-SA attribution. Update canonical `skills/nmt-*` sources, pack
+and CC BY-NC-SA attribution. For market research, retain the quick entry’s
+section-by-question canon links, the separate `references/full-research.md`
+procedure and the local evidence/intake rules. Keep the methodology boundary
+in the chat and diagnose entries when reconciling upstream trigger wording. Update canonical `skills/nmt-*` sources, pack
 version/pins, business-work installation metadata and adaptation notes together.
 Do not apply upstream bytes directly to the installed global tree.
 

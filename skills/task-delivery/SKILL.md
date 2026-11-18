@@ -431,7 +431,10 @@ evidence, публичном контракте или явном запросе
 
 6. Выбери implementation strategy по пользе. `root-only` — default для любого профиля: root может сам выполнить несколько этапов. Просьба «слайсами» означает небольшие проверяемые части, а не обязательный spawn. Только явная просьба делегировать реализацию либо доказанная польза независимого worker выбирает `delegated-sequential`. Перед spawn кратко укажи в dispatch, какой самостоятельный результат оправдывает запуск и передачу контекста; отдельной квитанции этого решения не нужно. Один active write slice; до следующего прими реальный diff и тесты через `slice-accept`. `--slice-budget N` в 3.9 — положительная оценка объёма, а не запрет продолжать после N. Не разбивай одну задачу на новые runs ради счётчика агентов. `plan` не запускает workers; `implement` связывает packet с точным прошлым review; `full` создаёт его после валидного плана. Полный протокол: [implementation-slices.md](references/implementation-slices.md). `delegated-parallel` остаётся fail-closed без доказанной изоляции worktrees.
 7. На каждом slice запускай только быстрые проверки его области. Worker обновляет или добавляет затронутые unit/integration/E2E tests согласно `test_impact`; root повторяет минимум один exact slice check. Дорогие интеграционные и E2E рубежи из `deferred_final_checks` запускай один раз после интеграции всех slices и внеси exact command/purpose в `task.json.tests`. Не утверждай успех по diff или словам агента.
-8. При активной policy вызывай `task_risk_reviewer` только для конкретного существенного риска сверх общей приёмки; без неё сохраняй legacy critical contract. Простое инженерное изменение заверши одним `block_reviewer`. Создай один `task.json` по [control-artifact.md](references/control-artifact.md).
+8. В новых `critical` runs укажи, какие риски покрывает общая приёмка. Зови
+   `task_risk_reviewer` только на отдельный конкретный риск. Старые critical
+   runs сохраняют обязательную дополнительную проверку. Создай `task.json`
+   по [control-artifact.md](references/control-artifact.md).
 
 В `capabilities` запиши ровно один тип MCP-квитанции: `mcp:<server>` для реально использованного MCP, `mcp:fallback:<reason>` после неудачи релевантного сервера либо `mcp:not-applicable:<reason>` для локальной задачи. Нативный web/browser и затем `curl` являются fallback, а не первым выбором при наличии подходящего MCP.
 
@@ -453,6 +456,10 @@ python3 scripts/task_graph.py record --run <run-dir> --node work --outcome succe
 для простого инженерного результата либо whole acceptance для complex engineering /
 material risk. Native review не меняет graph identity: используй поддержанный
 контроллером путь и receipt, не повышай профиль только ради записи model calls.
+Graph `3.10.0` принимает `block_reviewer` в `verify` для `light` и `standard`.
+В `complex` и `critical` проверку плана записывает `task_plan_reviewer`, а
+результат реализации проверяет другой `task_result_reviewer`. Сохраняй
+подтверждение уже принятого плана при продолжении той же задачи.
 
 Когда controller-профиль или унаследованная policy требуют поддержанную
 final verification receipt:
@@ -511,7 +518,7 @@ python3 scripts/task_graph.py retry --run <run-dir> --node <work|verify>
 
 Не редактируй канонические документы Project Start внутри Task Delivery: передай фактическую документационную дельту через handoff. Если реализация доказала устойчивое новое coding rule, команду качества или framework boundary, укажи `documentation_impact=factual|semantic`; одноразовый workaround не превращай в правило.
 
-Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Поддерживаемые graph `3.0.0`-`3.9.0` runs сохраняют exact identity и digest algorithms; их не переписывай под новый контракт. Новые runs используют `3.9.2`: один scope block входит в hashed plan region, а scope authority повторно сверяется с admission/review/packet и разрешёнными amendments. Черновой `full/plan` scope редактируется до review. Старые runs восстанавливают selection из captured receipts/admission manifest; неоднозначность требует native handoff с сохранением state, без controller PASS. Суммарное число агентов и оценка слайсов в 3.9 не блокируют продолжение; старые лимиты сохраняются. Все новые задачи запускай через `task_graph.py`.
+Состояния schema v2 не мигрируй на месте. Заверши их прежним `task_delivery.py` по [legacy-v2-resume.md](references/legacy-v2-resume.md). Поддерживаемые graph `3.0.0`-`3.9.2` runs сохраняют exact identity, digest algorithms и обязательства проверки. Новые runs используют `3.10.0`: один scope block входит в hashed plan region, а scope authority повторно сверяется с admission/review/packet и разрешёнными amendments. Черновой `full/plan` scope редактируется до review. Старые runs восстанавливают selection из captured receipts/admission manifest; неоднозначность требует native handoff с сохранением state, без controller PASS. Суммарное число агентов и оценка слайсов в 3.9 не блокируют продолжение; старые лимиты сохраняются. Все новые задачи запускай через `task_graph.py`.
 
 Для явно разрешённой замены незавершённого v3 run (включая неизвестную graph
 identity) используй отдельный `restart --run <absolute-run> --reason <reason>

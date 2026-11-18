@@ -30,12 +30,12 @@ than proof that the skill is installed or automatically discovered.
 | Scope | Managed content | Host settings |
 | --- | --- | --- |
 | `--skills-only` | Engineering skill set and shared artifact runtime | Models, profiles, roles, policies and credentials preserved |
-| `--skills-only --pack business-automation` | Only the 11 skills in the business manifest | Preserved; shared modern skill root |
+| `--skills-only --pack business-automation` | Only the 12 skills in the business manifest | Preserved; shared modern skill root |
 | `--skills-only --pack agent-lifecycle` | Only the 4 skills in the agent manifest | Preserved; shared modern skill root |
 | `--skills-only --pack business-model` | Shared business-work and 3 Business Model skills | Preserved; shared modern skill root |
 | `--skills-only --pack marketing-cycle` | Only the 5 Marketing Cycle skills; Russian-market methods | Preserved; shared modern skill root |
 | `--storage-only` | Reviewed disk lifecycle file deltas, maintained overlays and the orchestration policy block | Settings, roles, other skill files and plugin availability preserved |
-| `--routing-only` | Managed role files, routing block, subagent defaults and usage hint | Selected root model/effort and unrelated settings preserved |
+| `--routing-only` | Managed role files, routing block, subagent defaults and usage hint | Previous managed root models upgrade within their family. Manual effort and other settings are preserved |
 | No scope flag | Engineering skills/runtime, supplied roles, managed host policies and configuration | Applies the configured root defaults and managed registrations |
 
 The current source of the default skill set is `SKILLS` in
@@ -96,14 +96,14 @@ python3 scripts/install.py verify --wsl
 
 The full mode installs the roles and managed policy/configuration surfaces owned
 by this repository. Inspect [model-routing.toml](../policies/model-routing.toml)
-before choosing it. Valid existing manual root effort is preserved by the
-routing policy; full setup can still change the root model and managed defaults.
+before choosing it. Full setup keeps a selected GPT-6.2 Sol or Astra root and its valid effort.
+New homes default to Sol.
 
 ## 5. Install a product pack
 
-The default engineering installation contains 41 maintained skills, including
-Grill Me, Grill with Docs and Improve Codebase Architecture. Their native
-metadata allows automatic selection when the task fits. Open a new conversation
+The default engineering installation contains 42 maintained skills. Codex can
+select Grilling automatically. Grill Me and Grill with Docs are explicit named
+aliases. Improve Codebase Architecture keeps its own selection criteria. Open a new conversation
 after installation and check fresh native `skills/list` in each host; matching
 files do not prove selection by an existing conversation or use on a real task.
 
@@ -254,7 +254,11 @@ does not clean existing workspaces or old backups.
 
 ## Optional routing and full Desktop synchronization
 
-For model-routing changes only:
+The routing-only update migrates released Sol 6.1 and Astra 6 role files to
+GPT-6.2. Managed roles use their configured effort, including XHigh for the
+deep reviewer. Each home keeps its manual root effort. It leaves the separate
+OpenRouter far-glm profile in place when all its roles use private profile files.
+Review and verify each home with these commands.
 
 ```bash
 python3 scripts/install.py plan --routing-only --all
@@ -263,6 +267,8 @@ python3 scripts/install.py verify --routing-only --wsl
 python3 scripts/install.py install --routing-only --desktop
 python3 scripts/install.py verify --routing-only --desktop
 ```
+
+After a successful verified installation the installer records the applied routing policy checksum in `model-routing.applied.sha256` within that Codex home. A later role-only tuning can match that local baseline. Older supported policies use the release hashes in `policies/routing-preimages.json`. Unknown edits or custom role registrations still stop the affected operation. Equivalent Desktop registrations can be read back even after the app rewrites TOML without managed comments.
 
 For the separately intended portable WSL/Desktop configuration snapshot:
 

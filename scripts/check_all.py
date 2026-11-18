@@ -82,8 +82,8 @@ def main() -> int:
         raise RuntimeError("Research graph node contract changed unexpectedly")
     if graph.get("default_depth") != "auto" or graph["limits"]["fast"]["max_parallel_scouts"] != 0:
         raise RuntimeError("Research fast path must remain native and single-agent by default")
-    if graph.get("graph_version") != "2.3.0":
-        raise RuntimeError("Research current graph must remain 2.3.0")
+    if graph.get("graph_version") != "2.3.1":
+        raise RuntimeError("Research current graph must remain 2.3.1")
     if (
         graph.get("execution_policy", {}).get("default_tier") != "skill-only"
         or graph.get("mcp_policy", {}).get("discovery") != "when-relevant"
@@ -136,8 +136,8 @@ def main() -> int:
     task_graph = json.loads((ROOT / "skills" / "task-delivery" / "graph.json").read_text(encoding="utf-8"))
     if task_graph.get("schema_version") != 2 or task_graph.get("default_mode") != "full":
         raise RuntimeError("Task Delivery v3 must use schema 2 and full default mode")
-    if task_graph.get("graph_version") != "3.9.2":
-        raise RuntimeError("Task Delivery current graph must remain 3.9.2")
+    if task_graph.get("graph_version") != "3.10.0":
+        raise RuntimeError("Task Delivery current graph must remain 3.10.0")
     if set(task_graph.get("routes", {})) != {"plan", "implement", "full"}:
         raise RuntimeError("Task Delivery must expose plan, implement and full routes")
     for mode in ("plan", "implement", "full"):
@@ -146,9 +146,11 @@ def main() -> int:
     if set(task_graph.get("profiles", {})) != {"light", "standard", "complex", "critical"}:
         raise RuntimeError("Task Delivery risk profiles changed unexpectedly")
     if (
-        task_graph["profiles"]["standard"].get("result_reviewers") != 0
-        or task_graph["profiles"]["complex"].get("result_reviewers") != 0
-        or task_graph["profiles"]["critical"].get("result_reviewers") != 1
+        any(task_graph["profiles"][profile] != {"plan_reviewers": 0, "result_reviewers": 0}
+            for profile in ("light", "standard"))
+        or any(task_graph["profiles"][profile] != {"plan_reviewers": 1, "result_reviewers": 1}
+               for profile in ("complex", "critical"))
+        or "block_reviewer" not in task_graph["optional_agents"]
     ):
         raise RuntimeError("Task Delivery result review must remain risk-triggered")
     limits = task_graph["limits"]
@@ -240,8 +242,8 @@ def main() -> int:
     improvement_graph = json.loads((improvement_root / "graph.json").read_text(encoding="utf-8"))
     if improvement_graph.get("schema_version") != 2 or improvement_graph.get("default_mode") != "full":
         raise RuntimeError("Continuous Improvement v1 must use schema 2 and full default mode")
-    if improvement_graph.get("graph_version") != "1.2.0":
-        raise RuntimeError("Continuous Improvement current graph must remain 1.2.0")
+    if improvement_graph.get("graph_version") != "1.3.0":
+        raise RuntimeError("Continuous Improvement current graph must remain 1.3.0")
     if (
         improvement_graph.get("execution_policy", {}).get("default_tier") != "tracked"
         or improvement_graph.get("work_policy", {}).get("fast_path") != "root-only"

@@ -1,8 +1,8 @@
 ---
 name: interface-design
-description: Plan, build or improve understandable websites and product interfaces by choosing the relevant flow, content, visual and frontend capabilities. Use for a new UI, a confusing journey, a redesign or a scoped interface audit; keep backend-only work with its owner.
+description: Plan, build or improve understandable websites and product interfaces by choosing the relevant flow, content, visual and frontend capabilities. Use for new UI, visual refinements, redesigns and interface audits. Use web guidance when a design decision needs it; keep backend-only work with its owner.
 metadata:
-  version: "0.2.0"
+  version: "0.2.1"
 ---
 
 # Interface Design
@@ -25,6 +25,15 @@ Name the person, their task and observable completion. Label assumptions and dem
 data. Choose the surface profile: persuade (site), operate (working UI), read
 (documentation) or experience (showcase). A product landing and the product's
 working screen may need different profiles in the same assignment.
+
+## Choose web guidance by decision
+
+For a narrow change using an existing design token, component and browser
+behavior, read the local pattern and verify the affected state in the browser.
+Use [Modern Web Guidance](references/modern-web-guidance.md) when introducing
+browser behavior or a CSS feature, or when the project lacks a pattern for a
+material layout, visual or accessibility decision. Check the affected feature
+against the project's browser targets and verify its fallback where needed.
 
 ## Choose only the needed methods
 

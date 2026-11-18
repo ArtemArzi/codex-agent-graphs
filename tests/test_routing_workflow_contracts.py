@@ -33,9 +33,17 @@ class RoutingWorkflowContractTests(unittest.TestCase):
                             "reviewer_role": "block_reviewer"}
                 with self.assertRaisesRegex(task_graph.GraphError, "Verifier требует роль"):
                     task_graph.validate_verification(state, artifact, "succeeded")
+                legacy = {**state, "graph_version": "3.9.2", "profile": "light"}
+                with self.assertRaisesRegex(task_graph.GraphError, "Verifier требует роль"):
+                    task_graph.validate_verification(legacy, artifact, "succeeded")
+                current = {**state, "graph_version": task_graph.REVIEW_CONTRACT_VERSION, "profile": "light"}
+                task_graph.validate_verification(current, artifact, "succeeded")
+                current.pop("profile")
+                with self.assertRaisesRegex(task_graph.GraphError, "Verifier требует роль"):
+                    task_graph.validate_verification(current, artifact, "succeeded")
                 artifact["reviewer_role"] = (
                     "task_plan_reviewer" if mode == "plan" else "task_result_reviewer")
-                task_graph.validate_verification(state, artifact, "succeeded")
+                task_graph.validate_verification(legacy, artifact, "succeeded")
 
     def test_research_documented_fast_examples_and_deep_route_validate(self):
         for reference in ("control-artifact.md", "source-policy.md"):

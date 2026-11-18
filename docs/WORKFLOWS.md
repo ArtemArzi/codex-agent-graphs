@@ -106,7 +106,7 @@ Current host review policy applies in every tier. A skill-only task can still
 require independent review. A tier name alone neither grants authority nor
 proves the result.
 
-Four workflows have operational graph contracts:
+Five workflows have operational graph contracts:
 
 | Workflow | Modes | Contract |
 | --- | --- | --- |
@@ -114,9 +114,10 @@ Four workflows have operational graph contracts:
 | Research | Bounded fast/deep work; skill-only by default | [graph.json](../skills/research/graph.json) |
 | Task Delivery | Tracked `plan`, `implement`, `full`; ordinary quick work stays native | [graph.json](../skills/task-delivery/graph.json) |
 | Continuous Improvement | `audit` or `full`, one candidate maximum | [graph.json](../skills/continuous-improvement/graph.json) |
+| Marketing Work | Optional tracked or verified marketing outcome | [graph.json](../skills/marketing-work/graph.json) |
 
 Admitted controllers share `work → optional verify → complete`. Deployment,
-Software Factory and the product packs do not add operational graphs.
+Software Factory and the other product packs use their own skill entrypoints.
 Controller health and task health are distinct: protocol trouble gets bounded
 repair/degradation while preserving pending checks. It is never evidence that
 the implementation passed or that an unfinished controller completed.
@@ -156,17 +157,17 @@ than installed as competing pipelines. See the
 [policies/model-routing.toml](../policies/model-routing.toml) is the canonical
 source for role models, reasoning levels and compatible profiles. Full setup
 projects it into role files and managed host guidance. The configured root
-default is Sol 6.1/Max; valid manual effort remains owned by each home.
+default is Sol 6.2/Max; each home keeps its selected GPT-6.2 root variant and effort.
 
-Ordinary auxiliaries and bounded reviews use Sol 6.1/Medium. Implementation
+Ordinary auxiliaries and bounded reviews use Sol 6.2/Medium. Implementation
 workers, synthesis and focused risk review use their configured High roles.
 Complex engineering or concrete material risk needs a fresh whole-plan
-acceptor and a different whole-result acceptor at Sol 6.1/High. Trivial work
+acceptor and a different whole-result acceptor at Sol 6.2/High. Trivial work
 stays with the root; simple engineering gets one auxiliary result review;
 ordinary non-engineering reviews stay auxiliary. The host threshold overrides
 blanket workflow defaults.
 
-`deep_reviewer` is the sole Astra role, reserved for exceptionally complex
+`deep_reviewer` is the sole Astra 6.2 role, reserved for exceptionally complex
 outcomes, unresolved material uncertainty or explicit deep review. Stage
 switches and routine corrections reuse valid review at the same outcome scope.
 Role files define behavior; actual sandbox/tool settings determine enforcement.

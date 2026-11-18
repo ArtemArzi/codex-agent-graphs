@@ -14,7 +14,9 @@ Original upstream skill instructions remain in `references/upstream-SKILL.md.txt
 The seven operational skills retain the public canon and shared contracts.
 Local adaptations change host precedence/authorization, canon path resolution,
 Russian conversational output, existing task ownership, conditional delegation
-and disable automatic updates/telemetry. `nmt-update` is a local maintenance
+and disable automatic updates/telemetry. Market research puts the quick route
+in its skill entry and keeps the adapted full study and report examples in
+`skills/nmt-market-research/references/full-research.md`. `nmt-update` is a local maintenance
 entrypoint retaining its upstream original as reference; in this release it
 routes updates through canonical repository sources, version/pins and review
 before installation. Neither the canon nor the upstream original has been
@@ -29,7 +31,10 @@ pin `5103ba478b380552207a3754b74c7655d64208cd`, v3.26.0.
 Licence: **MIT**, original copyright/notice retained in
 `skills/last30days/LICENSE` and applicable vendored notices.
 
-Local SKILL integration and `scripts/run_local.py` preserve project-local
+The local SKILL entry is limited to the supported launcher and task flows.
+The original upstream instructions remain in
+`skills/last30days/references/upstream-SKILL.md.txt`.
+The entry and `scripts/run_local.py` preserve project-local
 outputs, clean environment configuration, disabled browser-cookie extraction
 and no automatic source setup/publication. Upstream engine/helper source is
 stored but optional integrations, providers and browser access are not

@@ -72,8 +72,11 @@ delivery cycle. Без унаследованной policy остаётся cond
 
 Оба режима используют controller route `work → complete` либо при сомнительном
 доказательстве `work → verify → complete`. При активной policy обязательные
-plan/result acceptors остаются операциями внутри `work`, даже если controller
-остаётся на `work → complete`.
+plan/result acceptors остаются операциями внутри `work`. В graph `1.3.0` для существенного
+риска самого результата запускай `init --review-scope material`. Перед работой
+получи положительную приёмку плана, затем передай итог другому проверяющему.
+Запись о проблеме в защищённой области допустима в обычном `audit`, если
+аудит только описывает находку и передаёт её ответственному.
 
 Continuous Improvement по умолчанию остаётся `tracked`: отбор автономного
 кандидата, clean baseline и передача в Task Delivery должны быть
@@ -147,7 +150,9 @@ python3 scripts/continuous_improvement_graph.py record \
 root сам эскалировал риск. При активной policy эта роль нужна только по
 глобальному порогу complex engineering / material risk. Простое инженерное
 изменение и обычное неинженерное ревью направляй в `block_reviewer`; сам
-candidate/no-op или controller fast path не выбирает дорогую роль. Передай точные SHA-256
+candidate/no-op или controller fast path не выбирает дорогую роль.
+Graph `1.3.0` принимает `block_reviewer` для `--review-scope bounded`
+при переходе в `verify`. Прежние runs сохраняют свои роли. Передай точные SHA-256
 `improvement.json`, candidate evidence и Task Delivery receipt при наличии.
 Проверяющий не перепроводит разработку и не расширяет scope; root сохраняет
 возвращённый `verification.json` после reconciliation всех выбранных checks.

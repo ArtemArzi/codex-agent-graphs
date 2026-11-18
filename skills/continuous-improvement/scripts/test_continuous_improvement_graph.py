@@ -196,7 +196,10 @@ class ContinuousImprovementGraphTests(unittest.TestCase):
         task_id = "TD-FIXTURE"
         td_run_id = "a1b2c3d4e5f60708"
         td_run = self.root / ".agent-graphs" / "task-delivery-runs" / td_run_id
-        task_receipt = self.write_json(td_run / "task.json", {"fixture": "immutable task receipt"})
+        worker = "/root/candidate-author"
+        task_receipt = self.write_json(td_run / "task.json", {
+            "agents": [{"role": "task_worker", "phase": "implementation", "receipt": worker}],
+        })
         handoff = self.write(".agent-graphs/task-delivery-handoffs/TD-FIXTURE/HANDOFF.md", "Status: READY\n")
         work_record = {"path": str(task_receipt), "sha256": graph.sha256_file(task_receipt), "changed_paths": ["src/fix.py"]}
         task_state = {
@@ -228,7 +231,13 @@ class ContinuousImprovementGraphTests(unittest.TestCase):
             "tests": [{"command": "python -m unittest fixture", "status": "passed", "exit_code": 0}],
         }
         self.write_work(run, self.artifact(run, "delivered", candidate=self.candidate(), task_delivery=td_receipt, git={"branch": branch, "commit": commit}))
-        graph.record(run, "work", "succeeded")
+        graph.record(run, "work", "verify")
+        review = {**self.verification(run, "pass"), "reviewer_role": "block_reviewer"}
+        self.write_json(run / graph.VERIFY_NAME, {**review, "reviewer_receipt": worker})
+        with self.assertRaisesRegex(graph.GraphError, "identified implementation author"):
+            graph.record(run, "verify", "succeeded")
+        self.write_json(run / graph.VERIFY_NAME, review)
+        graph.record(run, "verify", "succeeded")
         self.assertEqual(graph.complete(run)["data"]["disposition"], "delivered")
         result_text = (run / graph.COMPLETE_NAME).read_text(encoding="utf-8")
         self.assertIn("Fixture regression is observable", result_text)
@@ -260,12 +269,70 @@ class ContinuousImprovementGraphTests(unittest.TestCase):
         graph.record(run, "verify", "failed")
         self.assertEqual(graph.load_state(run)["current"], "work")
         self.write_work(run, work)
-        graph.record(run, "work", "verify")
+        with self.assertRaisesRegex(graph.GraphError, "requires corrected work"):
+            graph.record(run, "work", "verify")
+        work["issue"]["body"] = "Added fixture evidence for the originally challenged claim."
+        self.write_work(run, work)
+        self.assertEqual(graph.record(run, "work", "succeeded")["data"]["current"], "verify")
         self.write_json(run / graph.VERIFY_NAME, self.verification(run, "reject", ["Evidence remains incomplete."]))
         graph.record(run, "verify", "failed")
         self.assertEqual(graph.load_state(run)["status"], "blocked")
         with self.assertRaisesRegex(graph.GraphError, "Retry bound"):
             graph.retry(run, "verify")
+
+    def test_review_role_for_bounded_and_legacy_audits(self):
+        for pinned in (False, True):
+            with self.subTest(pinned=pinned):
+                run = self.init(focus=f"Run with legacy identity {pinned}")
+                state = graph.load_state(run)
+                if pinned:
+                    state.update(graph_version="1.2.0", graph_sha256=dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)["1.2.0"])
+                    self.write_json(run / graph.STATE_NAME, state)
+                self.write_work(run, self.artifact(run, "no-op"))
+                graph.record(run, "work", "verify")
+                verification = self.verification(run, "pass")
+                bounded = {**verification, "reviewer_role": "block_reviewer"}
+                if pinned:
+                    self.write_json(run / graph.VERIFY_NAME, bounded)
+                    with self.assertRaisesRegex(graph.GraphError, "Verifier role"):
+                        graph.record(run, "verify", "succeeded")
+                    self.write_json(run / graph.VERIFY_NAME, verification)
+                else:
+                    self.write_json(run / graph.VERIFY_NAME, {**bounded, "work_sha256": "0" * 64})
+                    with self.assertRaisesRegex(graph.GraphError, "exact work receipt"):
+                        graph.record(run, "verify", "succeeded")
+                    self.write_json(run / graph.VERIFY_NAME, bounded)
+                graph.record(run, "verify", "succeeded")
+                self.assertEqual(graph.complete(run)["status"], "completed")
+
+    def test_material_audit_requires_same_run_plan_and_different_result_reviewer(self):
+        run = Path(graph.initialize(str(self.root), "audit", "Consequential fixture decision", "material")["data"]["run"])
+        state = graph.load_state(run)
+        self.write_json(run / graph.STATE_NAME, {**state, "review_scope": "bounded"})
+        with self.assertRaisesRegex(graph.GraphError, "Review scope"):
+            graph.load_state(run)
+        self.write_json(run / graph.STATE_NAME, state)
+        payload = self.artifact(run, "no-op")
+        self.write_work(run, payload)
+        with self.assertRaisesRegex(graph.GraphError, "positive task_plan_reviewer"):
+            graph.record(run, "work", "succeeded")
+        payload["plan_review"] = {
+            "role": "task_plan_reviewer", "receipt": "/root/plan-acceptor", "verdict": "pass",
+            "run_id": state["run_id"], "focus": state["focus"],
+            "baseline_repo_digest": state["baseline_repo_digest"],
+        }
+        self.write_work(run, payload)
+        self.assertEqual(graph.record(run, "work", "succeeded")["data"]["current"], "verify")
+        verification = self.verification(run, "pass")
+        self.write_json(run / graph.VERIFY_NAME, {**verification, "reviewer_role": "block_reviewer"})
+        with self.assertRaisesRegex(graph.GraphError, "improvement_verifier"):
+            graph.record(run, "verify", "succeeded")
+        self.write_json(run / graph.VERIFY_NAME, {**verification, "reviewer_receipt": "/root/plan-acceptor"})
+        with self.assertRaisesRegex(graph.GraphError, "different from the plan reviewer"):
+            graph.record(run, "verify", "succeeded")
+        self.write_json(run / graph.VERIFY_NAME, {**verification, "reviewer_role": "deep_reviewer"})
+        graph.record(run, "verify", "succeeded")
+        self.assertEqual(graph.complete(run)["status"], "completed")
 
     def completed_issue(self, focus="Historical fixture issue"):
         run = self.init(focus=focus)

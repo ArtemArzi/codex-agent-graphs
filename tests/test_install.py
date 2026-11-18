@@ -233,7 +233,7 @@ class InstallerTests(unittest.TestCase):
         (target / "agents").mkdir(parents=True)
         (target / "SKILL.md").write_text("legacy explicit interview wrapper\n")
         (target / "agents/openai.yaml").write_text(
-            "policy:\n  allow_implicit_invocation: false\n")
+            "policy:\n  allow_implicit_invocation: true\n")
         previous = installer.manifest(target)
         protected = {p: p.read_bytes() for p in
                      (self.home / "config.toml", self.home / "AGENTS.md")}
@@ -315,7 +315,7 @@ class InstallerTests(unittest.TestCase):
                     installer.install_environment(self.home)
                 self.assertFalse((self.home / "skills").exists())
 
-    def test_install_applies_sol61_routing_and_preserves_unrelated_config(self) -> None:
+    def test_install_applies_sol62_routing_and_preserves_unrelated_config(self) -> None:
         original = "[agents]\nmax_threads = 6\nmax_depth = 1\n\n[history]\npersistence = 'save-all'\n"
         (self.home / "config.toml").write_text(original, encoding="utf-8")
         installer.install_environment(self.home)
@@ -326,7 +326,7 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(updated["history"], {"persistence": "save-all"})
         for role, effort in (("task_worker", "high"), ("task_plan_reviewer", "high"), ("task_result_reviewer", "high")):
             spec = installer.tomllib.loads((self.home / "agents" / f"{role}.toml").read_text(encoding="utf-8"))
-            self.assertEqual(("gpt-6.1-sol", effort), (spec["model"], spec["model_reasoning_effort"]))
+            self.assertEqual(("gpt-6.2-sol", effort), (spec["model"], spec["model_reasoning_effort"]))
 
     def test_embedded_discovery_policy_marker_is_rejected(self) -> None:
         (self.home / "AGENTS.md").write_text(
@@ -521,7 +521,7 @@ class InstallerTests(unittest.TestCase):
 
     def _legacy_routing_fixture(self) -> None:
         installer.install_environment(self.home)
-        old, new = "gpt-5.6-sol", "gpt-6.1-sol"
+        old, new = "gpt-5.6-sol", "gpt-6.2-sol"
         policy = self.home / "model-routing.toml"
         policy.write_text(policy.read_text().replace(
             f'model = "{new}"\neffort = "medium"',
@@ -560,17 +560,78 @@ class InstallerTests(unittest.TestCase):
             (after_config["model"], after_config["model_reasoning_effort"]),
             (before_config["model"], before_config["model_reasoning_effort"])
         )
-        self.assertEqual(after_config["agents"]["default_subagent_model"], "gpt-6.1-sol")
+        self.assertEqual(after_config["agents"]["default_subagent_model"], "gpt-6.2-sol")
         self.assertEqual(after_config["agents"]["default_subagent_reasoning_effort"], "medium")
         self.assertEqual(skill.read_bytes(), before_skill)
         self.assertEqual(manual.read_bytes(), before_manual)
         for role, spec in installer.routing.load_policy()["roles"].items():
             actual = installer.tomllib.loads((self.home / "agents" / f"{role}.toml").read_text())
-            expected = "gpt-6-astra" if role == "deep_reviewer" else "gpt-6.1-sol"
+            expected = "gpt-6.2-astra" if role == "deep_reviewer" else "gpt-6.2-sol"
             self.assertEqual(actual["model"], expected)
         self.assertEqual(installer.verify_environment(self.home)["status"], "failed")
         second = installer.install_routing_environment(self.home)
         self.assertTrue(all(change["status"] == "in-sync" for change in second["changes"]))
+
+    def test_routing_only_preserves_independent_glm_profile_and_refuses_shared_roles(self) -> None:
+        installer.install_environment(self.home)
+        model = "z-ai/glm-5.3-flash"
+        private = self.home / "profiles/far-glm/worker.toml"
+        private.parent.mkdir(parents=True)
+        private.write_text(f'model = "{model}"\n')
+        profile = self.home / "far-glm.config.toml"
+        lines = ['model_provider = "openrouter"', f'model = "{model}"', '[agents]',
+                 f'default_subagent_model = "{model}"']
+        for role in installer.routing.load_policy()["roles"]:
+            lines.extend([f'[agents.{role}]', f'config_file = "{private}"'])
+        original = "\n".join(lines) + "\n"
+        profile.write_text(original)
+        self.assertEqual(installer.verify_routing_environment(self.home)["status"], "ok")
+        self.assertEqual(profile.read_text(), original)
+        with self.assertRaisesRegex(installer.InstallError, "Unmanaged profile"):
+            installer.validate_routing_environment(self.home)
+        profile.write_text(original.replace(str(private), str(self.home / "agents/worker.toml"), 1))
+        with self.assertRaisesRegex(installer.InstallError, "Unmanaged profile"):
+            installer.routing_only_candidates(self.home)
+
+    def test_last_verified_policy_allows_one_role_effort_update(self) -> None:
+        installer.install_environment(self.home)
+        before = (self.home / "model-routing.toml").read_text()
+        old_config = (self.home / "config.toml").read_bytes()
+        updated = before.replace('model = "gpt-6.2-astra"\neffort = "xhigh"',
+                                 'model = "gpt-6.2-astra"\neffort = "high"', 1)
+        self.assertNotEqual(before, updated)
+        roles_before = {file.name: file.read_bytes() for file in (self.home / "agents").glob("*.toml")}
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "model-routing.toml"
+            source.write_text(updated)
+            # No release preimage for the old policy. The last verified local installation supplies it.
+            (source.parent / "routing-preimages.json").write_text('{"exact": [], "legacy_sol61": []}')
+            with mock.patch.object(installer.routing, "POLICY_PATH", source):
+                installer.install_routing_environment(self.home)
+                self.assertEqual(installer.verify_routing_environment(self.home)["status"], "ok")
+                self.assertEqual(installer.routing_baseline(self.home), installer.sha256_file(source))
+        updated_roles = {file.name: file.read_bytes() for file in (self.home / "agents").glob("*.toml")}
+        self.assertEqual(["deep_reviewer.toml"], [n for n in roles_before if roles_before[n] != updated_roles[n]])
+        self.assertEqual(old_config, (self.home / "config.toml").read_bytes())
+
+    def test_routing_only_preserves_equivalent_desktop_registration_bytes(self) -> None:
+        installer.install_environment(self.home)
+        config = self.home / "config.toml"
+        text = config.read_text().replace(installer.BLOCK_START, "").replace(installer.BLOCK_END, "")
+        text = text.replace('config_file = "./agents/', 'config_file = "agents/')
+        config.write_text(text)
+        self.assertEqual("ok", installer.verify_routing_environment(self.home)["status"])
+        installer.install_routing_environment(self.home)
+        self.assertEqual(text, config.read_text())
+
+    def test_routing_only_rejects_unrelated_policy_change(self) -> None:
+        self._legacy_routing_fixture()
+        policy = self.home / "model-routing.toml"
+        prior = policy.read_text().replace('effort = "high"', 'effort = "xhigh"', 1)
+        policy.write_text(prior)
+        with self.assertRaisesRegex(installer.InstallError, "unrelated drift"):
+            installer.install_routing_environment(self.home)
+        self.assertEqual(prior, policy.read_text())
 
     def test_routing_only_refuses_unrelated_role_drift_before_writes(self) -> None:
         self._legacy_routing_fixture()

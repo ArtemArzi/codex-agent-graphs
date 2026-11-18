@@ -1,6 +1,6 @@
 ---
 name: grill-with-docs
-description: Understand a product or task through adaptive questions and preserve agreed terminology and durable decisions in existing project documents. Use when an interview must build or refine the documented domain model or project foundation.
+description: Explicit invocation of the grilling interview with domain-modeling and durable project decisions. Use when the user names grill-with-docs.
 ---
 
 # Grill with Docs
@@ -24,4 +24,4 @@ its prerequisites are settled; an interview alone does not authorize code or
 external publication.
 
 Adapted from [Matt Pocock's grill-with-docs](https://github.com/mattpocock/skills/blob/49dd158d1076134a641b33efb035946536778336/skills/engineering/grill-with-docs/SKILL.md).
-See LICENSE. Automatic discovery is enabled at the user's request.
+See LICENSE. This wrapper is available for explicit invocation.

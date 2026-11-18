@@ -25,7 +25,9 @@ STATE_NAME = "state.json"
 LOCK_NAME = ".state.lock"
 WORK_ARTIFACT = "research.json"
 VERIFICATION_ARTIFACT = "verification.json"
+MCP_CONTRACT_VERSIONS = {"2.3.0", "2.3.1"}
 LEGACY_ACTIVE_GRAPH_IDENTITIES = {
+    ("2.3.0", "1f16f0674adb8b9c8cadeada82f984844d24ead66e0186ab4a2351cc8699e159"),
     ("2.1.0", "b3c872a1b1b673cc545a8c0ae16a687333d8d3aaa19ae2362861c61f0d6ef5a2"),
     ("2.2.0", "41458f1adc556e6fcc87979af1e1d5fefeb8340f15bd49a153e8ee305ed620e6"),
 }
@@ -332,6 +334,13 @@ def initialize(
         write_text_atomic(runtime_ignore, runtime_ignore.read_text(encoding="utf-8").rstrip() + "\n*\n")
     runs_root = ensure_within(runtime_root / "research-runs", runtime_root, "Runs root")
     run_dir = ensure_within(runs_root / run_id, runs_root, "Run directory")
+    if not run_dir.exists():
+        for version, _ in sorted(LEGACY_ACTIVE_GRAPH_IDENTITIES, reverse=True):
+            prior_id = fingerprint(question, workspace, output, version, requested_depth)
+            prior = ensure_within(runs_root / prior_id, runs_root, "Prior run directory")
+            if (prior / STATE_NAME).is_file() and load_state(prior)["status"] != "completed":
+                run_dir = prior
+                break
     run_dir.mkdir(parents=True, exist_ok=True)
     state_path = run_dir / STATE_NAME
     with state_lock(run_dir):
@@ -351,7 +360,7 @@ def initialize(
                 "Existing research run resumed",
                 next_actions=[f"Inspect control state with: ready --run {run_dir}"],
                 artifacts=[str(state_path)],
-                data={"run_dir": str(run_dir), "current": state["current"]},
+                data={"run_dir": str(run_dir), "current": ready_stage(state)},
             )
         state = initial_state(graph, question, workspace, output, run_id, requested_depth)
         write_json_atomic(state_path, state)
@@ -384,18 +393,19 @@ def load_state(run_dir: Path) -> dict[str, Any]:
 
 def state_summary(run_dir: Path) -> dict[str, Any]:
     state = load_state(run_dir)
+    current = ready_stage(state)
     return result(
         "ok",
-        f"Research run is {state['status']} at {state['current']}",
-        next_actions=[] if state["status"] != "running" else [f"Execute node: {state['current']}"],
+        f"Research run is {state['status']} at {current}",
+        next_actions=[] if state["status"] != "running" else [f"Execute node: {current}"],
         artifacts=[str(run_dir / STATE_NAME)],
         data={
             "run_id": state["run_id"],
             "status": state["status"],
-            "current": state["current"],
+            "current": current,
             "requested_depth": state["requested_depth"],
             "mode": state["mode"],
-            "verification_required": state["verification_required"],
+            "verification_required": state["verification_required"] or latest_rejection(state) is not None,
             "verification_repairs": state["verification_repairs"],
             "capabilities_used": state["capabilities_used"],
             "agents_used": state["agents_used"],
@@ -404,14 +414,41 @@ def state_summary(run_dir: Path) -> dict[str, Any]:
     )
 
 
+def latest_rejection(state: dict[str, Any]) -> dict[str, Any] | None:
+    return next(
+        (receipt for receipt in reversed(state["nodes"]["verify"]["receipts"])
+         if receipt["outcome"] == "rejected"),
+        None,
+    )
+
+
+def pending_legacy_repair(state: dict[str, Any]) -> bool:
+    # An old controller could send self-reviewed work to complete after a reject.
+    # Let the caller record corrected work in that case without rewriting history.
+    work = latest_receipt(state, "work")
+    return (
+        state["current"] == "complete"
+        and latest_rejection(state) is not None
+        and work is not None
+        and work["outcome"] == "succeeded"
+    )
+
+
+def ready_stage(state: dict[str, Any]) -> str:
+    if state["status"] == "running" and pending_legacy_repair(state):
+        return "work"
+    return state["current"]
+
+
 def ready_node(run_dir: Path) -> dict[str, Any]:
     state = load_state(run_dir)
     if state["status"] != "running":
         raise GraphError(f"Run is not active: {state['status']}")
     graph = graph_contract()
-    node_name = state["current"]
+    legacy_repair = pending_legacy_repair(state)
+    node_name = "work" if legacy_repair else state["current"]
     node_state = state["nodes"][node_name]
-    if node_state["status"] != "ready":
+    if node_state["status"] != "ready" and not legacy_repair:
         raise GraphError(f"Current node {node_name} is not ready")
     node = graph["nodes"][node_name]
     artifact = Path(state["output"]) if node_name == graph["terminal"] else run_dir / node["artifact"]
@@ -422,7 +459,8 @@ def ready_node(run_dir: Path) -> dict[str, Any]:
         "attempt": node_state["attempts"] + 1,
     }
     if node_name == "work":
-        default_mode = "deep" if state["requested_depth"] == "deep" else "fast"
+        repairing = latest_rejection(state) is not None
+        default_mode = "deep" if repairing or state["requested_depth"] == "deep" else "fast"
         data.update(
             {
                 "execution": "one native root-agent loop",
@@ -433,7 +471,7 @@ def ready_node(run_dir: Path) -> dict[str, Any]:
                 },
                 "mcp_policy": graph["mcp_policy"],
                 "execution_policy": graph["execution_policy"],
-                "allowed_outcomes": ["succeeded", "verify", "failed"],
+                "allowed_outcomes": ["verify", "failed"] if repairing else ["succeeded", "verify", "failed"],
             }
         )
         next_actions = [
@@ -556,7 +594,7 @@ def validate_work(path: Path, state: dict[str, Any], outcome: str) -> tuple[list
     for label in ("capabilities", "agents", "gaps"):
         errors.extend(validate_string_list(work.get(label), label))
     capabilities = work.get("capabilities") if isinstance(work.get("capabilities"), list) else []
-    if state.get("graph_version") == graph_contract()["graph_version"]:
+    if state.get("graph_version") in MCP_CONTRACT_VERSIONS:
         errors.extend(validate_mcp_capabilities(capabilities))
     if not isinstance(work.get("reason"), str) or not work["reason"].strip():
         errors.append("reason must be a non-empty string")
@@ -725,7 +763,8 @@ def record_node(run_dir: Path, node_name: str, artifact_value: str, outcome: str
         graph = graph_contract()
         if state["status"] != "running":
             raise GraphError(f"Run is not active: {state['status']}")
-        if node_name != state["current"]:
+        legacy_repair = node_name == "work" and pending_legacy_repair(state)
+        if node_name != state["current"] and not legacy_repair:
             raise GraphError(f"Cannot record {node_name}; current node is {state['current']}")
         if node_name == graph["terminal"]:
             raise GraphError("Use the complete command for the terminal node")
@@ -734,16 +773,29 @@ def record_node(run_dir: Path, node_name: str, artifact_value: str, outcome: str
         expected_name = graph["nodes"][node_name]["artifact"]
         artifact = resolve_artifact(run_dir, Path(state["workspace"]), artifact_value, expected_name)
         details: dict[str, Any] = {}
+        rejected = latest_rejection(state)
+        if node_name == "work" and rejected is not None and outcome == "succeeded":
+            raise GraphError("A verifier rejection requires corrected work with outcome verify")
         if outcome == "failed":
             errors = validate_failure(artifact)
         elif node_name == "work":
             errors, details = validate_work(artifact, state, outcome)
+            if rejected is not None and details["report_sha256"] == rejected.get("report_sha256"):
+                errors.append("Verifier rejection requires a corrected report with changed content")
         else:
             report_errors, _report_text, report_hash = validate_report_file(state)
             errors = report_errors + validate_verification(artifact, outcome, report_hash)
+            work = latest_receipt(state, "work")
+            if work is None or work.get("report_sha256") != report_hash:
+                errors.append("Verification must check the report recorded by work")
+            if rejected is not None and report_hash == rejected.get("report_sha256"):
+                errors.append("Verifier rejection requires a corrected report with changed content")
             details["report_sha256"] = report_hash
         if errors:
             raise GraphError("; ".join(errors))
+        if legacy_repair:
+            state["current"] = "work"
+            reset_nodes(state, ["complete"])
 
         now = utc_now()
         node_state = state["nodes"][node_name]
@@ -971,7 +1023,11 @@ def report_checks(run_dir: Path) -> tuple[list[str], dict[str, Any]]:
     if local_citations != local_sources:
         errors.append("Every declared local source must be referenced in the report")
 
-    if state["verification_required"]:
+    rejected = latest_rejection(state)
+    verification_required = state["verification_required"] or rejected is not None
+    if verification_required:
+        if rejected is not None and rejected.get("report_sha256") == report_hash:
+            errors.append("Current report still matches the rejected report")
         verification_receipt = latest_receipt(state, "verify")
         if verification_receipt is None or verification_receipt["outcome"] != "succeeded":
             errors.append("Independent verification was requested but did not pass")
@@ -993,7 +1049,7 @@ def report_checks(run_dir: Path) -> tuple[list[str], dict[str, Any]]:
         "unique_local_sources": len(local_sources),
         "markdown_links": len(markdown_urls),
         "declared_citations": len(declared_citations),
-        "verification_required": state["verification_required"],
+        "verification_required": verification_required,
         "verification_repairs": state["verification_repairs"],
     }
 
@@ -1029,7 +1085,10 @@ def complete_run(run_dir: Path) -> dict[str, Any]:
     with state_lock(run_dir):
         existing = load_state(run_dir)
         if existing["status"] == "completed":
-            integrity_errors = validate_receipt_hashes(existing)
+            if latest_rejection(existing) is not None:
+                integrity_errors, _ = report_checks(run_dir)
+            else:
+                integrity_errors = validate_receipt_hashes(existing)
             if integrity_errors:
                 raise GraphError("Completed run failed integrity check: " + "; ".join(integrity_errors))
             return result(

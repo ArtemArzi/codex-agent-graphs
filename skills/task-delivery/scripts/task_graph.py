@@ -59,7 +59,10 @@ ALLOWED_ROLES = {
     "research_synthesizer",
     "research_verifier",
 }
+REVIEW_CONTRACT_VERSION = "3.10.0"
+WHOLE_REVIEW_PROFILES = {"complex", "critical"}
 LEGACY_ACTIVE_GRAPH_IDENTITIES = {
+    ("3.9.2", "ec0c66842a0779b87e9de3e53a6ef3c68a80f8f727ce0eccbb7a717007070a4c"),
     ("3.0.0", "b2a735ff751a88a21175ea7fcfd0f9d0960f53abe540373360180a5ca14fdf3a"),
     ("3.1.0", "a9d10724ff236fe787540d4f8c0e3dcb18f66e989e4d57bfc0a0683bff999d46"),
     ("3.2.0", "4317362f02d843470cfa3bc063cb861577bec09c9b98bd78126dd12bb8bb2bb1"),
@@ -72,18 +75,18 @@ LEGACY_ACTIVE_GRAPH_IDENTITIES = {
     ("3.9.0", "b8d70db20b6ebc57ea1fcb1258bfce9a22eab02089c9c9c4f1d2b1e8b1b75112"),
     ("3.9.1", "a7bf37b8e79edaefa345dbf6401eb8d34dbdfdd2deaacc0d73d69e286af0b713"),
 }
-SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2"}
-STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2"}
-NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2"}
+SLICE_CONTRACT_VERSIONS = {"3.3.0", "3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2", REVIEW_CONTRACT_VERSION}
+STAGED_SLICE_CONTRACT_VERSIONS = {"3.4.0", "3.5.0", "3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2", REVIEW_CONTRACT_VERSION}
+NORMALIZED_PLAN_DIGEST_VERSIONS = {"3.6.0", "3.7.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2", REVIEW_CONTRACT_VERSION}
 
 
 def adaptive_delegation(state: dict[str, Any]) -> bool:
-    return state.get("graph_version") in {"3.9.0", "3.9.1", "3.9.2"}
+    return state.get("graph_version") in {"3.9.0", "3.9.1", "3.9.2", REVIEW_CONTRACT_VERSION}
 
 
 def uses_code_first_contract(state: dict[str, Any]) -> bool:
     # Pin behavior by release, not by whichever graph happens to be installed.
-    return state.get("graph_version") in {"3.8.0", "3.9.0", "3.9.1", "3.9.2"}
+    return state.get("graph_version") in {"3.8.0", "3.9.0", "3.9.1", "3.9.2", REVIEW_CONTRACT_VERSION}
 
 
 def slice_estimate(state: dict[str, Any]) -> int:
@@ -202,11 +205,12 @@ def graph_contract() -> dict[str, Any]:
         raise GraphError("Task Delivery graph должен содержать plan, implement и full.")
     if set(graph.get("profiles", {})) != PROFILES:
         raise GraphError("Task Delivery graph должен содержать четыре профиля риска.")
+    whole_reviews = int(graph["graph_version"] == REVIEW_CONTRACT_VERSION)
     if graph["profiles"] != {
         "light": {"plan_reviewers": 0, "result_reviewers": 0},
         "standard": {"plan_reviewers": 0, "result_reviewers": 0},
-        "complex": {"plan_reviewers": 0, "result_reviewers": 0},
-        "critical": {"plan_reviewers": 0, "result_reviewers": 1},
+        "complex": {"plan_reviewers": whole_reviews, "result_reviewers": whole_reviews},
+        "critical": {"plan_reviewers": whole_reviews, "result_reviewers": 1},
     }:
         raise GraphError("Task Delivery profile review policy должна быть risk-triggered.")
     for mode in MODES:
@@ -522,7 +526,7 @@ def validate_plan(path: Path, *, graph_version: str | None = None) -> tuple[str,
     contract = plan_contract_text(path, graph_version=graph_version)
     text_value = path.read_text(encoding="utf-8")
     version = graph_version or graph_contract()["graph_version"]
-    if version in {"3.9.1", "3.9.2"}:
+    if version in {"3.9.1", "3.9.2", REVIEW_CONTRACT_VERSION}:
         validate_scope_markers(text_value, contract)
     placeholders = [token for token in ("PENDING", "TODO", "{{") if token in contract]
     if placeholders:
@@ -640,6 +644,10 @@ def exclusions(plan: str) -> list[str]:
 
 def manifest(root: Path, plan: str) -> dict[str, dict[str, Any]]:
     return snapshots.repo_manifest(root, exclusions(plan))
+
+
+def requires_whole_review(state: dict[str, Any]) -> bool:
+    return state.get("graph_version") == REVIEW_CONTRACT_VERSION and state.get("profile") in WHOLE_REVIEW_PROFILES
 
 
 def profile_requires_verify(mode: str, profile: str, confidence: str = "high") -> bool:
@@ -1226,6 +1234,8 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                     or prior.get("verdict") != "pass"
                 ):
                     raise GraphError("Implement slice требует точный сохранённый plan review.")
+                if requires_whole_review(state) and not checkpoint_plan_reviewer(prior):
+                    raise GraphError("Complex/critical implement slice требует independent plan review.")
                 plan_review = {"mode": "reused", "receipt": "task-state:plan-review"}
             else:
                 raw_review = draft.get("plan_review")
@@ -1237,9 +1247,10 @@ def register_slice(run_dir: Path, draft_path: Path) -> dict[str, Any]:
                 if review_mode not in allowed_review_modes:
                     raise GraphError("Full slice plan_review mode должен быть self или independent.")
                 if (
-                    not uses_code_first_contract(state)
-                    and state["profile"] in {"complex", "critical"}
-                    and review_mode != "independent"
+                    requires_whole_review(state)
+                    or (not uses_code_first_contract(state) and state["profile"] in WHOLE_REVIEW_PROFILES)
+                ) and (
+                    review_mode != "independent" or review_receipt == "root:self-review"
                 ):
                     raise GraphError("Complex/critical slice требует independent plan review до worker.")
                 plan_review = {"mode": review_mode, "receipt": review_receipt}
@@ -2183,6 +2194,7 @@ def validate_agents(
     worker_limit: int | None,
     efficiency_contract: bool,
     max_agents: int | None,
+    bounded_review_role: bool = False,
 ) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise GraphError("agents должен быть списком.")
@@ -2197,8 +2209,11 @@ def validate_agents(
         phase = item.get("phase")
         receipt = item.get("receipt")
         outcome = item.get("outcome")
-        if role not in ALLOWED_ROLES or phase not in {"research", "plan-review", "implementation", "result-review"}:
+        allowed_role = role in ALLOWED_ROLES or (bounded_review_role and role == "block_reviewer")
+        if not allowed_role or phase not in {"research", "plan-review", "implementation", "result-review"}:
             raise GraphError("Agent receipt содержит неизвестную роль или фазу.")
+        if role == "block_reviewer" and phase != "result-review":
+            raise GraphError("block_reviewer требует phase=result-review.")
         if not isinstance(receipt, str) or len(receipt.strip()) < 6 or receipt in receipts:
             raise GraphError("Agent receipt должен быть уникальным и содержательным.")
         if role == "task_worker" and slice_contract:
@@ -2283,6 +2298,41 @@ def validate_tests(value: Any, mode: str, *, staged_contract: bool) -> list[dict
 
 def review_receipts(agents: list[dict[str, Any]], role: str) -> list[str]:
     return [item["receipt"] for item in agents if item["role"] == role and item["outcome"] == "pass"]
+
+
+def checkpoint_plan_reviewer(prior: dict[str, Any]) -> str | None:
+    identity = prior.get("reviewer_receipt")
+    if (
+        prior.get("mode") == "independent"
+        and prior.get("reviewer_role") == "task_plan_reviewer"
+        and isinstance(identity, str) and len(identity.strip()) >= 6
+        and identity != "root:self-review"
+    ):
+        return identity
+    return None
+
+
+def validate_separate_risk_review(artifact: dict[str, Any], agents: list[dict[str, Any]]) -> str | None:
+    risk = artifact.get("risk_review")
+    if not isinstance(risk, dict) or "separate_risk" not in risk:
+        raise GraphError("Critical реализация требует risk_review с описанием coverage и separate_risk.")
+    for field in ("coverage", "separate_risk"):
+        value = risk.get(field)
+        if field == "separate_risk" and value is None:
+            continue
+        if not isinstance(value, str) or len(value.strip()) < 12:
+            raise GraphError(f"risk_review.{field} требует содержательное описание.")
+    independent = [
+        agent["receipt"] for agent in agents
+        if agent["role"] == "task_risk_reviewer" and agent["phase"] == "result-review" and agent["outcome"] == "pass"
+    ]
+    if risk["separate_risk"] is None:
+        if any(agent["role"] == "task_risk_reviewer" for agent in agents):
+            raise GraphError("task_risk_reviewer требует определённый separate_risk.")
+        return None
+    if len(independent) != 1 or independent[0] == "root:self-review":
+        raise GraphError("Отдельный риск требует положительный task_risk_reviewer receipt.")
+    return independent[0]
 
 
 def validate_slice_acceptance(
@@ -2520,6 +2570,8 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         raise GraphError("confidence должен быть high, medium или low.")
     capabilities = strings(artifact.get("capabilities"), "capabilities", allow_empty=False)
     current_contract = uses_code_first_contract(state)
+    new_review_contract = state.get("graph_version") == REVIEW_CONTRACT_VERSION
+    whole_review = requires_whole_review(state)
     staged_contract = state.get("graph_version") in STAGED_SLICE_CONTRACT_VERSIONS
     slice_contract = state.get("graph_version") in SLICE_CONTRACT_VERSIONS
     worker_limit = (
@@ -2532,9 +2584,10 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         worker_limit=worker_limit,
         efficiency_contract=current_contract,
         max_agents=None if adaptive_delegation(state) else (8 if current_contract else 5),
+        bounded_review_role=new_review_contract and not whole_review,
     )
     validate_research(artifact.get("research"))
-    if state.get("graph_version") in {"3.3.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2"}:
+    if state.get("graph_version") in {"3.3.0", "3.8.0", "3.9.0", "3.9.1", "3.9.2", REVIEW_CONTRACT_VERSION}:
         validate_mcp_capabilities(capabilities)
     plan_path = snapshots.safe_join_no_symlinks(root, state["plan_path"])
     digest, scope = validate_plan(
@@ -2552,7 +2605,12 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     review_mode = plan_review.get("mode")
     if review_mode not in {"self", "independent", "reused"}:
         raise GraphError("Plan review mode должен быть self, independent или reused.")
-    independent_plan = bool(review_receipts(agents, "task_plan_reviewer"))
+    plan_reviewers = [
+        agent["receipt"] for agent in agents
+        if agent["role"] == "task_plan_reviewer" and agent["phase"] == "plan-review"
+        and agent["outcome"] == "pass" and agent["receipt"] != "root:self-review"
+    ]
+    independent_plan = bool(plan_reviewers if new_review_contract else review_receipts(agents, "task_plan_reviewer"))
     task_snapshot = state.get("task_state_snapshot") if isinstance(state.get("task_state_snapshot"), dict) else {}
     prior = task_snapshot.get("checkpoints", {}).get("plan-review")
     prior = prior if isinstance(prior, dict) else {}
@@ -2581,6 +2639,12 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
         raise GraphError("Complex/critical нельзя переиспользовать self-review лёгкого плана.")
     if review_mode == "independent" and not independent_plan:
         raise GraphError("Independent plan review требует task_plan_reviewer receipt.")
+    plan_reviewer = (
+        plan_reviewers[0] if independent_plan and plan_reviewers and review_mode == "independent"
+        else checkpoint_plan_reviewer(prior) if prior_reusable else None
+    )
+    if whole_review and mode != "plan" and not plan_reviewer:
+        raise GraphError("Complex/critical реализация требует independent plan review от task_plan_reviewer.")
     if staged_contract and state.get("scope_amendments"):
         amendment_review_receipts: list[str] = []
         for item in state["scope_amendments"]:
@@ -2640,20 +2704,20 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     if len(str(artifact.get("rollback", "")).strip()) < 8:
         raise GraphError("rollback должен быть содержательным.")
     strings(artifact.get("residual_risks"), "residual_risks")
-    if profile == "critical" and mode != "plan" and not review_receipts(agents, "task_risk_reviewer"):
-        raise GraphError("Critical реализация требует отдельный task_risk_reviewer receipt.")
-    required_verify = bool(state.get("verification_required")) or profile_requires_verify(mode, profile, confidence)
-    if outcome == "verify" and not required_verify:
-        required_verify = True
-    if outcome == "succeeded" and required_verify:
-        raise GraphError("Этот профиль требует независимый verify.")
-    if outcome == "verify" and not profile_requires_verify(mode, profile, confidence):
-        # Root may escalate a risky light path; this is intentionally allowed.
-        required_verify = True
+    risk_reviewer = None
+    if profile == "critical" and mode != "plan":
+        if new_review_contract:
+            risk_reviewer = validate_separate_risk_review(artifact, agents)
+        elif not review_receipts(agents, "task_risk_reviewer"):
+            raise GraphError("Critical реализация требует отдельный task_risk_reviewer receipt.")
     if outcome not in {"succeeded", "verify", "decision"}:
         raise GraphError("Work outcome должен быть succeeded, verify или decision.")
-    if state.get("verification_required") and outcome == "succeeded":
-        raise GraphError("После verifier reject исправление обязано снова пройти verify.")
+    pending_verify = bool(state.get("verification_required")) or bool(state.get("verification_repairs"))
+    required_verify = pending_verify or whole_review or profile_requires_verify(mode, profile, confidence) or outcome == "verify"
+    if outcome == "succeeded" and pending_verify:
+        raise GraphError("После verifier reject исправление обязано снова пройти независимый verify.")
+    if outcome == "succeeded" and required_verify:
+        raise GraphError("Этот профиль требует независимый verify.")
     scope_snapshot = snapshots.scope_manifest(root, scope)
     legacy_state = dict(state["task_state_snapshot"])
     legacy_state["baseline_manifest"] = state["baseline_manifest"]
@@ -2664,6 +2728,7 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
     implementation_digest = legacy.implementation_repo_state(root, legacy_state)[1]
     return {
         "plan_digest": digest,
+        **({"plan_reviewer": plan_reviewer, "risk_reviewer": risk_reviewer} if new_review_contract else {}),
         "scope": scope,
         "scope_manifest": scope_snapshot,
         "changed_paths": changed,
@@ -2683,6 +2748,8 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any], outcome: str,
 
 
 def validate_verification(state: dict[str, Any], artifact: dict[str, Any], outcome: str) -> None:
+    if outcome not in {"succeeded", "failed"}:
+        raise GraphError("Verify outcome должен быть succeeded или failed.")
     validate_restart_constraints(state, artifact)
     if artifact.get("schema_version") != 3 or artifact.get("task_id") != state["task_id"]:
         raise GraphError("verification.json требует schema_version 3 и точный task_id.")
@@ -2702,8 +2769,26 @@ def validate_verification(state: dict[str, Any], artifact: dict[str, Any], outco
     strings(artifact.get("residual_risks"), "residual_risks")
     repairs = strings(artifact.get("repair_list"), "repair_list")
     expected_role = "task_plan_reviewer" if state["mode"] == "plan" else "task_result_reviewer"
-    if artifact.get("reviewer_role") != expected_role or len(str(artifact.get("reviewer_receipt", ""))) < 6:
-        raise GraphError(f"Verifier требует роль {expected_role} и reviewer_receipt.")
+    roles = {expected_role}
+    new_review_contract = state.get("graph_version") == REVIEW_CONTRACT_VERSION
+    if requires_whole_review(state) and state["mode"] != "plan":
+        roles.add("deep_reviewer")
+    if new_review_contract and state.get("profile") in {"light", "standard"}:
+        prior = state["nodes"].get("verify", {}).get("receipts", [])
+        if not prior or prior[-1].get("reviewer_role") != expected_role:
+            roles.add("block_reviewer")
+    identity = artifact.get("reviewer_receipt")
+    if artifact.get("reviewer_role") not in roles:
+        raise GraphError(f"Verifier требует роль {' или '.join(sorted(roles))}.")
+    if not isinstance(identity, str) or len(identity.strip()) < 6 or identity == "root:self-review":
+        raise GraphError("Verifier требует независимый reviewer_receipt.")
+    if new_review_contract and state["mode"] != "plan":
+        if requires_whole_review(state) and not work.get("plan_reviewer"):
+            raise GraphError("Result verification requires the exact independent plan reviewer.")
+        if identity in {work.get("plan_reviewer"), work.get("risk_reviewer")}:
+            raise GraphError("Result verifier должен отличаться от plan/risk reviewer.")
+        if any(agent["role"] == "task_worker" and agent["receipt"] == identity for agent in work.get("agents", [])):
+            raise GraphError("Result verifier не может быть автором реализации task_worker.")
     if outcome == "succeeded" and verdict != "pass":
         raise GraphError("Verify succeeded требует verdict=pass.")
     if outcome == "failed" and (verdict != "reject" or not repairs):
@@ -2730,6 +2815,18 @@ def load_run_state(run_dir: Path) -> dict[str, Any]:
         raise GraphError("Run directory не совпадает с root/run_id из состояния.")
     if state.get("mode") not in MODES or state.get("profile") not in PROFILES:
         raise GraphError("Run содержит неизвестный mode/profile.")
+    if state["graph_version"] == REVIEW_CONTRACT_VERSION:
+        runs = state.get("task_state_snapshot", {}).get("runs", [])
+        matching = next(((index, item) for index, item in enumerate(runs, 1) if item.get("run_id") == run_id), None)
+        if matching is None:
+            raise GraphError("Не найден исходный профиль review этого run.")
+        run_number, entry = matching
+        raw_id = (
+            f"{task_id}:{state['mode']}:{state['profile']}:{entry['implementation_strategy_request']}:"
+            f"{entry['slice_budget']}:{state['graph_version']}:{run_number}"
+        )
+        if hashlib.sha256(raw_id.encode("utf-8")).hexdigest()[:16] != run_id:
+            raise GraphError("Режим или профиль review изменился после init.")
     plan = relative_path(root, str(state.get("plan_path", "")))
     if plan != state.get("plan_path"):
         raise GraphError("Run содержит неканонический путь плана.")
@@ -3654,6 +3751,7 @@ def ready(run_dir: Path) -> dict[str, Any]:
             "context": state.get("context", {}),
             "scope_amendment_count": len(state.get("scope_amendments", [])),
             "verification_repair_work_sha256": delegated_repair_sha,
+            "whole_review_required": requires_whole_review(state),
             "slices": [
                 {
                     "slice_id": identifier,
@@ -3734,6 +3832,7 @@ def record(run_dir: Path, node: str, outcome: str) -> dict[str, Any]:
                     "source": str(artifact_path),
                     "sha256": digest,
                     "work_sha256": state["nodes"]["work"]["receipts"][-1]["sha256"],
+                    **({"reviewer_role": artifact["reviewer_role"]} if state.get("graph_version") == REVIEW_CONTRACT_VERSION else {}),
                     "outcome": outcome,
                     "at": now(),
                 }
@@ -3856,7 +3955,7 @@ def verify_integrity(state: dict[str, Any]) -> dict[str, Any]:
         != work["plan_digest"]
     ):
         raise GraphError("План изменился после record.")
-    if state["verification_required"]:
+    if state["verification_required"] or state.get("verification_repairs") or requires_whole_review(state):
         verifier = state["nodes"]["verify"]
         if verifier["status"] != "completed" or not verifier["receipts"]:
             raise GraphError("Обязательный verify не завершён.")
@@ -3867,6 +3966,8 @@ def verify_integrity(state: dict[str, Any]) -> dict[str, Any]:
             path = Path(receipt[key])
             if not path.is_file() or sha256_file(path) != receipt["sha256"]:
                 raise GraphError("verification.json изменился после record.")
+        if state.get("graph_version") == REVIEW_CONTRACT_VERSION:
+            validate_verification(state, load_json(Path(receipt["path"])), "succeeded")
     baseline = snapshots.load_manifest(snapshots.safe_join_no_symlinks(root, state["baseline_manifest"]))
     changed = snapshots.changed_paths(baseline, manifest(root, state["plan_path"]))
     if changed != work["changed_paths"]:
@@ -3944,11 +4045,24 @@ def complete(run_dir: Path) -> dict[str, Any]:
             integrity = verify_integrity(state)
             task = integrity["task"]
             work = integrity["work"]
+            plan_mode = load_json(Path(work["source"]))["plan"]["review"]["mode"]
+            reviewer = {}
+            if state.get("graph_version") == REVIEW_CONTRACT_VERSION:
+                if state["mode"] == "plan" and state["verification_required"]:
+                    verifier = load_json(Path(state["nodes"]["verify"]["receipts"][-1]["path"]))
+                    if verifier.get("reviewer_role") == "task_plan_reviewer":
+                        reviewer = {key: verifier[key] for key in ("reviewer_role", "reviewer_receipt")}
+                        plan_mode = "independent"
+                elif work.get("plan_reviewer"):
+                    reviewer = {"reviewer_role": "task_plan_reviewer", "reviewer_receipt": work["plan_reviewer"]}
+            elif state["verification_required"] and state["mode"] == "plan":
+                plan_mode = "independent"
             task["checkpoints"]["plan-review"] = {
                 "plan_digest": work["plan_digest"],
                 "scope": work["scope"],
                 "verdict": "pass",
-                "mode": "independent" if state["verification_required"] and state["mode"] == "plan" else load_json(Path(work["source"]))["plan"]["review"]["mode"],
+                "mode": plan_mode,
+                **reviewer,
                 "profile": state["profile"],
                 "review_scope_manifest": work["scope_manifest"],
                 "reviewed_at": now(),

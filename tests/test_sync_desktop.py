@@ -16,7 +16,7 @@ spec.loader.exec_module(installer)
 
 
 def config(effort="max", platform="wsl"):
-    return f'''model = "gpt-6.1-sol"
+    return f'''model = "gpt-6.2-sol"
 model_reasoning_effort = "{effort}"
 suppress_unstable_features_warning = true
 approvals_reviewer = "auto_review"
@@ -39,7 +39,7 @@ model = "preserve the example"
 [agents]
 max_threads = 6
 max_depth = 1
-default_subagent_model = "gpt-6.1-sol"
+default_subagent_model = "gpt-6.2-sol"
 default_subagent_reasoning_effort = "medium"
 [features]
 multi_agent = true
@@ -105,8 +105,39 @@ class DesktopSyncTests(unittest.TestCase):
                 self.assertFalse(sync.drift_report(source, target)[0])
                 self.assertEqual("ok", installer.verify_environment(target)["status"])
 
+    def test_astra_root_and_effort_survive_install_and_managed_sync(self):
+        source = installer.config_with_block(config("max"))
+        for selected in ("gpt-6-astra", "gpt-6.2-astra"):
+            with self.subTest(selected=selected):
+                target = config("xhigh", "desktop").replace(
+                    'model = "gpt-6.2-sol"', f'model = "{selected}"', 1)
+                target = installer.config_with_block(target)
+                result = sync.build_desktop_config(source.encode(), target.encode())
+                self.assertEqual(result, sync.build_desktop_config(source.encode(), result))
+                settings = tomllib.loads(result.decode())
+                self.assertEqual(("gpt-6.2-astra", "xhigh"),
+                                 (settings["model"], settings["model_reasoning_effort"]))
+                self.assertEqual("gpt-6.2-sol", settings["agents"]["default_subagent_model"])
+
+    def test_desktop_reserialization_preserves_equivalent_roles_and_rejects_conflicts(self):
+        source = installer.config_with_block(config("high"))
+        desktop = installer.config_with_block(config("xhigh", "desktop"))
+        target = sync.without_registration_markers(desktop).replace(
+            'config_file = "./agents/improvement_verifier.toml"',
+            'config_file = "agents/improvement_verifier.toml"')
+        result = sync.build_desktop_config(source.encode(), target.encode())
+        self.assertEqual(tomllib.loads(source)["agents"], tomllib.loads(result.decode())["agents"])
+        unmarked = sync.without_registration_markers(result.decode()).encode()
+        self.assertEqual(unmarked, sync.build_desktop_config(source.encode(), unmarked))
+        for modified in (target.replace('config_file = "agents/improvement_verifier.toml"',
+                                        'config_file = "./agents/foreign.toml"'),
+                         target.replace(installer.role_descriptions()["improvement_verifier"],
+                                        "local custom registration", 1)):
+            with self.assertRaisesRegex((ValueError, RuntimeError), "Unmanaged"):
+                sync.build_desktop_config(source.encode(), modified.encode())
+
     def test_missing_or_former_root_uses_max_default(self):
-        for target in (config("high").replace('model = "gpt-6.1-sol"', 'model = "gpt-6-astra"'),
+        for target in (config("high").replace('model = "gpt-6.2-sol"', 'model = "unrelated-model"'),
                        config().replace('model_reasoning_effort = "max"\n', '')):
             result = tomllib.loads(sync.build_desktop_config(config("high").encode(), target.encode()).decode())
             self.assertEqual("max", result["model_reasoning_effort"])

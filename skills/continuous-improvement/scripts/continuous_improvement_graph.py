@@ -31,7 +31,11 @@ LOCK_NAME = ".state.lock"
 IGNORED_TOP_LEVEL = {".git", ".agent-graphs", ".codex", ".project-start", "__pycache__", ".pytest_cache"}
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 RUN_ID = re.compile(r"^[0-9a-f]{16}$")
+REVIEW_CONTRACT_VERSION = "1.3.0"
+BENEFIT_CONTRACT_VERSIONS = {"1.2.0", REVIEW_CONTRACT_VERSION}
+REVIEW_SCOPES = {"bounded", "material"}
 LEGACY_ACTIVE_GRAPH_IDENTITIES = {
+    ("1.2.0", "fe66493eb3ab8758123510fcda4d6516cb83d1ed3feb7e065458bb98524fab5f"),
     ("1.1.0", "27f3e6a3a2b8d1e7abcb88e88b54196b93387a062596f6fbefccc3669b1641f3"),
     ("1.0.0", "15e94e081ba7ee94f14f6e530b7075c4d4b542c8284c6105fdfde59797d36c2c"),
 }
@@ -260,6 +264,12 @@ def load_state(run_dir: Path) -> dict[str, Any]:
         raise GraphError("Run directory is incompatible with state identity.")
     if state.get("mode") not in {"full", "audit"} or state.get("status") not in {"running", "blocked", "completed"}:
         raise GraphError("Run state is invalid.")
+    if state["graph_version"] == REVIEW_CONTRACT_VERSION:
+        sequence = state.get("trigger_sequence")
+        if state.get("review_scope") not in REVIEW_SCOPES or type(sequence) is not int or sequence < 0:
+            raise GraphError("Run review scope is invalid.")
+        if trigger_id(root, state["mode"], state["focus"], state["graph_version"], state["review_scope"], sequence) != state["run_id"]:
+            raise GraphError("Review scope or run focus changed after initialization.")
     if not isinstance(state.get("baseline_manifest"), dict) or state.get("baseline_repo_digest") != manifest_digest(state["baseline_manifest"]):
         raise GraphError("Run baseline is tampered.")
     return state
@@ -274,7 +284,16 @@ def runner_command() -> str:
     return f"python3 {shlex.quote(str(Path(__file__).resolve()))}"
 
 
-def initialize(root_raw: str, mode: str, focus: str) -> dict[str, Any]:
+def trigger_id(root: Path, mode: str, focus: str, version: str, review_scope: str, sequence: int) -> str:
+    raw = json.dumps({"root": str(root), "mode": mode, "focus": focus, "graph": version,
+                      "review_scope": review_scope}, sort_keys=True)
+    identity = raw if sequence == 0 else f"{raw}\ntrigger_sequence={sequence}"
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+
+
+def initialize(root_raw: str, mode: str, focus: str, review_scope: str = "bounded") -> dict[str, Any]:
+    if review_scope not in REVIEW_SCOPES:
+        raise GraphError("Review scope must be bounded or material.")
     if mode not in {"full", "audit"} or len(focus.strip()) < 3:
         raise GraphError("mode must be full|audit and focus must be substantive.")
     root = root_path(root_raw)
@@ -282,11 +301,9 @@ def initialize(root_raw: str, mode: str, focus: str) -> dict[str, Any]:
     git = git_info(root)
     if mode == "full" and (not git["head"] or git_dirty(root)):
         raise GraphError("full mode requires a clean Git worktree with an initial commit.")
-    raw = json.dumps({"root": str(root), "mode": mode, "focus": focus.strip(), "graph": graph["graph_version"]}, sort_keys=True)
     trigger_sequence = 0
     while True:
-        identity = raw if trigger_sequence == 0 else f"{raw}\ntrigger_sequence={trigger_sequence}"
-        run_id = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+        run_id = trigger_id(root, mode, focus.strip(), graph["graph_version"], review_scope, trigger_sequence)
         run_dir = run_directory(root, run_id)
         if (run_dir / STATE_NAME).is_file():
             existing = load_state(run_dir)
@@ -305,7 +322,7 @@ def initialize(root_raw: str, mode: str, focus: str) -> dict[str, Any]:
         "schema_version": 1, "graph_id": "continuous-improvement", "graph_version": graph["graph_version"], "graph_sha256": sha256_file(GRAPH_PATH),
         "run_id": run_id, "trigger_sequence": trigger_sequence, "root": str(root), "mode": mode, "focus": focus.strip(), "status": "running", "current": "work",
         "baseline_manifest": baseline, "baseline_repo_digest": manifest_digest(baseline), "git": git,
-        "verification_required": False, "verification_repairs": 0, "node_retries": {"work": 0, "verify": 0}, "nodes": nodes,
+        "review_scope": review_scope, "verification_required": review_scope == "material", "verification_repairs": 0, "node_retries": {"work": 0, "verify": 0}, "nodes": nodes,
         "created_at": stamp, "updated_at": stamp,
     }
     run_dir.mkdir(parents=True)
@@ -322,7 +339,7 @@ def ready(run_dir: Path) -> dict[str, Any]:
     current = state["current"]
     artifact = WORK_NAME if current == "work" else VERIFY_NAME if current == "verify" else None
     actions = [f"{runner_command()} complete --run {shlex.quote(str(run_dir))}"] if artifact is None else [f"Create {run_dir / artifact}", f"{runner_command()} record --run {shlex.quote(str(run_dir))} --node {current} --outcome <...>"]
-    if state["graph_version"] == "1.2.0" and current == "work":
+    if state["graph_version"] in BENEFIT_CONTRACT_VERSIONS and current == "work":
         actions.insert(0, f"{runner_command()} history --root {shlex.quote(state['root'])}")
     return result(
         "ready",
@@ -333,6 +350,8 @@ def ready(run_dir: Path) -> dict[str, Any]:
             "run": str(run_dir),
             "mode": state["mode"],
             "current": current,
+            "review_scope": state.get("review_scope") if state["graph_version"] == REVIEW_CONTRACT_VERSION else None,
+            "verification_required": verification_is_required(state),
             "execution_policy": graph_contract()["execution_policy"],
         },
     )
@@ -435,13 +454,13 @@ def relative_existing(root: Path, raw: Any, field: str) -> Path:
 
 
 def validate_task_id(value: Any, graph_version: str) -> str:
-    pattern = r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}" if graph_version == "1.2.0" else r"[A-Z][A-Z0-9-]{2,127}"
+    pattern = r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}" if graph_version in BENEFIT_CONTRACT_VERSIONS else r"[A-Z][A-Z0-9-]{2,127}"
     if not isinstance(value, str) or not re.fullmatch(pattern, value):
         raise GraphError("Task Delivery task id is invalid.")
     return value
 
 
-def validate_task_delivery(root: Path, state: dict[str, Any], receipt: Any, changed: list[str], scope: list[str]) -> None:
+def validate_task_delivery(root: Path, state: dict[str, Any], receipt: Any, changed: list[str], scope: list[str]) -> Path:
     if not isinstance(receipt, dict):
         raise GraphError("delivered requires task_delivery receipt.")
     run_rel = safe_relative(receipt.get("run_dir"), "task_delivery.run_dir")
@@ -488,6 +507,7 @@ def validate_task_delivery(root: Path, state: dict[str, Any], receipt: Any, chan
     declared = safe_paths(receipt.get("changed_paths"), "task_delivery.changed_paths", nonempty=True)
     if sorted(declared) != changed or len(changed) > graph_contract()["limits"]["max_changed_files"] or any(not path_allowed(path, scope) for path in changed):
         raise GraphError("Delivered change set is outside the bounded candidate scope.")
+    return work_path
 
 
 def validate_git_delivery(root: Path, state: dict[str, Any], git: Any, changed: list[str]) -> None:
@@ -510,6 +530,31 @@ def validate_git_delivery(root: Path, state: dict[str, Any], git: Any, changed: 
         raise GraphError("Delivered commit is not the exact one-commit bounded delta.")
 
 
+def verification_is_required(state: dict[str, Any]) -> bool:
+    return (
+        state.get("graph_version") == REVIEW_CONTRACT_VERSION and state.get("review_scope") == "material"
+        or bool(state.get("verification_required"))
+        or bool(state.get("verification_repairs"))
+    )
+
+
+def validate_plan_review(state: dict[str, Any], artifact: dict[str, Any]) -> str | None:
+    review = artifact.get("plan_review")
+    if review is None and state.get("review_scope") == "bounded":
+        return None
+    if (
+        not isinstance(review, dict) or review.get("role") != "task_plan_reviewer"
+        or review.get("verdict") != "pass" or review.get("run_id") != state["run_id"]
+        or review.get("focus") != state["focus"]
+        or review.get("baseline_repo_digest") != state["baseline_repo_digest"]
+    ):
+        raise GraphError("Material review scope requires a positive task_plan_reviewer receipt for this run, focus and baseline.")
+    identity = review.get("receipt")
+    if not isinstance(identity, str) or len(identity.strip()) < 6 or identity == "root:self-review":
+        raise GraphError("Plan review requires an independent reviewer receipt.")
+    return identity
+
+
 def validate_work(state: dict[str, Any], artifact: dict[str, Any]) -> dict[str, Any]:
     root = root_path(state["root"])
     required = {"schema_version", "run_id", "mode", "focus", "disposition", "confidence", "capabilities", "agents", "scan", "candidate", "issue", "task_delivery", "git", "residual_risks"}
@@ -526,17 +571,18 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any]) -> dict[str, 
     disposition = artifact["disposition"]
     current = manifest(root)
     changed = changed_paths(state["baseline_manifest"], current)
+    task_work_path = None
     if disposition == "no-op":
         if any(artifact.get(key) is not None for key in ("candidate", "issue", "task_delivery", "git")) or not isinstance(scan.get("no_candidate_reason"), str) or len(scan["no_candidate_reason"].strip()) < 8 or changed:
             raise GraphError("no-op requires substantive no-candidate evidence and zero repository drift.")
     else:
-        candidate = validate_candidate(artifact.get("candidate"), require_benefit=state["graph_version"] == "1.2.0")
+        candidate = validate_candidate(artifact.get("candidate"), require_benefit=state["graph_version"] in BENEFIT_CONTRACT_VERSIONS)
         if disposition == "issue-ready":
             issue = artifact.get("issue")
             if not isinstance(issue, dict) or any(not isinstance(issue.get(key), str) or len(issue[key].strip()) < 4 for key in ("title", "body", "reason")) or artifact.get("task_delivery") is not None or artifact.get("git") is not None or changed:
                 raise GraphError("issue-ready requires an issue and zero repository drift.")
         else:
-            if state["graph_version"] == "1.2.0" and artifact["candidate"]["benefit"]["effort"] != "small":
+            if state["graph_version"] in BENEFIT_CONTRACT_VERSIONS and artifact["candidate"]["benefit"]["effort"] != "small":
                 raise GraphError("delivered requires small justified candidate.benefit.effort.")
             policy = graph_contract()["candidate_policy"]
             if state["mode"] != "full" or candidate["risk"] != "low" or candidate["protected_domains"] or candidate["source_kind"] not in policy["delivery_source_kinds"]:
@@ -544,9 +590,19 @@ def validate_work(state: dict[str, Any], artifact: dict[str, Any]) -> dict[str, 
             for path in candidate["scope"]:
                 if any(fragment in path.lower() for fragment in policy["protected_path_fragments"]):
                     raise GraphError("delivered candidate scope contains a protected path.")
-            validate_task_delivery(root, state, artifact.get("task_delivery"), changed, candidate["scope"])
+            task_work_path = validate_task_delivery(root, state, artifact.get("task_delivery"), changed, candidate["scope"])
             validate_git_delivery(root, state, artifact.get("git"), changed)
-    return {"disposition": disposition, "changed_paths": changed}
+    result = {"disposition": disposition, "changed_paths": changed}
+    if state["graph_version"] == REVIEW_CONTRACT_VERSION:
+        result["plan_reviewer"] = validate_plan_review(state, artifact)
+        if task_work_path is not None:
+            agents = load_json(task_work_path).get("agents", [])
+            result["implementation_authors"] = [
+                item["receipt"] for item in agents
+                if isinstance(item, dict) and item.get("role") == "task_worker"
+                and isinstance(item.get("receipt"), str)
+            ]
+    return result
 
 
 def preserve(run_dir: Path, node: str, attempt: int, source: Path) -> tuple[Path, str]:
@@ -559,9 +615,31 @@ def preserve(run_dir: Path, node: str, attempt: int, source: Path) -> tuple[Path
 
 
 def validate_verification(state: dict[str, Any], artifact: dict[str, Any], outcome: str) -> None:
+    if outcome not in {"succeeded", "failed"}:
+        raise GraphError("Verification outcome must be succeeded or failed.")
     work = state["nodes"]["work"]["receipts"][-1]
-    if artifact.get("schema_version") != 1 or artifact.get("run_id") != state["run_id"] or artifact.get("reviewer_role") != "improvement_verifier" or not isinstance(artifact.get("reviewer_receipt"), str) or len(artifact["reviewer_receipt"].strip()) < 6 or artifact.get("work_sha256") != work["sha256"]:
+    if artifact.get("schema_version") != 1 or artifact.get("run_id") != state["run_id"] or artifact.get("work_sha256") != work["sha256"]:
         raise GraphError("verification.json is not bound to the exact work receipt.")
+    current_contract = state.get("graph_version") == REVIEW_CONTRACT_VERSION
+    roles = {"improvement_verifier"}
+    if current_contract and state.get("review_scope") == "material":
+        roles.add("deep_reviewer")
+    if current_contract and state.get("review_scope") == "bounded":
+        prior = state["nodes"].get("verify", {}).get("receipts", [])
+        if not prior or prior[-1].get("reviewer_role") != "improvement_verifier":
+            roles.add("block_reviewer")
+    if artifact.get("reviewer_role") not in roles:
+        raise GraphError(f"Verifier role must be {' or '.join(sorted(roles))}.")
+    identity = artifact.get("reviewer_receipt")
+    if not isinstance(identity, str) or len(identity.strip()) < 6 or identity == "root:self-review":
+        raise GraphError("Verification requires an independent reviewer receipt.")
+    if current_contract:
+        if state.get("review_scope") == "material" and not work.get("plan_reviewer"):
+            raise GraphError("Result verification requires the same-run plan reviewer receipt.")
+        if identity == work.get("plan_reviewer"):
+            raise GraphError("Result reviewer must be different from the plan reviewer.")
+        if identity in work.get("implementation_authors", []):
+            raise GraphError("Result reviewer cannot be an identified implementation author.")
     if artifact.get("verdict") not in {"pass", "reject"}:
         raise GraphError("Verifier verdict is invalid.")
     strings(artifact.get("checked_claims"), "verification.checked_claims", nonempty=True)
@@ -587,19 +665,33 @@ def record(run_dir: Path, node: str, outcome: str) -> dict[str, Any]:
         if node == "work":
             if outcome not in {"succeeded", "verify"}:
                 raise GraphError("work outcome must be succeeded|verify|failed.")
-            details = validate_work(state, load_json(source))
+            artifact = load_json(source)
+            details = validate_work(state, artifact)
+            if state["graph_version"] == REVIEW_CONTRACT_VERSION and state["verification_repairs"]:
+                previous = state["nodes"]["work"]["receipts"][-1]
+                previous_path = relative_existing(root_path(state["root"]), previous["path"], "rejected work receipt")
+                if sha256_file(previous_path) != previous["sha256"]:
+                    raise GraphError("Rejected work receipt was tampered.")
+                if artifact == load_json(previous_path):
+                    raise GraphError("Verifier rejection requires corrected work before re-review.")
             target, receipt_sha = preserve(run_dir, node, state["nodes"][node]["attempts"] + 1, source)
             state["nodes"][node]["attempts"] += 1; state["nodes"][node]["receipts"].append({"path": str(target), "sha256": receipt_sha, **details}); state["nodes"][node]["status"] = "completed"
-            if outcome == "verify":
+            if outcome == "verify" or verification_is_required(state):
                 state["verification_required"] = True; state["current"] = "verify"; state["nodes"]["verify"]["status"] = "ready"
+                state["nodes"]["complete"]["status"] = "pending"
             else:
                 state["current"] = "complete"; state["nodes"]["complete"]["status"] = "ready"
         else:
             if outcome not in {"succeeded", "failed"}:
                 raise GraphError("verify outcome must be succeeded|failed.")
-            validate_verification(state, load_json(source), outcome)
+            artifact = load_json(source)
+            validate_verification(state, artifact, outcome)
             target, receipt_sha = preserve(run_dir, node, state["nodes"][node]["attempts"] + 1, source)
-            state["nodes"][node]["attempts"] += 1; state["nodes"][node]["receipts"].append({"path": str(target), "sha256": receipt_sha, "work_sha256": state["nodes"]["work"]["receipts"][-1]["sha256"]})
+            record = {"path": str(target), "sha256": receipt_sha, "work_sha256": state["nodes"]["work"]["receipts"][-1]["sha256"]}
+            if state["graph_version"] == REVIEW_CONTRACT_VERSION:
+                record["reviewer_role"] = artifact["reviewer_role"]
+            state["nodes"][node]["attempts"] += 1
+            state["nodes"][node]["receipts"].append(record)
             if outcome == "succeeded":
                 state["nodes"][node]["status"] = "completed"; state["current"] = "complete"; state["nodes"]["complete"]["status"] = "ready"
             else:
@@ -671,15 +763,20 @@ def complete(run_dir: Path) -> dict[str, Any]:
             raise GraphError("Work receipt was tampered.")
         artifact = load_json(source)
         details = validate_work(state, artifact)
-        if state["verification_required"]:
+        if details.get("plan_reviewer") != work.get("plan_reviewer"):
+            raise GraphError("Plan reviewer differs from the recorded work receipt.")
+        if details.get("implementation_authors") != work.get("implementation_authors"):
+            raise GraphError("Implementation authors differ from the recorded work receipt.")
+        if verification_is_required(state):
             verify = state["nodes"]["verify"]
             if verify["status"] != "completed" or not verify["receipts"] or verify["receipts"][-1].get("work_sha256") != work["sha256"]:
                 raise GraphError("Required verifier pass is missing or mismatched.")
             verify_path = relative_existing(root_path(state["root"]), verify["receipts"][-1]["path"], "immutable verification receipt")
             if sha256_file(verify_path) != verify["receipts"][-1]["sha256"]:
                 raise GraphError("Verification receipt was tampered.")
+            validate_verification(state, load_json(verify_path), "succeeded")
         output = run_dir / COMPLETE_NAME
-        atomic_text(output, completion_markdown(artifact, details["changed_paths"], include_benefit=state["graph_version"] == "1.2.0"))
+        atomic_text(output, completion_markdown(artifact, details["changed_paths"], include_benefit=state["graph_version"] in BENEFIT_CONTRACT_VERSIONS))
         complete_sha = sha256_file(output)
         if sha256_file(output) != complete_sha:
             raise GraphError("Completion artifact cannot be rechecked.")
@@ -723,13 +820,16 @@ def history_summary(root: Path, run_id: str) -> dict[str, Any]:
     if (artifact["disposition"] == "no-op") != (candidate is None):
         raise GraphError("Historical candidate and disposition are incompatible.")
     if candidate is not None:
-        validate_candidate(candidate, require_benefit=state["graph_version"] == "1.2.0")
-    if state["verification_required"]:
+        validate_candidate(candidate, require_benefit=state["graph_version"] in BENEFIT_CONTRACT_VERSIONS)
+    if state["graph_version"] == REVIEW_CONTRACT_VERSION:
+        if validate_plan_review(state, artifact) != work.get("plan_reviewer"):
+            raise GraphError("Historical plan reviewer does not match the work receipt.")
+    if verification_is_required(state):
         verification, _, verified = receipt("verify")
         if state["nodes"]["verify"]["status"] != "completed" or verified.get("work_sha256") != work["sha256"]:
             raise GraphError("Historical verifier chain is mismatched.")
         validate_verification(state, verification, "succeeded")
-    if complete_path.read_text(encoding="utf-8") != completion_markdown(artifact, work["changed_paths"], include_benefit=state["graph_version"] == "1.2.0"):
+    if complete_path.read_text(encoding="utf-8") != completion_markdown(artifact, work["changed_paths"], include_benefit=state["graph_version"] in BENEFIT_CONTRACT_VERSIONS):
         raise GraphError("Historical completion does not match its immutable work.")
     final_relative = f".agent-graphs/history/continuous-improvement/{run_id}/FINAL.json"
     final_path = safe_join(root, final_relative, "history final receipt")
@@ -834,6 +934,7 @@ def parser() -> argparse.ArgumentParser:
     sub = command_parser.add_subparsers(dest="command", required=True)
     history_parser = sub.add_parser("history"); history_parser.add_argument("--root", required=True); history_parser.add_argument("--limit", type=int, default=10)
     init = sub.add_parser("init"); init.add_argument("--root", required=True); init.add_argument("--mode", choices=("full", "audit"), default="full"); init.add_argument("--focus", required=True)
+    init.add_argument("--review-scope", choices=sorted(REVIEW_SCOPES), default="bounded")
     for name in ("ready", "status", "complete"):
         item = sub.add_parser(name); item.add_argument("--run", required=True)
     record_parser = sub.add_parser("record"); record_parser.add_argument("--run", required=True); record_parser.add_argument("--node", choices=("work", "verify"), required=True); record_parser.add_argument("--outcome", required=True)
@@ -845,7 +946,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         if args.command == "history": payload = history(args.root, args.limit)
-        elif args.command == "init": payload = initialize(args.root, args.mode, args.focus)
+        elif args.command == "init": payload = initialize(args.root, args.mode, args.focus, args.review_scope)
         else:
             run_dir = Path(args.run).expanduser().resolve()
             if not run_dir.is_dir() or not (run_dir / STATE_NAME).is_file(): raise GraphError("Run directory not found.")

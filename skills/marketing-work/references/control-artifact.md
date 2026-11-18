@@ -36,8 +36,11 @@ mode, tier, graph version/digest, controller digest, input paths/digests, output
 path and exact candidate digest. They contain references and check evidence,
 not a second marketing plan. `state.output` identifies the canonical document
 for the shared artifact lifecycle. Running state is resumable and retained;
-completed raw state may be compacted by that shared lifecycle. This controller
-contains no pruning, cleanup hook or retention timer.
+completed raw state may be compacted by that shared lifecycle. Compaction reads
+the accepted digest from the validated work and completion receipts. It records
+whether the working document was unchanged, modified or missing at compaction.
+When the accepted bytes are still available, it keeps a verified history copy.
+When they are unavailable, the accepted digest remains recorded with no copy.
 
 ## Commands
 

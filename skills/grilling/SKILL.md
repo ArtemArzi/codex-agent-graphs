@@ -19,9 +19,10 @@ inherited collaboration and authorization policy.
   [product-discovery.md](references/product-discovery.md). Continue through the
   material branches rather than treating the first answers as a complete brief.
 
-`grill-me` is the explicit interview entry; `grill-with-docs` adds domain-modeling
-when agreed terminology and decisions need durable project documents. Reuse
-this one interview discipline; do not start nested interviews for each skill.
+This is the automatic interview entry. When the brief includes preserving
+settled definitions or decisions in project documents, use the existing
+`domain-modeling` method and document owner within this interview. Explicit
+`grill-me` and `grill-with-docs` invocations also use this interview discipline.
 
 ## Facts and decisions
 

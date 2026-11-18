@@ -6,7 +6,7 @@ user-level policy, simple engineering gets one `block_reviewer` result review;
 ordinary non-engineering reviews also use that role. Only complex engineering
 or concrete material risk requires `task_plan_reviewer` before execution and a
 different `improvement_verifier` afterward. Native auxiliary verdicts never
-impersonate released controller receipts; follow Controller compatibility in SKILL.md. Focused
+impersonate legacy controller receipts. Focused
 checks may run beside either acceptor over the same candidate; reconcile their
 material findings before PASS. These are operations inside `work`, not schema or
 graph additions.
@@ -66,9 +66,9 @@ graph additions.
 
 - `no-op`: `candidate`, `issue`, `task_delivery` and `git` are null. `scan.no_candidate_reason` is substantive. Repository content must match the initialized baseline.
 - `issue-ready`: candidate evidence and an `issue` object with `title`, `body` and `reason` are required. No Task Delivery receipt or commit is allowed. Repository content must match baseline.
-- `delivered`: allowed only in `full`; candidate risk is `low`, protected domains are empty and source kind is allowlisted. Graph 1.2 additionally requires `benefit.effort=small`. A completed Task Delivery v3 run, exact handoff, tests, changed paths and one non-default-branch commit are required.
+- `delivered`: allowed only in `full`; candidate risk is `low`, protected domains are empty and source kind is allowlisted. Graph 1.2 and later additionally requires `benefit.effort=small`. A completed Task Delivery v3 run, exact handoff, tests, changed paths and one non-default-branch commit are required.
 
-Graph 1.2 requires `candidate.benefit` for `issue-ready` and `delivered`.
+Graph 1.2 and later require `candidate.benefit` for `issue-ready` and `delivered`.
 `affected`, `consequence`, `frequency` and `why_now` are substantive statements
 grounded in the available evidence; unknown frequency is valid when explicit.
 `effort` is `small`, `medium` or `large`; medium/large work may be issue-ready.
@@ -82,6 +82,17 @@ relevant use, `mcp:fallback:<reason>` after a relevant server fails, or
 identities.
 
 ## Verification receipt
+
+Graph 1.3 defaults to `--review-scope bounded`. For a bounded review the
+controller accepts `block_reviewer` if work enters `verify`. Select
+`--review-scope material` at initialization when the outcome itself crosses the
+whole-review threshold. Record its positive `plan_review` in `improvement.json`
+with `role: task_plan_reviewer`, `receipt`, `verdict: pass`, and the exact
+`run_id`, `focus`, and `baseline_repo_digest`. A different
+`improvement_verifier` must pass the exact result. An explicitly selected
+`deep_reviewer` may supply that whole-result acceptance. The result reviewer
+must be independent of the identified Task Delivery workers. Earlier graph
+versions keep their `improvement_verifier` role requirement.
 
 ```json
 {
@@ -98,7 +109,8 @@ identities.
 ```
 
 `reject` requires a non-empty repair list. One same-scope repair may replace
-`improvement.json` and returns to the same reviewer; a materially new scope
+`improvement.json` and returns to verification even if work is recorded as
+`succeeded`. Reuse the reviewer for the correction. A materially new scope
 needs a fresh assignment and review. A second rejection blocks the run.
 
 ## Completion

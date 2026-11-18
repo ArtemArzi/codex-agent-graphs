@@ -41,7 +41,7 @@ class TaskRestartTests(fixtures.TaskGraphTests):
         payload = self.restart(run)
         successor = Path(payload["data"]["run"])
         state = graph.load_run_state(successor)
-        self.assertEqual("3.9.2", state["graph_version"])
+        self.assertEqual("3.10.0", state["graph_version"])
         self.assertEqual("full", state["mode"])
         self.assertEqual("retired", self.read(run / graph.STATE_NAME)["status"])
         self.assertEqual(before, (run / "restart/pre-run-state.json").read_bytes())

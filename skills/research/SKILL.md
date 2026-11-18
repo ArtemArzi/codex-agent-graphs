@@ -193,7 +193,10 @@ Ordinary non-engineering report reviews use `block_reviewer`; skill-only, depth
 and report length do not promote them to acceptance roles. Give it the report, compact ledger, exact claims to check, and
 a strict instruction not to expand the research.
 
-On rejection, repair only the listed claims and run one delta verification. The graph permits one repair by default; a second full audit is intentionally unavailable.
+On rejection, repair the listed claims and record the changed report with
+`--node work --outcome verify`. Only a positive receipt for that exact report
+can complete the run. The same rule applies when resuming earlier active v2
+runs. A second rejection stops the run.
 
 ## Complete
 

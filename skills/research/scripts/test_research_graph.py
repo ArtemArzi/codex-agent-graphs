@@ -371,7 +371,9 @@ class ResearchGraphTests(unittest.TestCase):
         state = graph.load_state(self.run_dir)
         self.assertEqual(state["current"], "work")
         self.assertEqual(state["verification_repairs"], 1)
-        self.write_report()
+        report = self.write_report()
+        with report.open("a", encoding="utf-8") as stream:
+            stream.write("\nCorrected evidence and narrowed implications.\n")
         self.record_work(
             self.valid_work(
                 mode="deep",
@@ -382,6 +384,74 @@ class ResearchGraphTests(unittest.TestCase):
         )
         self.record_verification("reject")
         self.assertEqual(graph.load_state(self.run_dir)["status"], "blocked")
+
+    def test_rejection_requires_changed_report_and_positive_exact_review(self) -> None:
+        self.advance_to_verify()
+        self.record_verification("reject")
+        state_file = self.run_dir / graph.STATE_NAME
+        old_state = state_file.read_bytes()
+        with self.assertRaisesRegex(graph.GraphError, "requires.*verify"):
+            self.record_work()
+        self.assertEqual(state_file.read_bytes(), old_state)
+        independent = self.valid_work(mode="deep", verification="independent")
+        with self.assertRaisesRegex(graph.GraphError, "corrected report"):
+            self.record_work(independent, "verify")
+        report = self.write_report()
+        rejected_sha = graph.sha256_file(report)
+        with report.open("a", encoding="utf-8") as stream:
+            stream.write("\nCorrected evidence and narrowed implications.\n")
+        self.record_work(independent, "verify")
+        with self.assertRaisesRegex(graph.GraphError, "complete gate"):
+            graph.complete_run(self.run_dir)
+        stale = self.valid_verification()
+        stale["report_sha256"] = rejected_sha
+        with self.assertRaisesRegex(graph.GraphError, "report_sha256"):
+            graph.record_node(self.run_dir, "verify", str(self.write_artifact("verify", stale)), "succeeded")
+        self.record_verification()
+        self.assertEqual(graph.complete_run(self.run_dir)["status"], "ok")
+
+    def test_resumed_legacy_run_which_bypassed_verify_reopens_work_read_only(self) -> None:
+        self.advance_to_verify()
+        self.record_verification("reject")
+        path = self.run_dir / graph.STATE_NAME
+        state = graph.load_state(self.run_dir)
+        state.update(graph_version="2.3.0", graph_sha256="1f16f0674adb8b9c8cadeada82f984844d24ead66e0186ab4a2351cc8699e159",
+                     verification_required=False, current="complete")
+        state["nodes"]["work"]["status"] = "succeeded"
+        state["nodes"]["work"]["receipts"][-1]["outcome"] = "succeeded"
+        state["nodes"]["complete"]["status"] = "ready"
+        path.write_text(json.dumps(state))
+        before = path.read_bytes()
+        self.assertEqual(graph.ready_node(self.run_dir)["data"]["node"], "work")
+        self.assertTrue(graph.state_summary(self.run_dir)["data"]["verification_required"])
+        self.assertEqual(graph.state_summary(self.run_dir)["data"]["current"], "work")
+        self.assertEqual(path.read_bytes(), before)
+        with self.assertRaisesRegex(graph.GraphError, "did not pass"):
+            graph.complete_run(self.run_dir)
+        report = self.write_report()
+        with report.open("a", encoding="utf-8") as stream:
+            stream.write("\nAfter resumption, corrected result with source context.\n")
+        self.record_work(self.valid_work(mode="deep", verification="independent"), "verify")
+        self.record_verification()
+        self.assertEqual(graph.complete_run(self.run_dir)["status"], "ok")
+
+    def test_identical_init_resumes_pinned_active_repair(self) -> None:
+        self.advance_to_verify()
+        self.record_verification("reject")
+        state = graph.load_state(self.run_dir)
+        old_version = "2.3.0"
+        old_id = graph.fingerprint(state["question"], self.workspace, Path(state["output"]),
+                                   old_version, state["requested_depth"])
+        old_dir = self.run_dir.with_name(old_id)
+        old_dir.mkdir()
+        old_state = {**state, "run_id": old_id, "graph_version": old_version,
+                     "graph_sha256": dict(graph.LEGACY_ACTIVE_GRAPH_IDENTITIES)[old_version]}
+        (old_dir / graph.STATE_NAME).write_text(json.dumps(old_state))
+        # A released run directory would exist while the upgraded fingerprint would not.
+        self.run_dir.rename(self.run_dir.with_name("unrelated"))
+        resumed = graph.initialize(state["question"], str(self.workspace), state["output"], state["requested_depth"])
+        self.assertEqual(resumed["data"]["run_dir"], str(old_dir))
+        self.assertEqual(graph.ready_node(old_dir)["data"]["allowed_outcomes"], ["verify", "failed"])
 
     def test_verifier_reject_requires_nonempty_repair_list(self) -> None:
         self.advance_to_verify()

@@ -34,7 +34,7 @@ class RoutingTests(unittest.TestCase):
         source = routing.POLICY_PATH.read_text()
         candidates = [source.replace('effort = "max"', 'effort = "typo"', 1),
                       source.replace('[roles.worker]', '[roles.worker]\nreasoning = "high"'),
-                      source.replace('[roles.worker]', '[roles.worker]\nmodel = "gpt-6-astra"')]
+                      source.replace('[roles.worker]', '[roles.worker]\nmodel = "gpt-6.2-astra"')]
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "policy.toml"
             for candidate in candidates:
@@ -104,8 +104,8 @@ class RoutingTests(unittest.TestCase):
             with self.subTest(role=role):
                 rendered = tomllib.loads(routing.render_agent(role, description))
                 template = tomllib.loads(routing.role_template(role).read_text())
-                expected = ("gpt-6-astra", "medium") if role == "deep_reviewer" else (
-                    "gpt-6.1-sol", "high" if role in acceptors | {"worker", "task_worker",
+                expected = ("gpt-6.2-astra", "xhigh") if role == "deep_reviewer" else (
+                    "gpt-6.2-sol", "high" if role in acceptors | {"worker", "task_worker",
                         "research_synthesizer", "task_risk_reviewer"} else "medium")
                 self.assertEqual(expected, (rendered["model"], rendered["model_reasoning_effort"]))
                 for key, value in template.items():
