@@ -11,7 +11,7 @@ profiles.
 | Scout | `research_scout` | an independent branch benefits from parallel search | root or parallel tool calls |
 | Synthesizer | `research_synthesizer` | conflicts or evidence volume exceed a clean root synthesis | root |
 | Ordinary review | `block_reviewer` | ordinary non-engineering report/plan or bounded block review | report missing independent evidence if required |
-| Whole acceptor | `research_verifier` | global complex-engineering/material-risk threshold requires whole-report acceptance | never substitute self-check for required acceptance |
+| Whole acceptor | Normally `research_verifier`. A policy-selected `deep_reviewer` can perform the final native review. | complex engineering or material risk requires whole-report acceptance | keep native evidence and any pending controller check if the selected role differs from the verifier node |
 
 Use zero discovery/fan-out agents in fast mode. A required verifier or plan
 acceptor is not optional discovery fan-out and never belongs in

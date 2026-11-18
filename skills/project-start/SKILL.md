@@ -87,7 +87,11 @@ reconciliation с исходниками. При активной policy bounded
 могут выполнять независимые discovery, preparation, document implementation,
 synthesis или focused review; root сверяет их доказательства. Только при достижении
 глобального порога complex engineering / material risk план принимает свежий
-`task_plan_reviewer`, результат — другой `project_docs_verifier`. Обычные
+`task_plan_reviewer`, а результат принимает другой проверяющий, обычно `project_docs_verifier`.
+Если общая политика выбирает `deep_reviewer` для итогового ревью, запиши его
+заключение с привязкой к точным документам. В графе `3.5.2` узел `verify`
+закреплён за `project_docs_verifier`. При несовместимости роли сохрани отдельное
+заключение и оставь обязательную проверку графа открытой. Обычные
 документационные ревью выполняет `block_reviewer` над всем ограниченным кандидатом,
 без пары общих приёмщиков. Focused
 checkers могут идти рядом с acceptor над тем же кандидатом, но все выбранные
@@ -213,7 +217,7 @@ scope. ENGINEERING/QUALITY сохраняют владельцев; AGENTS да�
    explorer, без controller verifier и без повторного чтения всего основания.
    При активной policy выбирай review по глобальному порогу: обычные документы —
    `block_reviewer`; complex engineering / material risk — `task_plan_reviewer`
-   и другой `project_docs_verifier`. Это операции внутри `work`. Не отдавай
+   и другой итоговый проверяющий по правилам выше. Это операции внутри `work`. Не отдавай
    параллельным агентам пересекающиеся документы и не запускай отдельного
    «куратора» по умолчанию.
 5. Создай один `project.json` по [договору управляющего артефакта](references/control-artifact.md). Это квитанция прохода, не второй источник истины.

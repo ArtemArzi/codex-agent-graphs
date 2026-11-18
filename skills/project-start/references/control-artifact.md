@@ -83,8 +83,9 @@ Maintenance использует `classification: no-change|factual|semantic` и
 `evidence` содержит существующие пути внутри репозитория.
 
 Поле `verification: independent` сохраняет released controller contract с
-`project_docs_verifier`. При активной policy эта whole-роль и отдельный
-`task_plan_reviewer` выбираются только по complex-engineering/material-risk порогу.
+`project_docs_verifier`. Если общая политика выбирает для итогового ревью
+`deep_reviewer`, сохрани его заключение отдельно с привязкой к точным документам.
+Назначенный графом `verify` остаётся открытым.
 Ordinary document review выполняет `block_reviewer` вне controller metadata;
 при несовместимости соблюдай Controller compatibility из SKILL.md. Focused checks могут быть записаны рядом, но PASS
 допустим только после их завершения и reconciliation существенных findings с

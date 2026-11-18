@@ -50,7 +50,9 @@ agents получают свежий bounded context и остаются leaf-on
 независимая работа получает новое задание со свежим контекстом.
 
 Только при глобальном пороге complex engineering / material risk нужны свежий
-`task_plan_reviewer` и другой `improvement_verifier` для всего результата.
+`task_plan_reviewer` и другой проверяющий всего результата. Обычно это
+`improvement_verifier`. В графе `1.3.0` при `--review-scope material`
+эту приёмку также может выполнить выбранный по общей политике `deep_reviewer`.
 Простое инженерное изменение получает одно итоговое `block_reviewer`; обычные
 неинженерные ревью также выполняет `block_reviewer`. Сам substantive/no-op статус
 не создаёт обязательную пару приёмщиков. Focused checks могут идти рядом с acceptor над тем же

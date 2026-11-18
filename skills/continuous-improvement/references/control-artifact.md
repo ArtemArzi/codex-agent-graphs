@@ -5,7 +5,8 @@ records evidence and handoff identity, not chain-of-thought. Under the inherited
 user-level policy, simple engineering gets one `block_reviewer` result review;
 ordinary non-engineering reviews also use that role. Only complex engineering
 or concrete material risk requires `task_plan_reviewer` before execution and a
-different `improvement_verifier` afterward. Native auxiliary verdicts never
+different final reviewer afterward, normally `improvement_verifier`. For a
+policy-selected deep review, see [Verification receipt](#verification-receipt). Native auxiliary verdicts never
 impersonate legacy controller receipts. Focused
 checks may run beside either acceptor over the same candidate; reconcile their
 material findings before PASS. These are operations inside `work`, not schema or

@@ -31,8 +31,9 @@ Explorer остаётся read-only:
 ## Verifier
 
 Без унаследованной acceptance policy verifier условный и read-only. При
-активной policy эти whole-роли нужны только по глобальному порогу complex
-engineering / material risk: `task_plan_reviewer`, затем другой `project_docs_verifier`.
+активной policy сложность или существенный риск требуют `task_plan_reviewer` и другого
+итогового проверяющего. Порядок выбора роли для глубокой проверки и сохранения
+незавершённого `verify` указан в [основной инструкции](../SKILL.md).
 Обычные документационные ревью выполняет `block_reviewer` над ограниченным результатом. Оба получают bounded fresh context; focused checks
 могут идти рядом с соответствующим acceptor, но root ждёт все выбранные checks
 и reconciles material findings с источниками до PASS. Это операции внутри

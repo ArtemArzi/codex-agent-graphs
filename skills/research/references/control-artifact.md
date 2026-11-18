@@ -40,9 +40,10 @@ Rules:
 
 The runner binds this artifact and the report by SHA-256, checks source-to-report citation identity and preserves immutable node receipts. The verifier and completion gate must use the exact current report rather than a summary.
 
-Required native plan/result acceptance remains mandatory in both depths. Keep
-its reviewer identities, verdicts, receipts and exact reviewed scope/report
-references in the existing report, handoff or root task record, outside this
-controller artifact. In fast mode complete the native reviews before recording
-`succeeded`; do not switch to deep only to encode those reviews. A `self` value
-in this legacy controller field does not replace or waive independent acceptance.
+Research depth does not choose the native reviewers. Under the inherited policy,
+an ordinary report review uses one `block_reviewer`. Complex engineering or
+material risk calls for a `task_plan_reviewer` before execution and a different
+whole-report acceptor afterward. Record the reviewer identity, verdict, receipt and exact
+report or scope for each required native review in the existing report, handoff or task record. A fast run
+records `succeeded` after its applicable reviews pass and keeps its controller
+fields as shown above.

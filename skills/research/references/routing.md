@@ -15,11 +15,12 @@ those are operations inside `work`, not a reason to create controller state.
 
 Use one root agent, usually 4-6 opened sources, no discovery fan-out agents,
 and no independent verifier without the inherited policy or a concrete signal.
-The policy-required whole-result acceptor and plan acceptor run as native
-reviews outside the fast controller's agent/verification metadata. Keep
-`research.json.agents=[]`, `verification="self"` and controller outcome
-`succeeded` after those reviews pass; retain their evidence in the report,
-handoff or root task record. Expand toward 10 only when coverage finds a gap.
+When the host policy calls for review, complete it outside the fast controller
+and keep the evidence in the report, handoff or root task record. An ordinary
+report review uses `block_reviewer`. Only complex engineering or material risk
+requires independent acceptance of both plan and result. The fast receipt uses
+`research.json.agents=[]`, `verification="self"` and outcome `succeeded`.
+Expand toward 10 only when coverage finds a gap.
 Treat every source checkpoint as a decision point, the maximum as a hard ceiling,
 and the time value as a soft stop; none is a quota to consume.
 
@@ -59,7 +60,7 @@ Switch from fast to deep for one strong signal or two weak signals.
 Strong signals:
 
 - medical, legal, financial, security, safety, or compliance consequence;
-- explicit request for deep, exhaustive, due-diligence, or independent research;
+- explicit request for deep or exhaustive source coverage, due diligence, or a separate investigation that requires new evidence.
 - recommendation likely to cause substantial cost, time, or irreversible action;
 - material contradiction among credible sources;
 - unavailable primary evidence for a decision-critical claim.
@@ -72,6 +73,8 @@ Weak signals:
 - low confidence in a key conclusion;
 - more than one material assumption is required.
 
+A request to review an existing report selects a reviewer under the host policy. Escalate collection depth when the requested investigation or an evidence gap calls for it.
+
 Record the controlling signal briefly in `reason`. Continue using evidence already collected; do not restart the research.
 
 ## Delegate inside deep work
@@ -83,8 +86,8 @@ Record the controlling signal briefly in `reason`. Continue using evidence alrea
 
 ## Request independent verification
 
-For a deep tracked run, set `verification` to `independent` and record `work`
-with outcome `verify` when any of these apply:
+Without an inherited review policy, use the deep tracked controller's
+`verification="independent"` and `work` outcome `verify` for these signals:
 
 - high-stakes consequence;
 - material contradiction remains or was resolved by judgment;
@@ -92,15 +95,12 @@ with outcome `verify` when any of these apply:
 - the user requests independent verification;
 - a consequential report contains several material claims across independent branches.
 
-Without the inherited policy, do not request independent verification merely
-because a report is long. A deep multi-source answer may still complete with
-root self-check when its primary evidence is direct, consistent, and low-risk.
-With the policy, ordinary non-engineering report reviews use `block_reviewer`.
-Only the global complex-engineering/material-risk threshold selects a fresh
-`research_verifier` whole-artifact acceptor; length and depth alone do not. In fast or skill-only work return its native verdict and
-receipt outside controller metadata; do not use the deep-only `verify` outcome
-or populate `research.json.agents` with acceptors. Native policy review alone
-does not justify changing the research depth.
+A well-supported, low-risk deep report can finish with a root check when the
+host policy permits it. Under the inherited policy, ordinary report reviews use
+`block_reviewer`. Use the deep verifier node when the applicable whole-report
+acceptor matches the controller contract. Keep a native verdict outside the
+controller when its role is unsupported, and preserve outstanding controller
+obligations as described in [the skill](../SKILL.md#inherited-routing-and-acceptance-policy).
 
 ## Stop
 

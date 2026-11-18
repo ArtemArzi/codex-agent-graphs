@@ -49,8 +49,9 @@ exclusions and required evidence. Require the child to read those sources and
 report missing context rather than assume access to the parent conversation.
 
 Only when the global complex-engineering/material-risk threshold is met, a fresh
-`task_plan_reviewer` accepts the whole plan and a different `research_verifier`
-accepts the completed report. Ordinary non-engineering report/plan reviews use
+`task_plan_reviewer` accepts the plan and a different reviewer accepts the
+completed report. Normally use `research_verifier`. If host policy selects
+`deep_reviewer` for a deep review, that agent owns the assigned final review. Ordinary non-engineering report/plan reviews use
 `block_reviewer` for the bounded artifact, without an acceptance pair. Focused checks may run alongside either
 acceptor against the same candidate; wait for all selected checks and reconcile
 material findings with the sources before PASS. Same-scope repairs return to the
@@ -77,11 +78,11 @@ the conditional routing below remains the fallback.
 - `tracked` — use the controller when the work may cross sessions, must produce
   a persistent report, needs a durable source ledger/handoff, or the user
   explicitly asks to track or resume it.
-- `verified` — deep tracked research plus its `research_verifier` node when material claims
-  are high-risk, contradictory, weakly supported, due-diligence grade, the user
-  requests independent research. Native host-policy acceptance alone does not
-  select this depth or controller branch; it runs inside `work` in fast and
-  skill-only research too.
+- `verified` uses the deep tracked controller to record independent verification.
+  Select it when tracking is warranted and the required whole-report reviewer
+  matches the controller contract. For an ordinary independent report review
+  under the inherited policy, use `block_reviewer` within the current tier.
+  Without that policy, use the verification signals in [routing.md](references/routing.md).
 
 ## Core contract
 
@@ -105,9 +106,9 @@ Read [routing.md](references/routing.md) for depth and capability selection. Rea
 Understand the decision, use applicable sources and capabilities, stop when
 coverage is sufficient, and answer with citations next to material claims. If
 the result meets the global complex-engineering/material-risk threshold, obtain
-`research_verifier` whole-report acceptance; otherwise route an ordinary report
-review to `block_reviewer`, without adding reviews to trivial answers;
-this does not require durable graph state.
+whole-report acceptance using the role selected above. Route an ordinary report
+review to `block_reviewer`. Trivial answers can use a direct check. These
+native reviews can run within the current session.
 Keep no graph artifacts. Escalate to `tracked` before context loss or when a
 durable report becomes part of the requested outcome.
 
@@ -186,17 +187,20 @@ Keep every internal agent leaf-only, read-only, bounded to one branch, and respo
 
 ## Verify by route and host policy
 
-Without the inherited policy, use `research_verifier` only for the signals in
-[routing.md](references/routing.md). With the policy, use it only when the global
-complex-engineering/material-risk threshold requires whole-artifact acceptance.
-Ordinary non-engineering report reviews use `block_reviewer`; skill-only, depth
-and report length do not promote them to acceptance roles. Give it the report, compact ledger, exact claims to check, and
-a strict instruction not to expand the research.
+Use the inherited policy to select the native reviewer. Give that reviewer the
+report, source ledger and exact claims to check. The deep controller's verifier
+node declares `research_verifier`. If an already required node cannot accept
+the selected native role, record the verdict and exact report outside the
+controller and leave the node pending. Preserve the identity of the person or
+agent who actually reviewed it. Without the inherited policy, follow the
+verification signals in [routing.md](references/routing.md).
 
-On rejection, repair the listed claims and record the changed report with
-`--node work --outcome verify`. Only a positive receipt for that exact report
-can complete the run. The same rule applies when resuming earlier active v2
-runs. A second rejection stops the run.
+If a native reviewer requests a correction, fix the listed claims and return
+the revision to that reviewer within the current tier. If the deep controller
+verifier rejects a report, record the repaired work with
+`--node work --outcome verify`. The controller requires a positive receipt for
+that report and stops after a second rejection. This also applies when resuming
+earlier active v2 runs.
 
 ## Complete
 
