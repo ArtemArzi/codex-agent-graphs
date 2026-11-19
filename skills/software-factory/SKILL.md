@@ -41,6 +41,14 @@ substitute local execution for a requested remote run.
 
 ## Execute a task
 
+For an ambiguous bug report, reproduce each material claim before passing it
+to another implementer. Leave the tested revision or file identity, starting
+state, steps through the normal entry point, expected and observed behavior,
+and the smallest useful evidence in the existing issue or task. If a claim is
+still open, name the missing input. Group reports only when evidence supports
+a shared cause. The next worker should be able to reproduce the confirmed
+case from that note. Use synthetic inputs or redact private data as needed.
+
 When the user supplies project documentation and asks to build the system, or
 continues after a human step/interruption, read
 [prepared-projects.md](references/prepared-projects.md). Use the existing execute

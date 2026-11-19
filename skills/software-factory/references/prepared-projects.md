@@ -40,6 +40,13 @@ Pause only dependent work and retain partial results honestly. In an unattended
 run, save the wait and end; after the human answer use durable task context.
 An interactive native chat can continue in its supported way.
 
+If a decision can arrive again after a disconnect, identify the open question
+in the existing task record (reuse its issue/check ID when unambiguous). Match
+the reply to that question, the current scope/revision and the expected person
+or approved configuration. A scheduler wake-up can trigger a state check.
+It cannot answer the question. Record the accepted decision separately from
+completion of the operation it enables.
+
 ## Continue from observed state
 
 Before continuation, reconcile the existing task, accepted contract, actual
@@ -48,6 +55,14 @@ See [routing-and-context.md](routing-and-context.md#join-changes-and-interruptio
 for ownership, lost responses and already-applied effects. A fresh context must
 read those sources; it cannot assume the previous conversation survived.
 Continue the next unfinished obligation rather than reinitializing the project.
+
+On a duplicate reply or a lost acknowledgement, first read the authoritative
+result for this request. If the effect already happened, record the evidence
+and skip dispatch. If it is still pending, use the operation's own claim or
+idempotency mechanism when racing another writer or retrying an uncertain
+effect. If the outcome cannot be established and replay could duplicate an
+effect, leave it unresolved. A note or matching output bytes alone cannot
+prove how many times an operation ran.
 
 When code, environment or relevant evidence changed, run a short project-native
 check of the affected previously working path before stacking dependent work.
@@ -71,6 +86,12 @@ Automatic loop detection and enforced cost limits require a real runner; this
 instruction does not add either mechanism or change the host's actual limits.
 
 ## Close the whole requested outcome
+
+When a rule spans two changed or affected user actions, exercise the sequence
+through their normal entry points. Check the exact downstream data the user
+would see. For example, after a rejected import, a correct item count can
+hide a changed name in the export. Select the scenario by the rule and the
+affected surfaces, and keep its evidence with the existing acceptance check.
 
 When the accepted outcome includes application readiness for handoff/release,
 pass the one integrated candidate, QUALITY and original check evidence to the

@@ -54,6 +54,21 @@ class ManifestChecks(unittest.TestCase):
         self.assertEqual(output.read_text(), 'retained output')
         self.assertEqual(self.summary(), {'items': 2, 'units': 5})
 
+    def test_export_keeps_original_items_after_rejected_import(self):
+        self.load()
+        self.csv.write_text('sku,name,units\nA1,Renamed box,2\nB3,Bad,-1\n')
+        self.cli('import', '--db', self.db, '--input', self.csv, expected=2)
+        self.assertEqual(self.summary(), {'items': 2, 'units': 5})
+
+        config = self.folder / 'operator.json'
+        config.write_text('{"destination":"demo-west"}')
+        output = self.folder / 'after-rejection.json'
+        self.cli('export', '--db', self.db, '--config', config, '--output', output)
+        self.assertEqual(json.loads(output.read_text())['items'], [
+            {'sku': 'A1', 'name': 'Green box', 'units': 2},
+            {'sku': 'Z2', 'name': 'Blue box', 'units': 3},
+        ])
+
     def test_invalid_operator_preserves_output(self):
         self.load()
         config = self.folder / 'operator.json'

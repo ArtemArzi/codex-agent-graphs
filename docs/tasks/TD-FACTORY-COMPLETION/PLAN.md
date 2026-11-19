@@ -99,3 +99,40 @@ No real provider, secret, UI, external payment, cloud runner, process-crash
 resurrection or general speed/cost claim was tested. Existing helper tests
 cover their own timeout/stale/storage paths; the new two-context forward is
 not a claim to have fault-injected every possible interruption.
+
+## Follow-up, 19 November 2026
+
+The local exercise now checks two visible outcomes of the same rejected
+import. Its first row renames an existing SKU without changing its quantity.
+The second row is invalid. Check both the unchanged summary and the exact
+exported items after the rejection. The prior five canonical checks passed
+against a teaching variant that eagerly updated the first name. The new check
+failed on that variant at the exported name and the six checks passed against
+the original working implementation.
+
+To repeat the lost-reply exercise, use a disposable instance of the prepared
+CLI, an imported fixture, an absent output and one identified operator question.
+Make the task's sole dispatch entry append one line per invocation before it
+calls the actual export command with the designated DB, config and output.
+Use an append log outside the export output and let each writer finish:
+
+1. Deliver a scheduler wake-up while the operator configuration is absent.
+   Inspect the dispatch log and output. Both should still be absent.
+2. Supply the synthetic operator input and perform the real dispatch. End the
+   run after it writes the result and before the task record acknowledges it.
+3. Deliver the same answer to a fresh context with the original task record.
+   Compare the exact destination and sorted items with the expected data.
+   Read back the dispatch count, the output and the database after recovery.
+
+The local pilot observed zero calls on the wake-up and one call after the
+lost acknowledgement and duplicate delivery. This exercise uses a single
+joined writer and a request-specific destination. Concurrent delivery and
+external services require the operation's native protection and readback.
+
+For the ambiguous-report handoff, give the investigator the defective variant
+and two reports: a rejected import changed an exported name, and a different
+import changed the total without a recoverable input file. Pass only the
+updated issue and the project to a fresh implementer. Check whether they can
+reproduce the first observation in a new directory and identify the missing
+evidence for the second. Keep the issue with the revision, synthetic input,
+commands and observations at the existing task owner.

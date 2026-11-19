@@ -2,6 +2,8 @@
 
 - Q1: Valid CSV is persisted; identical reimport keeps one record per SKU.
 - Q2: Invalid or duplicate rows are rejected before any stored row changes.
+  After a rejected rename, the summary and the complete items in the next
+  export must still match the original manifest.
 - Q3: The sample has 2 items and 5 total units; summary reports those values.
 - Q4: Export without operator config preserves the output and database.
 - Q5: With an operator-provided destination, actual sample export has the exact
