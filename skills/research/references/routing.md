@@ -30,7 +30,9 @@ The root may use any relevant installed skill or exposed tool. Capability use do
 
 | Need | Preferred capability | Fallback |
 |---|---|---|
-| Current web facts or focused discovery | Exa, Tavily, or Firecrawl MCP | native web search or browser |
+| Current web facts or focused discovery | Tavily or Firecrawl Search for domain and freshness filters, Exa for semantic discovery | native web search |
+| Public page with a known URL | Firecrawl Local scrape | existing extraction MCP or hidden Playwright for a public interactive page |
+| Known section of a site | Firecrawl Local map for candidate URLs, then scrape selected URLs or bound a crawl by path and page count | sitemap or internal links, then a supported extractor |
 | Thorough multi-source investigation | `deep-research`, only in deep mode | scouts plus native web tools |
 | Official technical documentation | provider-specific MCP, then Context7 | official websites, local docs, native web, then `curl` |
 | Scholarly evidence | `literature-review` and original papers | academic search plus primary papers |
@@ -42,6 +44,83 @@ exact MCP/tool names and call the best relevant server before a native external
 path. Record success as `mcp:<server>`. If a relevant server fails, record
 `mcp:fallback:<reason>` and continue safely. For local-file evidence record
 `mcp:not-applicable:<reason>` in tracked mode without discovery.
+
+## Collect public web sources
+
+1. Use the owning provider for primary data where available. For open-web
+   discovery on a focused question, start with one search tool chosen by
+   query fit. For several independent questions use the parallel route
+   below. Deduplicate and rank candidate URLs by relevance,
+   authority and freshness before requesting page bodies.
+2. Inspect the live tool catalog for a distinct local connection, such as
+   `firecrawl_local`. Use its scrape tool for selected public URLs. For larger
+   known URL lists, the Firecrawl Local v2 API supports
+   `POST /v2/batch/scrape` and polling `GET /v2/batch/scrape/{id}`. Use a
+   trusted, already configured local endpoint when available and authorized.
+   If only per-URL MCP scrape is exposed, use bounded groups or the supported
+   extractor. Map lists URLs. Use it to pick pages, or crawl a known section
+   with explicit path, depth and page bounds.
+3. Pilot a small representative group, then expand based on what it returns.
+   Start with Markdown and request links or browser rendering when needed.
+   Use bounded concurrency and increase it only while useful content arrives
+   and host resources allow it. Chrome can materially raise memory usage.
+   Save reusable source bodies under the existing task owner when the task
+   needs them. Pass relevant excerpts and source URLs to synthesis. Existing
+   evidence checkpoints and tracked citation ceilings still apply.
+4. Confirm each selected result contains the needed material. Check the
+   target site's status, title and body for empty output, login, bot checks
+   or rate limiting. Count a page as collected only if the needed content
+   is present. Use hidden Playwright for ordinary public JavaScript
+   interactions when the page needs it. When a site explicitly limits
+   access, record the observed limit and look for an authorized first-party
+   API, export or alternate source. Follow the established manual browser
+   handoff when the task calls for user login or CAPTCHA. Report the gap
+   if access remains unavailable.
+
+A Local installation can forward search to Firecrawl Cloud. A bundled
+search-and-scrape request goes through the search backend in that setup.
+Use separate discovery and direct local scrape calls. When page retrieval
+must stay local, verify the endpoint disables cloud page fallback (for
+example with `FIRECRAWL_CLOUD=search` or `off`), and check returned source
+metadata when present. Local formats and fallback depend on the installed
+version and configuration. Verify them against the active endpoint and the
+[Firecrawl Local documentation](https://docs.firecrawl.dev/quickstarts/firecrawl-local).
+
+## Search and collect in parallel
+
+Use this route for an explicitly broad research request or several
+independent evidence questions. Make one initial parallel search wave by
+assigning each query a distinct angle and source class. Examples include
+official capabilities, independent implementations or evaluations, and
+reported failures. Use the owning provider for primary records. Use Tavily
+or Firecrawl Search for domain and date filters, Exa for semantic discovery,
+and native search where its region, recency or index covers an actual gap.
+Use multiple relevant providers on the first wave when their questions are
+independent. Send follow-up queries only for gaps and contradictions.
+
+Make Firecrawl Local the main collector for eligible public URLs. Merge
+search results and deduplicate by URL and equivalent document, while
+preserving query parameters that change content. Start downloading vetted
+URLs as they arrive. Use bounded Local batch jobs for known URL groups and
+a path-limited crawl for a relevant site section. Base total and per-origin
+concurrency on a representative pilot and observed responses. A batch-wide
+concurrency limit alone does not set per-origin limits across jobs. Pause or
+reduce requests to an origin that limits access. Use the collection route
+above for failures and browser-only pages.
+
+For a reusable or large collection, save successful page bodies with their
+requested URL, resolved URL when available, retrieval time and status under
+the existing task owner. Track coverage by question and retain unresolved
+failures. Read in groups by question. Extract evidence and quotations with
+their source locations. Confirm material or disputed claims in the original
+pages. When exhaustive reading is requested, track which documents were
+actually reviewed and report the unread or unavailable ones. Reuse relevant
+saved documents with a freshness check.
+
+Report conclusions with the primary or corroborating sources that support
+them. A downloaded collection provides candidate material, and any source
+used as evidence follows the existing citation contract and tracked limits.
+Keep the existing deep-mode delegation and review rules below.
 
 ## Expand by coverage, not count
 

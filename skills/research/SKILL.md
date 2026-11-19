@@ -165,7 +165,13 @@ python3 scripts/research_graph.py retry --run "<run-directory>" --reason "<fallb
 
 - Use the owning provider MCP first: OpenAI Developer Docs for OpenAI, GitHub for repository truth, Linear/Notion for their workspace data, Playwright for live browser state, and comparable service-specific servers when exposed.
 - Use Context7 before general web search for version-sensitive official library or framework documentation.
-- Use Exa, Tavily, Firecrawl, or another research MCP for focused discovery, code context, companies, or people.
+- Use a live search capability to find candidate URLs. For public pages with
+  known URLs, prefer Firecrawl Local when exposed and suitable. Keep web search
+  and local retrieval in separate calls when collecting pages locally.
+- Read [the collection route](references/routing.md#collect-public-web-sources)
+  when opening many sources, collecting a site section, or evaluating blocked
+  or incomplete results. For broad research across independent questions, use
+  [parallel search and collection](references/routing.md#search-and-collect-in-parallel).
 - Use `deep-research` only after deep routing; never import a broad source target into fast mode or treat the deep 40-source emergency ceiling as a goal.
 - Use official documentation skills for version-sensitive technical claims.
 - Use domain skills such as market research or literature review when the question actually belongs to that domain.
